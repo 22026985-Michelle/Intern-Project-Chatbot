@@ -469,9 +469,10 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 <div id="filePreview" class="file-preview"></div>
                 <div class="input-footer">
                     <div class="tools">
-                        <button class="tool-button">Add content</button>
-                        <button class="tool-button">Generate interview questions</button>
-                        <button class="tool-button">Generate excel formulas</button>
+                        <button class="tool-button" onclick="setMessage('Please help me convert the format of my data.')">Convert format of data</button>
+                        <button class="tool-button" onclick="setMessage('Can you help me check my data for any issues?')">Check data</button>
+                        <button class="tool-button" onclick="setMessage('I would like to learn more about NCS.')">Learn more about NCS</button>
+                        <button class="tool-button" onclick="setMessage('Can you help me fill in the missing fields?')">Fill in fields</button>
                     </div>
                 </div>
             </div>
@@ -582,6 +583,12 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         const sidebarTrigger = document.querySelector('.sidebar-trigger');
         const themeToggle = document.getElementById('themeToggle');
         const body = document.body;
+
+        function setMessage(message) {
+            const userInput = document.getElementById('userInput');
+            userInput.value = message;
+            userInput.focus();
+        }
 
         // Set greeting based on time
         function setGreeting() {
