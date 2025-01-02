@@ -571,6 +571,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
     </style>
 
     <script>
+        const BASE_URL = 'https://internproject-4fq7.onrender.com';
         const userInput = document.getElementById('userInput');
         const messagesList = document.getElementById('messagesList');
         const chatContainer = document.getElementById('chatContainer');
@@ -648,13 +649,12 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             
             try {
                 console.log('Sending message:', message);
-                // Show user message immediately
                 addMessage(message, true);
                 userInput.value = '';
                 userInput.style.height = 'auto';
 
-                // Send request to server
-                const response = await fetch('/chat', {
+                // Updated fetch call with full URL
+                const response = await fetch(`${BASE_URL}/chat`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
