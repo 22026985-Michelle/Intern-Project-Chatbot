@@ -141,7 +141,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": null,
+   "execution_count": 0,
    "metadata": {},
    "outputs": [],
    "source": [
@@ -281,7 +281,7 @@
   },
   {
    "cell_type": "code",
-   "execution_count": null,
+   "execution_count": None,
    "metadata": {},
    "outputs": [],
    "source": []
