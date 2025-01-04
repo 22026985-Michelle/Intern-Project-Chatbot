@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login - NCS Internship AI Chatbot</title>
+    <title>Sign Up - NCS Internship AI Chatbot</title>
     <style>
         :root {
             --primary-color: #0099FF;
@@ -25,7 +25,7 @@
             justify-content: center;
         }
 
-        .login-container {
+        .signup-container {
             background-color: white;
             padding: 2rem;
             border-radius: 8px;
@@ -64,14 +64,14 @@
         }
 
         input {
-            width: calc(100% - 1.5rem); /* Subtracting total horizontal padding */
+            width: 100%;
             padding: 0.75rem;
             border: 2px solid var(--border-color);
             border-radius: 4px;
             background-color: var(--input-bg);
             color: var(--text-color);
             margin-bottom: 1rem;
-            box-sizing: border-box; /* This is the key addition */
+            box-sizing: border-box;
         }
 
         button {
@@ -91,12 +91,12 @@
             background-color: #007ACC;
         }
 
-        .signup-link {
+        .login-link {
             text-align: center;
             margin-top: 1rem;
         }
 
-        .signup-link a {
+        .login-link a {
             color: var(--primary-color);
             text-decoration: none;
         }
@@ -107,19 +107,30 @@
             margin-bottom: 1rem;
             display: none;
         }
+
+        /* Password strength indicator styles */
+        .password-strength {
+            margin-top: -0.5rem;
+            margin-bottom: 1rem;
+            font-size: 0.875rem;
+        }
+
+        .strength-weak { color: #EF4444; }
+        .strength-medium { color: #F59E0B; }
+        .strength-strong { color: #10B981; }
     </style>
 </head>
 <body>
-    <div class="login-container">
+    <div class="signup-container">
         <div class="logo">
             <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
                 <path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
             </svg>
         </div>
-        <h1>Welcome Back</h1>
+        <h1>Create Account</h1>
         <div id="errorMessage" class="error-message"></div>
-        <form id="loginForm">
+        <form id="signupForm">
             <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" required>
@@ -127,27 +138,77 @@
             <div class="form-group">
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required>
+                <div id="passwordStrength" class="password-strength"></div>
             </div>
-            <button type="submit">Log In</button>
+            <div class="form-group">
+                <label for="confirmPassword">Confirm Password</label>
+                <input type="password" id="confirmPassword" name="confirmPassword" required>
+            </div>
+            <button type="submit">Sign Up</button>
         </form>
-        <div class="signup-link">
-            Don't have an account? <a href="https://internproject-4fq7.onrender.com/signup">Sign up</a>
+        <div class="login-link">
+            Already have an account? <a href="https://internproject-4fq7.onrender.com/login">Log in</a>
         </div>
     </div>
 
     <script>
         const BASE_URL = 'https://internproject-4fq7.onrender.com';
-        const loginForm = document.getElementById('loginForm');
+        const signupForm = document.getElementById('signupForm');
         const errorMessage = document.getElementById('errorMessage');
+        const passwordInput = document.getElementById('password');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const passwordStrength = document.getElementById('passwordStrength');
 
-        loginForm.addEventListener('submit', async (e) => {
+        // Password strength checker
+        passwordInput.addEventListener('input', function() {
+            const password = this.value;
+            let strength = 0;
+            let message = '';
+
+            if (password.length >= 8) strength++;
+            if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++;
+            if (password.match(/\d/)) strength++;
+            if (password.match(/[^a-zA-Z\d]/)) strength++;
+
+            switch(strength) {
+                case 0:
+                case 1:
+                    message = '<span class="strength-weak">Weak password</span>';
+                    break;
+                case 2:
+                    message = '<span class="strength-medium">Medium password</span>';
+                    break;
+                case 3:
+                case 4:
+                    message = '<span class="strength-strong">Strong password</span>';
+                    break;
+            }
+
+            passwordStrength.innerHTML = message;
+        });
+
+        signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
             const email = document.getElementById('email').value;
-            const password = document.getElementById('password').value;
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+
+            // Basic validation
+            if (password !== confirmPassword) {
+                errorMessage.textContent = 'Passwords do not match';
+                errorMessage.style.display = 'block';
+                return;
+            }
+
+            if (password.length < 8) {
+                errorMessage.textContent = 'Password must be at least 8 characters long';
+                errorMessage.style.display = 'block';
+                return;
+            }
 
             try {
-                const response = await fetch(`${BASE_URL}/api/login`, {
+                const response = await fetch(`${BASE_URL}/api/signup`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
@@ -158,13 +219,13 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    // Store the token/session info if needed
+                    // Store the user email if needed
                     localStorage.setItem('userEmail', email);
                     
                     // Redirect to main chat interface
                     window.location.href = '/';
                 } else {
-                    errorMessage.textContent = data.error || 'Login failed';
+                    errorMessage.textContent = data.error || 'Signup failed';
                     errorMessage.style.display = 'block';
                 }
             } catch (error) {

@@ -41,7 +41,11 @@ def login_page():
 @app.route('/signup')
 def signup_page():
     """Serve the signup page"""
-    return send_file('signup.html')
+    try:
+        return send_file('signup.html')
+    except FileNotFoundError:
+        # Temporary response until signup page is created
+        return "Signup page coming soon!", 404
 
 @app.route('/api/login', methods=['POST'])
 def api_login():
