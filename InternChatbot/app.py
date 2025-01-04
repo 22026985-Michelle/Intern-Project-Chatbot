@@ -1,24 +1,31 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect, send_file, session
 import anthropic
-import json
 from datetime import datetime
 import os
+from functools import wraps
 from template import HTML_TEMPLATE
 
 app = Flask(__name__)
+app.secret_key = os.urandom(24)  # For session management
 
 # Initialize Anthropic client
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
-if not ANTHROPIC_API_KEY:
-    print("Warning: ANTHROPIC_API_KEY not set in environment variables")
-
 try:
     client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 except Exception as e:
     print(f"Error initializing Anthropic client: {str(e)}")
     client = None
 
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user_email' not in session:
+            return redirect('/login')
+        return f(*args, **kwargs)
+    return decorated_function
+
 @app.route('/')
+@login_required
 def home():
     """Serve the main chat interface"""
     current_hour = datetime.now().hour
@@ -26,7 +33,64 @@ def home():
     modified_template = HTML_TEMPLATE.replace('Having a late night?', greeting)
     return modified_template
 
+@app.route('/login')
+def login_page():
+    """Serve the login page"""
+    return send_file('login.html')
+
+@app.route('/signup')
+def signup_page():
+    """Serve the signup page"""
+    return send_file('signup.html')
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    """Handle login API requests"""
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+
+        # Here you would typically validate against a database
+        # For now, we'll accept any login
+        if email and password:
+            session['user_email'] = email
+            return jsonify({"status": "success", "message": "Login successful"})
+        else:
+            return jsonify({"error": "Invalid credentials"}), 401
+
+    except Exception as e:
+        print(f"Error handling login: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.route('/api/signup', methods=['POST'])
+def api_signup():
+    """Handle signup API requests"""
+    try:
+        data = request.get_json()
+        email = data.get('email')
+        password = data.get('password')
+
+        # Here you would typically store in a database
+        # For now, we'll accept any signup
+        if email and password:
+            session['user_email'] = email
+            return jsonify({"status": "success", "message": "Signup successful"})
+        else:
+            return jsonify({"error": "Invalid data"}), 400
+
+    except Exception as e:
+        print(f"Error handling signup: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.route('/logout')
+def logout():
+    """Handle logout"""
+    session.clear()
+    return redirect('/login')
+
 @app.route('/chat', methods=['POST'])
+@login_required
 def chat():
     """Handle chat requests"""
     try:
