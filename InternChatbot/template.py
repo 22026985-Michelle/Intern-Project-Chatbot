@@ -11,14 +11,14 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             --bg-color: #FFFFFF;
             --text-color: #1C1C1C;
             --input-bg: #F0F0F0;
-            --border-color: #1F2937;  /* Much darker - almost black */
+            --border-color: #1F2937;
             --hover-color: #F5F5F5;
             --tool-button-bg: #F3F4F6;
             --tool-button-hover: #E5E7EB;
             --avatar-bg: #E0E0E0;
             --chat-bg: #FFFFFF;
-            --sidebar-border: #1F2937;  /* Much darker */
-            --chat-border: #111827;  /* Almost black */
+            --sidebar-border: #1F2937;
+            --chat-border: transparent;
             --theme-button-bg: #F3F3F3;
             --theme-button-text: #333333;
         }
@@ -27,15 +27,15 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             --bg-color: #1C1C1C;
             --text-color: #FFFFFF;
             --input-bg: #2D2D2D;
-            --border-color: #1F2937;  /* Darker border */
+            --border-color: #374151;
             --hover-color: #2D2D2D;
             --tool-button-bg: #374151;
             --tool-button-hover: #4B5563;
             --avatar-bg: #3D3D3D;
-            --chat-bg: #242424;
-            --sidebar-border: #1F2937;  /* Darker border */
-            --chat-border: #111827;  /* Almost black */
-            --theme-button-bg: #383838;
+            --chat-bg: #1C1C1C;
+            --sidebar-border: #374151;
+            --chat-border: transparent;
+            --theme-button-bg: #374151;
             --theme-button-text: #FFFFFF;
         }
 
@@ -80,7 +80,8 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             overflow-y: auto;
             overflow-x: hidden;
             z-index: 1000;
-            transition: transform 0.3s ease;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+            transform: translateX(0);
         }
 
         .sidebar:hover,
@@ -89,13 +90,13 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         }
 
         .main-content {
-            margin-left: 10px;
+            margin-left: 0;
             display: flex;
             flex-direction: column;
             min-height: 100vh;
             position: relative;
             max-width: 100%;
-            transition: margin-left 0.3s ease;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
             padding: 0 1rem;
         }
 
@@ -109,9 +110,9 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             position: relative;
             z-index: 1;
             background-color: var(--chat-bg);
-            border: 1px solid var(--chat-border);
+            border: none;
             border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            box-shadow: none;
         }
 
         .greeting {
@@ -148,10 +149,10 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             position: fixed;
             bottom: 0;
             right: 0;
-            width: calc(100% - 10px);
-            background-color: var(--chat-bg);
-            border-top: 2px solid var(--border-color); /* Changed from 1px to 2px */
-            box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.05);
+            width: 100%;
+            background-color: var(--bg-color);
+            border-top: none;
+            box-shadow: none;
             z-index: 1000;
         }
 
@@ -159,7 +160,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             max-width: 768px;
             margin: 0 auto;
             padding: 1rem;
-            background-color: var(--chat-bg);
+            background-color: var(--bg-color);
             border-radius: 8px;
         }
 
@@ -167,15 +168,15 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             width: 100%;
             min-height: 60px;
             background-color: var(--input-bg);
-            border: 2px solid var(--border-color); /* Changed from 1px to 2px */
-            border-radius: 8px;
             color: var(--text-color);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
             font-size: 1rem;
             resize: none;
             outline: none;
             padding: 1rem;
             margin-bottom: 1rem;
-            transition: border-color 0.2s ease;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
         }
 
         .input-box:focus {
@@ -199,7 +200,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             border-radius: 0.5rem;
             cursor: pointer;
             font-size: 0.9rem;
-            transition: all 0.2s ease;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
             white-space: nowrap;
             box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
         }
@@ -218,7 +219,8 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             padding: 1rem;
             border-radius: 8px;
             background-color: var(--bg-color);
-            border: 1px solid var(--chat-border);
+            border: 1px solid var(--border-color);
+            color: var(--text-color);
         }
 
         .avatar {
@@ -259,7 +261,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             font-size: 0.9rem;
             white-space: nowrap;
             border-radius: 0.5rem;
-            transition: background-color 0.2s;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
         }
 
         .new-chat-button:hover {
@@ -293,7 +295,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             text-overflow: ellipsis;
             max-width: 230px;
             border: 1px solid transparent;
-            transition: all 0.2s ease;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
         }
 
         .chat-item:hover {
@@ -351,7 +353,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             z-index: 1001;
             font-weight: 500;
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            transition: all 0.2s ease;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
         }
 
         .theme-toggle:hover {
@@ -374,7 +376,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         @media (max-width: 768px) {
             .sidebar {
                 transform: translateX(-100%);
-                transition: transform 0.3s ease;
+                transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
             }
             
             .sidebar.active {
@@ -497,7 +499,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            transition: all 0.2s ease;
+            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
             flex-shrink: 0;
             margin-top: 10px;
         }
@@ -548,20 +550,22 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             color: white;
             border: none;
             border-radius: 8px;
-            width: 40px;
-            height: 40px;
+            width: 45px;
+            height: 45px;
             display: flex;
             align-items: center;
             justify-content: center;
             cursor: pointer;
             transition: all 0.2s ease;
             flex-shrink: 0;
-            margin-top: 10px;
+            margin-top: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
 
         .send-button:hover {
             background-color: #007ACC;
             transform: translateY(-1px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
         }
 
         .send-icon {
@@ -720,16 +724,15 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         });
 
         // Theme handling
-        const savedTheme = localStorage.getItem('theme') || 'light';
-        body.setAttribute('data-theme', savedTheme);
-        themeToggle.textContent = `Switch to ${savedTheme === 'light' ? 'Dark' : 'Light'} Theme`;
+        let currentTheme = localStorage.getItem('theme') || 'light';
+        body.setAttribute('data-theme', currentTheme);
+        themeToggle.textContent = `Switch to ${currentTheme === 'light' ? 'Dark' : 'Light'} Theme`;
 
         themeToggle.addEventListener('click', () => {
-            const currentTheme = body.getAttribute('data-theme');
-            const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-            body.setAttribute('data-theme', newTheme);
-            localStorage.setItem('theme', newTheme);
-            themeToggle.textContent = `Switch to ${newTheme === 'light' ? 'Dark' : 'Light'} Theme`;
+            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+            body.setAttribute('data-theme', currentTheme);
+            localStorage.setItem('theme', currentTheme);
+            themeToggle.textContent = `Switch to ${currentTheme === 'light' ? 'Dark' : 'Light'} Theme`;
         });
 
         // Sidebar functionality
