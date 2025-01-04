@@ -603,223 +603,235 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
     </style>
 
     <script>
-        const BASE_URL = 'https://internproject-4fq7.onrender.com';
-        const userInput = document.getElementById('userInput');
-        const messagesList = document.getElementById('messagesList');
-        const chatContainer = document.getElementById('chatContainer');
-        const sendButton = document.getElementById('sendButton');
-        const fileButton = document.getElementById('fileButton');
-        const fileInput = document.getElementById('fileInput');
-        const filePreview = document.getElementById('filePreview');
-        const greetingText = document.querySelector('.greeting-text');  // Changed from getElementById
-        const sidebar = document.querySelector('.sidebar');
-        const sidebarTrigger = document.querySelector('.sidebar-trigger');
-        const themeToggle = document.getElementById('themeToggle');
-        const body = document.body;
-
-        function setMessage(message) {
+        // Initialize DOM elements
+        document.addEventListener('DOMContentLoaded', function() {
             const userInput = document.getElementById('userInput');
-            userInput.value = message;
-            userInput.focus();
-        }
+            const messagesList = document.getElementById('messagesList');
+            const chatContainer = document.getElementById('chatContainer');
+            const sendButton = document.getElementById('sendButton');
+            const fileButton = document.getElementById('fileButton');
+            const fileInput = document.getElementById('fileInput');
+            const filePreview = document.getElementById('filePreview');
+            const greetingText = document.querySelector('.greeting-text');
+            const sidebar = document.querySelector('.sidebar');
+            const sidebarTrigger = document.querySelector('.sidebar-trigger');
+            const themeToggle = document.getElementById('themeToggle');
+            const body = document.body;
 
-        // Set greeting based on time
-        function setGreeting() {
-            const hour = new Date().getHours();
-            if (hour >= 5 && hour < 12) {
-                greetingText.textContent = 'Good morning';
-            } else if (hour >= 12 && hour < 18) {
-                greetingText.textContent = 'Good afternoon';
-            } else {
-                greetingText.textContent = 'Having a late night?';
+            const BASE_URL = 'https://internproject-4fq7.onrender.com';
+
+            // Helper Functions
+            function setMessage(message) {
+                userInput.value = message;
+                userInput.focus();
             }
-        }
 
-        setGreeting();
-        setInterval(setGreeting, 60000);
+            function setGreeting() {
+                const hour = new Date().getHours();
+                if (hour >= 5 && hour < 12) {
+                    greetingText.textContent = 'Good morning';
+                } else if (hour >= 12 && hour < 18) {
+                    greetingText.textContent = 'Good afternoon';
+                } else {
+                    greetingText.textContent = 'Having a late night?';
+                }
+            }
 
-        function addMessage(content, isUser = false) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message';
-            
-            const avatar = document.createElement('div');
-            avatar.className = 'avatar';
-            avatar.textContent = isUser ? 'U' : 'C';
-            
-            const messageContent = document.createElement('div');
-            messageContent.className = 'message-content';
-
-            if (!isUser && (content.toLowerCase().includes('hello') || content.toLowerCase().includes('hi'))) {
-                const greetingPart = content.split('\\n')[0];
-                const options = [
-                    "How can I assist you with technical documentation?",
-                    "Would you like help with coding or system design?",
-                    "Need assistance with project planning or troubleshooting?"
-                ];
+            function addMessage(content, isUser = false) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message';
                 
-                messageContent.innerHTML = `
-                    ${greetingPart}
-                    <ol class="numbered-list">
-                        ${options.map(option => `<li>${option}</li>`).join('')}
-                    </ol>
-                `;
-            } else {
-                messageContent.textContent = content;
-            }
-            
-            messageDiv.appendChild(avatar);
-            messageDiv.appendChild(messageContent);
-            messagesList.appendChild(messageDiv);
-            
-            // Scroll to bottom of chat
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
+                const avatar = document.createElement('div');
+                avatar.className = 'avatar';
+                avatar.textContent = isUser ? 'U' : 'C';
+                
+                const messageContent = document.createElement('div');
+                messageContent.className = 'message-content';
 
-        async function sendMessage() {
-            const message = userInput.value.trim();
-            if (!message) return;
-            
-            try {
-                console.log('Sending message:', message);
-                addMessage(message, true);
-                userInput.value = '';
-                userInput.style.height = 'auto';
-
-                const response = await fetch(`${BASE_URL}/chat`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ message })
-                });
-
-                if (!response.ok) {
-                    const errorData = await response.json();
-                    console.error('Server error:', errorData);
-                    throw new Error(`Server error: ${errorData.details || errorData.error || 'Unknown error'}`);
+                if (!isUser && (content.toLowerCase().includes('hello') || content.toLowerCase().includes('hi'))) {
+                    const greetingPart = content.split('\\n')[0];
+                    const options = [
+                        "How can I assist you with technical documentation?",
+                        "Would you like help with coding or system design?",
+                        "Need assistance with project planning or troubleshooting?"
+                    ];
+                    
+                    messageContent.innerHTML = `
+                        ${greetingPart}
+                        <ol class="numbered-list">
+                            ${options.map(option => `<li>${option}</li>`).join('')}
+                        </ol>
+                    `;
+                } else {
+                    messageContent.textContent = content;
                 }
-
-                const data = await response.json();
-                console.log('Response data:', data);
-                addMessage(data.response);
-            } catch (error) {
-                console.error('Error details:', error);
-                addMessage(`Error: ${error.message || 'An unknown error occurred'}`);
+                
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(messageContent);
+                messagesList.appendChild(messageDiv);
+                
+                chatContainer.scrollTop = chatContainer.scrollHeight;
             }
-        }
-        
-        // File handling
-        fileButton.addEventListener('click', () => {
-            fileInput.click();
-        });
 
-        fileInput.addEventListener('change', (e) => {
-            const file = e.target.files[0];
-            if (file) {
-                filePreview.innerHTML = `
-                    <div class="file-preview-content">
-                        <span>📄 ${file.name}</span>
-                        <span class="file-remove" onclick="removeFile()">✕</span>
-                    </div>
-                `;
-                filePreview.classList.add('active');
+            async function sendMessage() {
+                const message = userInput.value.trim();
+                if (!message) return;
+                
+                try {
+                    console.log('Sending message:', message);
+                    addMessage(message, true);
+                    userInput.value = '';
+                    userInput.style.height = 'auto';
+
+                    // Check if there's a file to send
+                    const fileToSend = fileInput.files[0];
+                    let formData;
+                    let fetchOptions;
+
+                    if (fileToSend) {
+                        formData = new FormData();
+                        formData.append('message', message);
+                        formData.append('file', fileToSend);
+                        
+                        fetchOptions = {
+                            method: 'POST',
+                            body: formData
+                        };
+                    } else {
+                        fetchOptions = {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({ message })
+                        };
+                    }
+
+                    const response = await fetch(`${BASE_URL}/chat`, fetchOptions);
+
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        console.error('Server error:', errorData);
+                        throw new Error(`Server error: ${errorData.details || errorData.error || 'Unknown error'}`);
+                    }
+
+                    const data = await response.json();
+                    console.log('Response data:', data);
+                    
+                    // Clear file input after successful send
+                    if (fileToSend) {
+                        removeFile();
+                    }
+
+                    addMessage(data.response);
+                } catch (error) {
+                    console.error('Error details:', error);
+                    addMessage(`Error: ${error.message || 'An unknown error occurred'}`);
+                }
             }
-        });
 
-        function removeFile() {
-            fileInput.value = '';
-            filePreview.innerHTML = '';
-            filePreview.classList.remove('active');
-        }
-
-        // Single event listener for Enter key
-        userInput.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
+            // File handling
+            function removeFile() {
+                fileInput.value = '';
+                filePreview.innerHTML = '';
+                filePreview.classList.remove('active');
             }
-        });
 
-        // Single event listener for send button
-        sendButton.addEventListener('click', (e) => {
-            e.preventDefault();
-            sendMessage();
-        });
-
-        // Auto-resize textarea
-        userInput.addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = this.scrollHeight + 'px';
-        });
-
-        // Theme handling
-        let currentTheme = localStorage.getItem('theme') || 'light';
-        body.setAttribute('data-theme', currentTheme);
-        themeToggle.textContent = `Switch to ${currentTheme === 'light' ? 'Dark' : 'Light'} Theme`;
-
-        themeToggle.addEventListener('click', () => {
-            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
-            body.setAttribute('data-theme', currentTheme);
-            localStorage.setItem('theme', currentTheme);
-            themeToggle.textContent = `Switch to ${currentTheme === 'light' ? 'Dark' : 'Light'} Theme`;
-        });
-
-        // Sidebar functionality
-        let isOverSidebar = false;
-        let sidebarTimeout;
-
-        sidebar.addEventListener('mouseenter', () => {
-            isOverSidebar = true;
-            clearTimeout(sidebarTimeout);
-            requestAnimationFrame(() => {
-                sidebar.style.transform = 'translateX(260px)';
+            // Event Listeners
+            fileButton.addEventListener('click', () => {
+                fileInput.click();
             });
-        });
 
-        sidebar.addEventListener('mouseleave', () => {
-            isOverSidebar = false;
-            sidebarTimeout = setTimeout(() => {
-                if (!isOverSidebar) {
-                    requestAnimationFrame(() => {
-                        sidebar.style.transform = '';
-                    });
+            fileInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    filePreview.innerHTML = `
+                        <div class="file-preview-content">
+                            <span>📄 ${file.name}</span>
+                            <span class="file-remove" onclick="removeFile()">✕</span>
+                        </div>
+                    `;
+                    filePreview.classList.add('active');
                 }
-            }, 300);
-        });
-
-        sidebarTrigger.addEventListener('mouseenter', () => {
-            isOverSidebar = true;
-            clearTimeout(sidebarTimeout);
-            requestAnimationFrame(() => {
-                sidebar.style.transform = 'translateX(260px)';
             });
-        });
 
-        sidebarTrigger.addEventListener('mouseleave', () => {
-            isOverSidebar = false;
-            sidebarTimeout = setTimeout(() => {
-                if (!isOverSidebar) {
-                    requestAnimationFrame(() => {
-                        sidebar.style.transform = '';
-                    });
+            userInput.addEventListener('keydown', (e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    sendMessage();
                 }
-            }, 300);
-        });
+            });
 
-        // Theme handling - Updated for reliable switching
-        let currentTheme = localStorage.getItem('theme') || 'light';
-        
-        function updateTheme(theme) {
-            body.setAttribute('data-theme', theme);
-            localStorage.setItem('theme', theme);
-            themeToggle.textContent = `Switch to ${theme === 'light' ? 'Dark' : 'Light'} Theme`;
-        }
+            sendButton.addEventListener('click', sendMessage);
 
-        updateTheme(currentTheme);
+            userInput.addEventListener('input', function() {
+                this.style.height = 'auto';
+                this.style.height = this.scrollHeight + 'px';
+            });
 
-        themeToggle.addEventListener('click', () => {
-            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+            // Theme handling
+            let currentTheme = localStorage.getItem('theme') || 'light';
+            
+            function updateTheme(theme) {
+                body.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+                themeToggle.textContent = `Switch to ${theme === 'light' ? 'Dark' : 'Light'} Theme`;
+            }
+
             updateTheme(currentTheme);
-        });
 
+            themeToggle.addEventListener('click', () => {
+                currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+                updateTheme(currentTheme);
+            });
+
+            // Sidebar functionality
+            let isOverSidebar = false;
+            let sidebarTimeout;
+
+            sidebar.addEventListener('mouseenter', () => {
+                isOverSidebar = true;
+                clearTimeout(sidebarTimeout);
+                requestAnimationFrame(() => {
+                    sidebar.style.transform = 'translateX(260px)';
+                });
+            });
+
+            sidebar.addEventListener('mouseleave', () => {
+                isOverSidebar = false;
+                sidebarTimeout = setTimeout(() => {
+                    if (!isOverSidebar) {
+                        requestAnimationFrame(() => {
+                            sidebar.style.transform = '';
+                        });
+                    }
+                }, 300);
+            });
+
+            sidebarTrigger.addEventListener('mouseenter', () => {
+                isOverSidebar = true;
+                clearTimeout(sidebarTimeout);
+                requestAnimationFrame(() => {
+                    sidebar.style.transform = 'translateX(260px)';
+                });
+            });
+
+            sidebarTrigger.addEventListener('mouseleave', () => {
+                isOverSidebar = false;
+                sidebarTimeout = setTimeout(() => {
+                    if (!isOverSidebar) {
+                        requestAnimationFrame(() => {
+                            sidebar.style.transform = '';
+                        });
+                    }
+                }, 300);
+            });
+
+            // Initialize
+            setGreeting();
+            setInterval(setGreeting, 60000);
+        });
+    </script>
+</body>
+</html>
 '''
