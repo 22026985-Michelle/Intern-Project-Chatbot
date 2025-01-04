@@ -6,11 +6,18 @@ import os
 
 app = Flask(__name__)
 
-# Initialize Anthropic client
-ANTHROPIC_API_KEY = ""
-client = anthropic.Client(api_key=ANTHROPIC_API_KEY)
+# Initialize Anthropic client with better error handling
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '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')
+if not ANTHROPIC_API_KEY:
+    print("Warning: ANTHROPIC_API_KEY not set in environment variables")
 
-# Define HTML template directly in the file to avoid import issues
+try:
+    client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
+except Exception as e:
+    print(f"Error initializing Anthropic client: {str(e)}")
+    client = None
+
+# Define HTML template
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html>
@@ -40,6 +47,9 @@ def home():
 def chat():
     """Handle chat requests"""
     try:
+        if not client:
+            return jsonify({"error": "Anthropic client not initialized"}), 500
+
         if request.content_type and 'multipart/form-data' in request.content_type:
             message = request.form.get('message', '')
             file_content = None
@@ -59,6 +69,7 @@ def chat():
         if not content:
             return jsonify({"error": "Message content missing"}), 400
 
+        # Get response from Anthropic
         response = client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=1000,
