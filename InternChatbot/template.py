@@ -7,43 +7,62 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NCS Internship AI Chatbot</title>
     <style>
+        /* Theme Variables */
         :root[data-theme="light"] {
             --bg-color: #FFFFFF;
             --text-color: #1C1C1C;
             --input-bg: #F0F0F0;
-            --border-color: #1F2937;
+            --border-color: #E5E7EB;
             --hover-color: #F5F5F5;
             --tool-button-bg: #F3F4F6;
             --tool-button-hover: #E5E7EB;
             --avatar-bg: #E0E0E0;
             --chat-bg: #FFFFFF;
-            --sidebar-border: #1F2937;
-            --chat-border: transparent;
+            --sidebar-border: #E5E7EB;
+            --chat-border: #E5E7EB;
             --theme-button-bg: #F3F3F3;
             --theme-button-text: #333333;
+            --message-bg: #F9FAFB;
+            --send-button-bg: #0099FF;
+            --send-button-hover: #007ACC;
+            --input-container-bg: rgba(255, 255, 255, 0.9);
+            --input-container-border: #E5E7EB;
+            --box-shadow: rgba(0, 0, 0, 0.05);
         }
 
         :root[data-theme="dark"] {
             --bg-color: #1C1C1C;
             --text-color: #FFFFFF;
             --input-bg: #2D2D2D;
-            --border-color: #374151;
+            --border-color: #4B5563;
             --hover-color: #2D2D2D;
             --tool-button-bg: #374151;
             --tool-button-hover: #4B5563;
             --avatar-bg: #3D3D3D;
             --chat-bg: #1C1C1C;
-            --sidebar-border: #374151;
-            --chat-border: transparent;
+            --sidebar-border: #4B5563;
+            --chat-border: #4B5563;
             --theme-button-bg: #374151;
             --theme-button-text: #FFFFFF;
+            --message-bg: #2D2D2D;
+            --send-button-bg: #0099FF;
+            --send-button-hover: #007ACC;
+            --input-container-bg: rgba(28, 28, 28, 0.95);
+            --input-container-border: #4B5563;
+            --box-shadow: rgba(0, 0, 0, 0.2);
         }
 
+        /* Global Styles */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            transition: background-color 0.3s ease, 
+                      color 0.3s ease, 
+                      border-color 0.3s ease,
+                      transform 0.3s ease,
+                      box-shadow 0.3s ease;
         }
 
         body {
@@ -55,6 +74,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             overflow-x: hidden;
         }
 
+        /* Sidebar Styles */
         .sidebar-trigger {
             position: fixed;
             left: 0;
@@ -73,15 +93,15 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             width: 260px;
             background-color: var(--bg-color);
             border-right: 1px solid var(--sidebar-border);
-            box-shadow: 2px 0 5px rgba(0, 0, 0, 0.05);
+            box-shadow: 2px 0 10px var(--box-shadow);
             display: flex;
             flex-direction: column;
             padding: 1rem;
             overflow-y: auto;
             overflow-x: hidden;
             z-index: 1000;
-            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
             transform: translateX(0);
+            transition: transform 0.3s ease;
         }
 
         .sidebar:hover,
@@ -89,6 +109,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             transform: translateX(260px);
         }
 
+        /* Main Content Styles */
         .main-content {
             margin-left: 0;
             display: flex;
@@ -96,10 +117,10 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             min-height: 100vh;
             position: relative;
             max-width: 100%;
-            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
             padding: 0 1rem;
         }
 
+        /* Chat Container Styles */
         .chat-container {
             max-width: 768px;
             width: 100%;
@@ -110,49 +131,18 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             position: relative;
             z-index: 1;
             background-color: var(--chat-bg);
-            border: none;
             border-radius: 8px;
-            box-shadow: none;
         }
 
-        .greeting {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            margin-bottom: 2rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .greeting-logo {
-            display: inline-flex;
-            align-items: center;
-            margin-right: 1rem;
-        }
-
-        .greeting-logo svg {
-            width: 24px;
-            height: 24px;
-        }
-
-        .greeting-logo svg path {
-            stroke: #0099FF;
-            stroke-linecap: round;
-        }
-
-        .greeting-text {
-            font-size: 2rem;
-            color: var(--text-color);
-        }
-
+        /* Input Container Styles */
         .input-container {
             position: fixed;
             bottom: 0;
             right: 0;
             width: 100%;
-            background-color: var(--bg-color);
-            border-top: none;
-            box-shadow: none;
+            background-color: var(--input-container-bg);
+            border-top: 2px solid var(--input-container-border);
+            backdrop-filter: blur(10px);
             z-index: 1000;
         }
 
@@ -160,13 +150,20 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             max-width: 768px;
             margin: 0 auto;
             padding: 1rem;
-            background-color: var(--bg-color);
+            background-color: transparent;
             border-radius: 8px;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 0.75rem;
+            align-items: flex-start;
+            margin-bottom: 1rem;
         }
 
         .input-box {
             width: 100%;
-            min-height: 60px;
+            min-height: 45px;
             background-color: var(--input-bg);
             color: var(--text-color);
             border: 2px solid var(--border-color);
@@ -174,43 +171,60 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             font-size: 1rem;
             resize: none;
             outline: none;
-            padding: 1rem;
-            margin-bottom: 1rem;
-            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+            padding: 0.75rem;
+            margin-bottom: 0;
+            transition: all 0.3s ease;
         }
 
         .input-box:focus {
-            border-color: var(--chat-border);
+            border-color: var(--send-button-bg);
+            box-shadow: 0 0 0 2px var(--box-shadow);
         }
 
-        .tools {
+        /* Button Styles */
+        .send-button {
+            background-color: var(--send-button-bg);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            width: 45px;
+            height: 45px;
             display: flex;
-            gap: 0.75rem;
-            flex-wrap: wrap;
+            align-items: center;
             justify-content: center;
-            margin: 0 auto;
-            padding: 0.5rem 0;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            flex-shrink: 0;
+            box-shadow: 0 2px 4px var(--box-shadow);
         }
 
-        .tool-button {
+        .send-button:hover {
+            background-color: var(--send-button-hover);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px var(--box-shadow);
+        }
+
+        .file-button {
             background-color: var(--tool-button-bg);
             color: var(--text-color);
-            border: 3px solid var(--border-color); /* Increased from 2px to 3px */
-            padding: 0.5rem 1rem;
-            border-radius: 0.5rem;
+            border: none;
+            border-radius: 8px;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             cursor: pointer;
-            font-size: 0.9rem;
-            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-            white-space: nowrap;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            transition: all 0.2s ease;
+            flex-shrink: 0;
         }
 
-        .tool-button:hover {
+        .file-button:hover {
             background-color: var(--tool-button-hover);
-            border-color: var(--chat-border);
             transform: translateY(-1px);
         }
 
+        /* Message Styles */
         .message {
             display: flex;
             gap: 1rem;
@@ -218,9 +232,8 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             animation: fadeIn 0.3s ease-in;
             padding: 1rem;
             border-radius: 8px;
-            background-color: var(--bg-color);
+            background-color: var(--message-bg);
             border: 1px solid var(--border-color);
-            color: var(--text-color);
         }
 
         .avatar {
@@ -236,110 +249,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             border: 1px solid var(--border-color);
         }
 
-        .message-content {
-            flex: 1;
-            line-height: 1.5;
-            color: var(--text-color);
-        }
-
-        .sidebar-header {
-            margin-bottom: 1rem;
-            white-space: nowrap;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .new-chat-button {
-            background-color: transparent;
-            color: #0099FF;
-            border: none;
-            padding: 0.5rem;
-            cursor: pointer;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            font-size: 0.9rem;
-            white-space: nowrap;
-            border-radius: 0.5rem;
-            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-        }
-
-        .new-chat-button:hover {
-            background-color: var(--hover-color);
-        }
-
-        .section-title {
-            color: #888;
-            font-size: 0.9rem;
-            margin: 1.5rem 0 0.5rem;
-            white-space: nowrap;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid var(--border-color);
-        }
-
-        .chat-list {
-            width: 100%;
-        }
-
-        .chat-item {
-            padding: 0.5rem;
-            cursor: pointer;
-            border-radius: 0.3rem;
-            font-size: 0.9rem;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            color: var(--text-color);
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 230px;
-            border: 1px solid transparent;
-            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-        }
-
-        .chat-item:hover {
-            border-color: var(--border-color);
-            background-color: var(--hover-color);
-        }
-
-        .chat-icon {
-            opacity: 0.7;
-        }
-
-        .user-profile {
-            margin-top: auto;
-            padding: 1rem;
-            border-top: 1px solid var(--border-color);
-            background-color: var(--bg-color);
-            width: 100%;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .user-avatar {
-            width: 30px;
-            height: 30px;
-            background-color: var(--avatar-bg);
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: bold;
-            flex-shrink: 0;
-            border: 1px solid var(--border-color);
-        }
-
-        .user-email {
-            font-size: 0.9rem;
-            color: var(--text-color);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            max-width: 180px;
-        }
-
+        /* Theme Toggle Button */
         .theme-toggle {
             position: fixed;
             top: 1rem;
@@ -348,51 +258,74 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             background-color: var(--theme-button-bg);
             color: var(--theme-button-text);
             border: 1px solid var(--border-color);
-            border-radius: 0.5rem;
+            border-radius: 8px;
             cursor: pointer;
             z-index: 1001;
             font-weight: 500;
-            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
-            transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+            box-shadow: 0 2px 4px var(--box-shadow);
         }
 
         .theme-toggle:hover {
             background-color: var(--tool-button-hover);
-            border-color: var(--chat-border);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 6px var(--box-shadow);
         }
 
+        /* Tool Buttons */
+        .tools {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            justify-content: center;
+            margin: 0 auto;
+            padding: 0.5rem 0;
+        }
+
+        .tool-button {
+            background-color: var(--tool-button-bg);
+            color: var(--text-color);
+            border: 2px solid var(--border-color);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.2s ease;
+            white-space: nowrap;
+        }
+
+        .tool-button:hover {
+            background-color: var(--tool-button-hover);
+            transform: translateY(-1px);
+            border-color: var(--send-button-bg);
+        }
+
+        /* Animations */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
         }
 
-        @media (max-width: 1200px) {
-            .main-content {
-                max-width: 800px;
-                padding: 0 2rem;
-            }
-        }
-
+        /* Media Queries */
         @media (max-width: 768px) {
-            .sidebar {
-                transform: translateX(-100%);
-                transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+            .theme-toggle {
+                top: 0.5rem;
+                right: 0.5rem;
+                padding: 0.4rem 0.8rem;
+                font-size: 0.9rem;
             }
-            
-            .sidebar.active {
-                transform: translateX(0);
-            }
-            
-            .main-content {
-                margin-left: 0;
-            }
-            
-            .input-container {
-                width: 100%;
-            }
-            
+
             .chat-container {
                 padding: 1rem;
+                margin: 0.5rem auto;
+            }
+
+            .tools {
+                padding: 0.25rem 0;
+            }
+
+            .tool-button {
+                padding: 0.4rem 0.8rem;
+                font-size: 0.8rem;
             }
         }
     </style>
@@ -735,36 +668,62 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             themeToggle.textContent = `Switch to ${currentTheme === 'light' ? 'Dark' : 'Light'} Theme`;
         });
 
-        // Sidebar functionality
+        // Sidebar functionality - Updated for reliability
         let isOverSidebar = false;
+        let sidebarTimeout;
 
         sidebar.addEventListener('mouseenter', () => {
             isOverSidebar = true;
-            sidebar.style.transform = 'translateX(260px)';
+            clearTimeout(sidebarTimeout);
+            requestAnimationFrame(() => {
+                sidebar.style.transform = 'translateX(260px)';
+            });
         });
 
         sidebar.addEventListener('mouseleave', () => {
             isOverSidebar = false;
-            setTimeout(() => {
+            sidebarTimeout = setTimeout(() => {
                 if (!isOverSidebar) {
-                    sidebar.style.transform = 'translateX(0)';
+                    requestAnimationFrame(() => {
+                        sidebar.style.transform = '';
+                    });
                 }
             }, 300);
         });
 
-        // Chat functionality
-        document.querySelector('.new-chat-button').addEventListener('click', () => {
-            messagesList.innerHTML = '';
-            userInput.value = '';
-            userInput.style.height = 'auto';
-        });
-
-        document.querySelectorAll('.chat-item').forEach(item => {
-            item.addEventListener('click', () => {
-                console.log('Loading chat:', item.textContent.trim());
+        sidebarTrigger.addEventListener('mouseenter', () => {
+            isOverSidebar = true;
+            clearTimeout(sidebarTimeout);
+            requestAnimationFrame(() => {
+                sidebar.style.transform = 'translateX(260px)';
             });
         });
-    </script>
-</body>
-</html>
+
+        sidebarTrigger.addEventListener('mouseleave', () => {
+            isOverSidebar = false;
+            sidebarTimeout = setTimeout(() => {
+                if (!isOverSidebar) {
+                    requestAnimationFrame(() => {
+                        sidebar.style.transform = '';
+                    });
+                }
+            }, 300);
+        });
+
+        // Theme handling - Updated for reliable switching
+        let currentTheme = localStorage.getItem('theme') || 'light';
+        
+        function updateTheme(theme) {
+            body.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            themeToggle.textContent = `Switch to ${theme === 'light' ? 'Dark' : 'Light'} Theme`;
+        }
+
+        updateTheme(currentTheme);
+
+        themeToggle.addEventListener('click', () => {
+            currentTheme = currentTheme === 'light' ? 'dark' : 'light';
+            updateTheme(currentTheme);
+        });
+
 '''
