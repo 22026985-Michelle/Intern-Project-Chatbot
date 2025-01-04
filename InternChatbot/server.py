@@ -1,311 +1,110 @@
-{
- "cells": [
-  {
-   "cell_type": "code",
-   "execution_count": 1,
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      " * Serving Flask app '__main__'\n",
-      " * Debug mode: off\n"
-     ]
-    },
-    {
-     "name": "stderr",
-     "output_type": "stream",
-     "text": [
-      "WARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.\n",
-      " * Running on all addresses (0.0.0.0)\n",
-      " * Running on http://127.0.0.1:5000\n",
-      " * Running on http://192.168.50.45:5000\n",
-      "Press CTRL+C to quit\n",
-      "127.0.0.1 - - [03/Jan/2025 00:46:06] \"GET / HTTP/1.1\" 200 -\n"
-     ]
-    }
-   ],
-   "source": [
-    "from flask import Flask, request, jsonify\n",
-    "import anthropic\n",
-    "import json\n",
-    "from datetime import datetime\n",
-    "from template import HTML_TEMPLATE\n",
-    "import os\n",
-    "\n",
-    "app = Flask(__name__)\n",
-    "\n",
-    "# Initialize Anthropic client\n",
-    "ANTHROPIC_API_KEY = \"\"\n",
-    "client = anthropic.Client(api_key=ANTHROPIC_API_KEY)\n",
-    "\n",
-    "@app.after_request\n",
-    "def after_request(response):\n",
-    "    \"\"\"Add CORS and other necessary headers\"\"\"\n",
-    "    response.headers.add('Access-Control-Allow-Origin', '*')\n",
-    "    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, ngrok-skip-browser-warning, User-Agent')\n",
-    "    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')\n",
-    "    response.headers.add('ngrok-skip-browser-warning', 'true')\n",
-    "    response.headers.add('User-Agent', 'Mozilla/5.0')\n",
-    "    return response\n",
-    "\n",
-    "@app.route('/')\n",
-    "def home():\n",
-    "    \"\"\"Serve the main chat interface\"\"\"\n",
-    "    current_hour = datetime.now().hour\n",
-    "    greeting = \"Good morning\" if 5 <= current_hour < 12 else \"Good afternoon\" if 12 <= current_hour < 18 else \"Having a late night?\"\n",
-    "    modified_template = HTML_TEMPLATE.replace('Good afternoon', greeting)\n",
-    "    return modified_template\n",
-    "\n",
-    "@app.route('/login')\n",
-    "def login():\n",
-    "    \"\"\"Serve the login page\"\"\"\n",
-    "    try:\n",
-    "        with open('login.html', 'r') as file:\n",
-    "            return file.read()\n",
-    "    except FileNotFoundError:\n",
-    "        return \"Login page not found\", 404\n",
-    "\n",
-    "@app.route('/chat', methods=['POST'])\n",
-    "def chat():\n",
-    "    \"\"\"Handle chat requests\"\"\"\n",
-    "    try:\n",
-    "        if request.content_type and 'multipart/form-data' in request.content_type:\n",
-    "            # Handle file upload with message\n",
-    "            message = request.form.get('message', '')\n",
-    "            file_content = None\n",
-    "            \n",
-    "            if 'file' in request.files:\n",
-    "                file = request.files['file']\n",
-    "                if file:\n",
-    "                    file_content = file.read().decode('utf-8')\n",
-    "\n",
-    "            content = message\n",
-    "            if file_content:\n",
-    "                content = f\"File content:\\n{file_content}\\n\\nUser message:\\n{message}\"\n",
-    "        else:\n",
-    "            # Handle JSON request\n",
-    "            data = request.get_json()\n",
-    "            content = data.get('message', '')\n",
-    "\n",
-    "        if not content:\n",
-    "            return jsonify({\"error\": \"Message content missing\"}), 400\n",
-    "\n",
-    "        # Get response from Anthropic\n",
-    "        response = client.messages.create(\n",
-    "            model=\"claude-3-5-sonnet-20241022\",\n",
-    "            max_tokens=1000,\n",
-    "            temperature=0,\n",
-    "            system=\"You are the Intern Assistant Chatbot, a helpful AI designed to assist interns and junior employees with their tasks. Be friendly and professional.\",\n",
-    "            messages=[{\n",
-    "                \"role\": \"user\",\n",
-    "                \"content\": content\n",
-    "            }]\n",
-    "        )\n",
-    "\n",
-    "        return jsonify({\"response\": response.content[0].text})\n",
-    "\n",
-    "    except Exception as e:\n",
-    "        print(f\"Error handling chat request: {str(e)}\")\n",
-    "        return jsonify({\"error\": \"Internal server error\"}), 500\n",
-    "\n",
-    "@app.route('/api/login', methods=['POST'])\n",
-    "def api_login():\n",
-    "    \"\"\"Handle login API requests\"\"\"\n",
-    "    try:\n",
-    "        data = request.get_json()\n",
-    "        # Add your login logic here\n",
-    "        response_data = {\"status\": \"success\", \"message\": \"Login successful\"}\n",
-    "        return jsonify(response_data)\n",
-    "    except Exception as e:\n",
-    "        print(f\"Error handling login: {str(e)}\")\n",
-    "        return jsonify({\"error\": \"Internal server error\"}), 500\n",
-    "\n",
-    "@app.route('/api/signup', methods=['POST'])\n",
-    "def api_signup():\n",
-    "    \"\"\"Handle signup API requests\"\"\"\n",
-    "    try:\n",
-    "        data = request.get_json()\n",
-    "        # Add your signup logic here\n",
-    "        response_data = {\"status\": \"success\", \"message\": \"Signup successful\"}\n",
-    "        return jsonify(response_data)\n",
-    "    except Exception as e:\n",
-    "        print(f\"Error handling signup: {str(e)}\")\n",
-    "        return jsonify({\"error\": \"Internal server error\"}), 500\n",
-    "\n",
-    "if __name__ == '__main__':\n",
-    "    port = int(os.environ.get('PORT', 5000))\n",
-    "    app.run(host='0.0.0.0', port=port)"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 0,
-   "metadata": {},
-   "outputs": [],
-   "source": [
-    "# Add these imports if not already present\n",
-    "from http.server import HTTPServer, BaseHTTPRequestHandler\n",
-    "import json\n",
-    "import os\n",
-    "\n",
-    "class ChatHandler(BaseHTTPRequestHandler):\n",
-    "    def do_GET(self):\n",
-    "        \"\"\"Handle GET requests\"\"\"\n",
-    "        try:\n",
-    "            if self.path == '/':\n",
-    "                # Your existing homepage handler code\n",
-    "                self.send_response(200)\n",
-    "                self.send_header('Content-type', 'text/html')\n",
-    "                self.send_common_headers()\n",
-    "                self.end_headers()\n",
-    "\n",
-    "                # Serve your chat interface HTML here\n",
-    "                with open('template.html', 'rb') as file:\n",
-    "                    self.wfile.write(file.read())\n",
-    "\n",
-    "            elif self.path == '/login':  # Add this new condition\n",
-    "                # Serve the login page\n",
-    "                try:\n",
-    "                    with open('login.html', 'rb') as file:\n",
-    "                        self.send_response(200)\n",
-    "                        self.send_header('Content-type', 'text/html')\n",
-    "                        self.send_common_headers()\n",
-    "                        self.end_headers()\n",
-    "                        self.wfile.write(file.read())\n",
-    "                except FileNotFoundError:\n",
-    "                    self.send_response(404)\n",
-    "                    self.send_header('Content-type', 'text/plain')\n",
-    "                    self.send_common_headers()\n",
-    "                    self.end_headers()\n",
-    "                    self.wfile.write(b'Login page not found')\n",
-    "\n",
-    "            else:\n",
-    "                self.send_response(404)\n",
-    "                self.send_header('Content-type', 'text/plain')\n",
-    "                self.send_common_headers()\n",
-    "                self.end_headers()\n",
-    "                self.wfile.write(b'404 Not Found')\n",
-    "\n",
-    "        except Exception as e:\n",
-    "            print(f\"Error handling GET request: {str(e)}\")\n",
-    "            self.send_response(500)\n",
-    "            self.send_header('Content-type', 'text/plain')\n",
-    "            self.send_common_headers()\n",
-    "            self.end_headers()\n",
-    "            self.wfile.write(b'Internal Server Error')\n",
-    "\n",
-    "    def do_POST(self):\n",
-    "        \"\"\"Handle POST requests\"\"\"\n",
-    "        if self.path == '/chat':\n",
-    "            # Your existing chat handler code\n",
-    "            pass\n",
-    "\n",
-    "        elif self.path == '/api/login':\n",
-    "            try:\n",
-    "                content_length = int(self.headers.get('Content-Length', 0))\n",
-    "                post_data = self.rfile.read(content_length)\n",
-    "                data = json.loads(post_data.decode('utf-8'))\n",
-    "\n",
-    "                # Here you would typically validate the login credentials\n",
-    "                # For now, we'll just send back a success response\n",
-    "                self.send_response(200)\n",
-    "                self.send_header('Content-type', 'application/json')\n",
-    "                self.send_common_headers()\n",
-    "                self.end_headers()\n",
-    "\n",
-    "                response_data = {\"status\": \"success\", \"message\": \"Login successful\"}\n",
-    "                self.wfile.write(json.dumps(response_data).encode('utf-8'))\n",
-    "\n",
-    "            except Exception as e:\n",
-    "                print(f\"Error handling login: {str(e)}\")\n",
-    "                self.send_error(500, \"Internal Server Error\")\n",
-    "\n",
-    "        elif self.path == '/api/signup':\n",
-    "            try:\n",
-    "                content_length = int(self.headers.get('Content-Length', 0))\n",
-    "                post_data = self.rfile.read(content_length)\n",
-    "                data = json.loads(post_data.decode('utf-8'))\n",
-    "\n",
-    "                # Here you would typically store the user data\n",
-    "                # For now, we'll just send back a success response\n",
-    "                self.send_response(200)\n",
-    "                self.send_header('Content-type', 'application/json')\n",
-    "                self.send_common_headers()\n",
-    "                self.end_headers()\n",
-    "\n",
-    "                response_data = {\"status\": \"success\", \"message\": \"Signup successful\"}\n",
-    "                self.wfile.write(json.dumps(response_data).encode('utf-8'))\n",
-    "\n",
-    "            except Exception as e:\n",
-    "                print(f\"Error handling signup: {str(e)}\")\n",
-    "                self.send_error(500, \"Internal Server Error\")\n",
-    "\n",
-    "        else:\n",
-    "            self.send_error(404, \"Not Found\")"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": 3,
-   "metadata": {},
-   "outputs": [
-    {
-     "name": "stdout",
-     "output_type": "stream",
-     "text": [
-      "Requirement already satisfied: pip in c:\\users\\miche\\anaconda3\\envs\\dev\\lib\\site-packages (23.2.1)\n",
-      "Collecting pip\n",
-      "  Obtaining dependency information for pip from https://files.pythonhosted.org/packages/ef/7d/500c9ad20238fcfcb4cb9243eede163594d7020ce87bd9610c9e02771876/pip-24.3.1-py3-none-any.whl.metadata\n",
-      "  Downloading pip-24.3.1-py3-none-any.whl.metadata (3.7 kB)\n",
-      "Downloading pip-24.3.1-py3-none-any.whl (1.8 MB)\n",
-      "   ---------------------------------------- 0.0/1.8 MB ? eta -:--:--\n",
-      "   ---------------------------------------- 0.0/1.8 MB ? eta -:--:--\n",
-      "   - -------------------------------------- 0.1/1.8 MB 825.8 kB/s eta 0:00:03\n",
-      "   ------------------------------- -------- 1.4/1.8 MB 12.9 MB/s eta 0:00:01\n",
-      "   ---------------------------------------- 1.8/1.8 MB 14.5 MB/s eta 0:00:00\n",
-      "Installing collected packages: pip\n",
-      "  Attempting uninstall: pip\n",
-      "    Found existing installation: pip 23.2.1\n",
-      "    Uninstalling pip-23.2.1:\n",
-      "      Successfully uninstalled pip-23.2.1\n",
-      "Successfully installed pip-24.3.1\n",
-      "Note: you may need to restart the kernel to use updated packages.\n"
-     ]
-    }
-   ],
-   "source": [
-    "%pip install --upgrade pip"
-   ]
-  },
-  {
-   "cell_type": "code",
-   "execution_count": None,
-   "metadata": {},
-   "outputs": [],
-   "source": []
-  }
- ],
- "metadata": {
-  "kernelspec": {
-   "display_name": "dev",
-   "language": "python",
-   "name": "python3"
-  },
-  "language_info": {
-   "codemirror_mode": {
-    "name": "ipython",
-    "version": 3
-   },
-   "file_extension": ".py",
-   "mimetype": "text/x-python",
-   "name": "python",
-   "nbconvert_exporter": "python",
-   "pygments_lexer": "ipython3",
-   "version": "3.12.0"
-  }
- },
- "nbformat": 4,
- "nbformat_minor": 2
-}
+from flask import Flask, request, jsonify
+import anthropic
+import json
+from datetime import datetime
+from template import HTML_TEMPLATE
+import os
+
+app = Flask(__name__)
+
+# Initialize Anthropic client
+ANTHROPIC_API_KEY = "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"
+client = anthropic.Client(api_key=ANTHROPIC_API_KEY)
+
+@app.after_request
+def after_request(response):
+    """Add CORS and other necessary headers"""
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type, ngrok-skip-browser-warning, User-Agent')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    response.headers.add('ngrok-skip-browser-warning', 'true')
+    response.headers.add('User-Agent', 'Mozilla/5.0')
+    return response
+
+@app.route('/')
+def home():
+    """Serve the main chat interface"""
+    current_hour = datetime.now().hour
+    greeting = "Good morning" if 5 <= current_hour < 12 else "Good afternoon" if 12 <= current_hour < 18 else "Having a late night?"
+    modified_template = HTML_TEMPLATE.replace('Good afternoon', greeting)
+    return modified_template
+
+@app.route('/login')
+def login():
+    """Serve the login page"""
+    try:
+        with open('login.html', 'r') as file:
+            return file.read()
+    except FileNotFoundError:
+        return "Login page not found", 404
+
+@app.route('/chat', methods=['POST'])
+def chat():
+    """Handle chat requests"""
+    try:
+        if request.content_type and 'multipart/form-data' in request.content_type:
+            # Handle file upload with message
+            message = request.form.get('message', '')
+            file_content = None
+            
+            if 'file' in request.files:
+                file = request.files['file']
+                if file:
+                    file_content = file.read().decode('utf-8')
+
+            content = message
+            if file_content:
+                content = f"File content:\n{file_content}\n\nUser message:\n{message}"
+        else:
+            # Handle JSON request
+            data = request.get_json()
+            content = data.get('message', '')
+
+        if not content:
+            return jsonify({"error": "Message content missing"}), 400
+
+        # Get response from Anthropic
+        response = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=1000,
+            temperature=0,
+            system="You are the Intern Assistant Chatbot, a helpful AI designed to assist interns and junior employees with their tasks. Be friendly and professional.",
+            messages=[{
+                "role": "user",
+                "content": content
+            }]
+        )
+
+        return jsonify({"response": response.content[0].text})
+
+    except Exception as e:
+        print(f"Error handling chat request: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.route('/api/login', methods=['POST'])
+def api_login():
+    """Handle login API requests"""
+    try:
+        data = request.get_json()
+        # Add your login logic here
+        response_data = {"status": "success", "message": "Login successful"}
+        return jsonify(response_data)
+    except Exception as e:
+        print(f"Error handling login: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
+@app.route('/api/signup', methods=['POST'])
+def api_signup():
+    """Handle signup API requests"""
+    try:
+        data = request.get_json()
+        # Add your signup logic here
+        response_data = {"status": "success", "message": "Signup successful"}
+        return jsonify(response_data)
+    except Exception as e:
+        print(f"Error handling signup: {str(e)}")
+        return jsonify({"error": "Internal server error"}), 500
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
