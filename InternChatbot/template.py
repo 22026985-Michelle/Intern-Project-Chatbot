@@ -5,6 +5,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="ngrok-skip-browser-warning" content="true">
     <title>NCS Internship AI Chatbot</title>
     <style>
         :root[data-theme="light"] {
@@ -661,18 +662,20 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 });
 
                 if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
+                    const errorData = await response.json();
+                    console.error('Server error:', errorData);
+                    throw new Error(`Server error: ${errorData.details || errorData.error || 'Unknown error'}`);
                 }
 
                 const data = await response.json();
                 console.log('Response data:', data);
                 addMessage(data.response);
             } catch (error) {
-                console.error('Error:', error);
-                addMessage('Sorry, there was an error processing your message. Please try again.');
+                console.error('Error details:', error);
+                addMessage(`Error: ${error.message || 'An unknown error occurred'}`);
             }
         }
-
+        
         // File handling
         fileButton.addEventListener('click', () => {
             fileInput.click();
