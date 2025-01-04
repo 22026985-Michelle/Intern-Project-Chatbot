@@ -85,6 +85,102 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             background: transparent;
         }
 
+        .sidebar-header {
+            margin-bottom: 1rem;
+            white-space: nowrap;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .new-chat-button {
+            background-color: transparent;
+            color: #0099FF;
+            border: none;
+            padding: 0.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.9rem;
+            white-space: nowrap;
+            border-radius: 0.5rem;
+        }
+
+        .new-chat-button:hover {
+            background-color: var(--hover-color);
+        }
+
+        .section-title {
+            color: #888;
+            font-size: 0.9rem;
+            margin: 1.5rem 0 0.5rem;
+            white-space: nowrap;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .chat-list {
+            width: 100%;
+        }
+
+        .chat-item {
+            padding: 0.5rem;
+            cursor: pointer;
+            border-radius: 0.3rem;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            color: var(--text-color);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 230px;
+            border: 1px solid transparent;
+        }
+
+        .chat-item:hover {
+            border-color: var(--border-color);
+            background-color: var(--hover-color);
+        }
+
+        .chat-icon {
+            opacity: 0.7;
+        }
+
+        .user-profile {
+            margin-top: auto;
+            padding: 1rem;
+            border-top: 1px solid var(--border-color);
+            background-color: var(--bg-color);
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .user-avatar {
+            width: 30px;
+            height: 30px;
+            background-color: var(--avatar-bg);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            flex-shrink: 0;
+            border: 1px solid var(--border-color);
+        }
+
+        .user-email {
+            font-size: 0.9rem;
+            color: var(--text-color);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            max-width: 180px;
+}
+
         .sidebar {
             position: fixed;
             left: -260px;
