@@ -156,8 +156,37 @@
         const signupForm = document.getElementById('signupForm');
         const errorMessage = document.getElementById('errorMessage');
         const passwordInput = document.getElementById('password');
-        const confirmPasswordInput = document.getElementById('confirmPassword');
         const passwordStrength = document.getElementById('passwordStrength');
+        const confirmPasswordInput = document.getElementById('confirmPassword');
+        const passwordMismatchMessage = document.createElement('div');
+        passwordMismatchMessage.style.color = '#EF4444'; // Red color for error
+        passwordMismatchMessage.style.fontSize = '0.875rem';
+        passwordMismatchMessage.style.marginTop = '-0.5rem';
+        passwordMismatchMessage.style.marginBottom = '1rem';
+        confirmPasswordInput.parentNode.insertBefore(passwordMismatchMessage, confirmPasswordInput.nextSibling);
+
+        // Check passwords match in real-time
+        function checkPasswordMatch() {
+            const password = passwordInput.value;
+            const confirmPassword = confirmPasswordInput.value;
+            
+            if (confirmPassword) { // Only show message if confirm password field has some input
+                if (password !== confirmPassword) {
+                    passwordMismatchMessage.textContent = 'Password Mismatch';
+                    confirmPasswordInput.style.borderColor = '#EF4444'; // Red border for error
+                } else {
+                    passwordMismatchMessage.textContent = '';
+                    confirmPasswordInput.style.borderColor = '#1F2937'; // Reset to default border color
+                }
+            } else {
+                passwordMismatchMessage.textContent = '';
+                confirmPasswordInput.style.borderColor = '#1F2937';
+            }
+        }
+
+        // Add event listeners for both password fields
+        passwordInput.addEventListener('input', checkPasswordMatch);
+        confirmPasswordInput.addEventListener('input', checkPasswordMatch);
 
         // Password strength checker
         passwordInput.addEventListener('input', function() {
