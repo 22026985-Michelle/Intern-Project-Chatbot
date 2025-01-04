@@ -653,12 +653,10 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 userInput.value = '';
                 userInput.style.height = 'auto';
 
-                // Updated fetch call with full URL
                 const response = await fetch(`${BASE_URL}/chat`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'ngrok-skip-browser-warning': 'true'
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ message })
                 });
@@ -675,7 +673,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 addMessage('Sorry, there was an error processing your message. Please try again.');
             }
         }
-
+        
         // File handling
         fileButton.addEventListener('click', () => {
             fileInput.click();
