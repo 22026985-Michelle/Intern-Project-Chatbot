@@ -5,7 +5,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="ngrok-skip-browser-warning" content="true">
     <title>NCS Internship AI Chatbot</title>
     <style>
         :root[data-theme="light"] {
@@ -673,7 +672,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 addMessage('Sorry, there was an error processing your message. Please try again.');
             }
         }
-        
+
         // File handling
         fileButton.addEventListener('click', () => {
             fileInput.click();

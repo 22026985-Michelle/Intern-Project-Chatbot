@@ -8,7 +8,7 @@ from template import HTML_TEMPLATE
 app = Flask(__name__)
 
 # Initialize Anthropic client
-ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
+ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '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')
 if not ANTHROPIC_API_KEY:
     print("Warning: ANTHROPIC_API_KEY not set in environment variables")
 
