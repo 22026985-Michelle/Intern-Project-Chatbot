@@ -668,7 +668,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             themeToggle.textContent = `Switch to ${currentTheme === 'light' ? 'Dark' : 'Light'} Theme`;
         });
 
-        // Sidebar functionality - Updated for reliability
+        // Sidebar functionality
         let isOverSidebar = false;
         let sidebarTimeout;
 
