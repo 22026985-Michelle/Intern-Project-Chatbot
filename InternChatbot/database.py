@@ -16,18 +16,27 @@ def get_db_connection():
         'password': 'ILOVESUSHI123!',
         'database': 'internchatbot',
         'port': 3306,
-        # Add these SSL settings for Google Cloud SQL
-        'ssl_ca': '/etc/ssl/certs/ca-certificates.crt',
-        'ssl_verify_cert': True
+        # Add timeout settings
+        'connect_timeout': 10,
+        'connection_timeout': 10,
+        # Add connection pool settings
+        'pool_name': 'mypool',
+        'pool_size': 5,
+        # SSL settings for Google Cloud SQL
+        'ssl': {
+            'ca': '/etc/ssl/certs/ca-certificates.crt'
+        }
     }
     
     try:
         logger.info(f"Attempting to connect to MySQL at {config['host']}:{config['port']}")
         connection = mysql.connector.connect(**config)
+        
         if connection.is_connected():
             db_info = connection.get_server_info()
             logger.info(f"Successfully connected to MySQL. Server version: {db_info}")
             return connection
+        
     except Error as e:
         logger.error(f"Error connecting to MySQL: {str(e)}")
         return None
