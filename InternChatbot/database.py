@@ -58,7 +58,7 @@ def execute_query(query, params=None):
                 connection.close()
                 logger.debug("Database connection closed")
 
-def create_user(email, password):
+def create_user(email, password, username):  # Add username parameter
     logger.info(f"Attempting to create user with email: {email}")
     
     # Check if email already exists
@@ -71,13 +71,13 @@ def create_user(email, password):
     
     # Insert new user
     insert_query = """
-    INSERT INTO users (email, password, role, created_at) 
-    VALUES (%s, %s, %s, %s)
+    INSERT INTO users (username, email, password, role, created_at) 
+    VALUES (%s, %s, %s, %s, %s)
     """
     
     try:
         current_time = datetime.now()
-        params = (email, password, 'user', current_time)
+        params = (username, email, password, 'user', current_time)  # Add username to params
         rows_affected = execute_query(insert_query, params)
         
         if rows_affected:

@@ -101,37 +101,7 @@ def api_signup():
     except Exception as e:
         app.logger.error(f"Error in signup: {str(e)}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
-    
-def create_user(email, password, username):  # Add username parameter
-    logger.info(f"Attempting to create user with email: {email}")
-    
-    # Check if email already exists
-    check_query = "SELECT email FROM users WHERE email = %s"
-    result = execute_query(check_query, (email,))
-    
-    if result:
-        logger.info(f"User with email {email} already exists")
-        return False, "Email already exists"
-    
-    # Insert new user
-    insert_query = """
-    INSERT INTO users (username, email, password, role, created_at) 
-    VALUES (%s, %s, %s, %s, %s)
-    """
-    
-    try:
-        current_time = datetime.now()
-        params = (username, email, password, 'user', current_time)  # Add username to params
-        rows_affected = execute_query(insert_query, params)
-        
-        if rows_affected:
-            logger.info(f"Successfully created user with email {email}")
-            return True, "User created successfully"
-        logger.error(f"Failed to create user with email {email}")
-        return False, "Failed to create user"
-    except Error as e:
-        logger.error(f"Error creating user: {str(e)}")
-        return False, str(e)
+
 
 @app.route('/logout')
 def logout():
