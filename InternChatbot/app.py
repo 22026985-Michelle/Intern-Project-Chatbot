@@ -4,10 +4,10 @@ from datetime import datetime
 import os
 from functools import wraps
 from template import HTML_TEMPLATE
-from database import get_db_connection, execute_query
+from database import get_db_connection, execute_query, create_user
 
 app = Flask(__name__)
-app.secret_key = os.urandom(24)  # For session management
+app.secret_key = os.urandom(24)
 
 # Initialize Anthropic client
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
@@ -52,9 +52,11 @@ def api_login():
         email = data.get('email')
         password = data.get('password')
 
-        # Here you would typically validate against a database
-        # For now, we'll accept any login
-        if email and password:
+        # Query the database
+        query = "SELECT * FROM users WHERE email = %s AND password = %s"
+        result = execute_query(query, (email, password))
+        
+        if result:
             session['user_email'] = email
             return jsonify({"status": "success", "message": "Login successful"})
         else:
@@ -72,13 +74,22 @@ def api_signup():
         email = data.get('email')
         password = data.get('password')
 
-        # Here you would typically store in a database
-        # For now, we'll accept any signup
-        if email and password:
+        if not email or not password:
+            return jsonify({"error": "Email and password are required"}), 400
+
+        # Create user in database
+        success, message = create_user(email, password)
+        
+        if success:
             session['user_email'] = email
-            return jsonify({"status": "success", "message": "Signup successful"})
+            return jsonify({
+                "status": "success",
+                "message": "Signup successful"
+            })
         else:
-            return jsonify({"error": "Invalid data"}), 400
+            return jsonify({
+                "error": message
+            }), 400
 
     except Exception as e:
         print(f"Error handling signup: {str(e)}")
@@ -145,32 +156,3 @@ def after_request(response):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
-
-@app.route('/api/signup', methods=['POST'])
-def api_signup():
-    """Handle signup API requests"""
-    try:
-        data = request.get_json()
-        email = data.get('email')
-        password = data.get('password')
-
-        if not email or not password:
-            return jsonify({"error": "Email and password are required"}), 400
-
-        # Create user in database
-        success, message = create_user(email, password)
-        
-        if success:
-            session['user_email'] = email
-            return jsonify({
-                "status": "success",
-                "message": "Signup successful"
-            })
-        else:
-            return jsonify({
-                "error": message
-            }), 400
-
-    except Exception as e:
-        print(f"Error handling signup: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
