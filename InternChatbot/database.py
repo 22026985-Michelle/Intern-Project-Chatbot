@@ -16,16 +16,10 @@ def get_db_connection():
         'password': 'ILOVESUSHI123!',
         'database': 'internchatbot',
         'port': 3306,
-        # Add timeout settings
-        'connect_timeout': 10,
-        'connection_timeout': 10,
-        # Add connection pool settings
-        'pool_name': 'mypool',
-        'pool_size': 5,
-        # SSL settings for Google Cloud SQL
-        'ssl': {
-            'ca': '/etc/ssl/certs/ca-certificates.crt'
-        }
+        'connect_timeout': 30,
+        'use_pure': True,
+        'allow_local_infile': True,
+        'auth_plugin': 'mysql_native_password'
     }
     
     try:
