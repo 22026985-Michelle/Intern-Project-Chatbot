@@ -7,10 +7,10 @@ from werkzeug.security import generate_password_hash, check_password_hash
 
 def get_db_connection():
     config = {
-        'host': '127.0.0.1',  
-        'user': 'root',     
-        'password': 'ILoveSushi123!', 
-        'database': 'internchatbotschema', 
+        'host': '34.142.254.175',  
+        'user': 'root',
+        'password': 'ILOVESUSHI123!',
+        'database': 'internchatbot',
         'port': 3306
     }
     
