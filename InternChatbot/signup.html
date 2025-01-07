@@ -132,6 +132,10 @@
         <div id="errorMessage" class="error-message"></div>
         <form id="signupForm">
             <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required>
+            </div>
+            <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" id="email" name="email" required>
             </div>
@@ -219,6 +223,7 @@
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
+            const username = document.getElementById('username').value; // Add this line
             const email = document.getElementById('email').value;
             const password = passwordInput.value;
             const confirmPassword = confirmPasswordInput.value;
@@ -242,7 +247,7 @@
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({ email, password })
+                    body: JSON.stringify({ username, email, password }) // Add username here
                 });
 
                 const data = await response.json();

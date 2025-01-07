@@ -68,7 +68,6 @@ def api_login():
 
 @app.route('/api/signup', methods=['POST'])
 def api_signup():
-    """Handle signup API requests"""
     try:
         data = request.get_json()
         if not data:
@@ -76,14 +75,15 @@ def api_signup():
             
         email = data.get('email')
         password = data.get('password')
+        username = data.get('username')  # Add this line
 
-        if not email or not password:
-            return jsonify({"error": "Email and password are required"}), 400
+        if not email or not password or not username:  # Modify this line
+            return jsonify({"error": "Email, password, and username are required"}), 400
 
         app.logger.info(f"Attempting to create user with email: {email}")
         
-        # Create user in database
-        success, message = create_user(email, password)
+        # Pass username to create_user
+        success, message = create_user(email, password, username)  # Modify this line
         
         if success:
             session['user_email'] = email
@@ -101,6 +101,37 @@ def api_signup():
     except Exception as e:
         app.logger.error(f"Error in signup: {str(e)}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+    
+def create_user(email, password, username):  # Add username parameter
+    logger.info(f"Attempting to create user with email: {email}")
+    
+    # Check if email already exists
+    check_query = "SELECT email FROM users WHERE email = %s"
+    result = execute_query(check_query, (email,))
+    
+    if result:
+        logger.info(f"User with email {email} already exists")
+        return False, "Email already exists"
+    
+    # Insert new user
+    insert_query = """
+    INSERT INTO users (username, email, password, role, created_at) 
+    VALUES (%s, %s, %s, %s, %s)
+    """
+    
+    try:
+        current_time = datetime.now()
+        params = (username, email, password, 'user', current_time)  # Add username to params
+        rows_affected = execute_query(insert_query, params)
+        
+        if rows_affected:
+            logger.info(f"Successfully created user with email {email}")
+            return True, "User created successfully"
+        logger.error(f"Failed to create user with email {email}")
+        return False, "Failed to create user"
+    except Error as e:
+        logger.error(f"Error creating user: {str(e)}")
+        return False, str(e)
 
 @app.route('/logout')
 def logout():
