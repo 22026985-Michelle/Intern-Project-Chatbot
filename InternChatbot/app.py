@@ -71,29 +71,36 @@ def api_signup():
     """Handle signup API requests"""
     try:
         data = request.get_json()
+        if not data:
+            return jsonify({"error": "No JSON data received"}), 400
+            
         email = data.get('email')
         password = data.get('password')
 
         if not email or not password:
             return jsonify({"error": "Email and password are required"}), 400
 
+        app.logger.info(f"Attempting to create user with email: {email}")
+        
         # Create user in database
         success, message = create_user(email, password)
         
         if success:
             session['user_email'] = email
+            app.logger.info(f"Successfully created user: {email}")
             return jsonify({
                 "status": "success",
                 "message": "Signup successful"
             })
         else:
+            app.logger.error(f"Failed to create user: {message}")
             return jsonify({
                 "error": message
             }), 400
 
     except Exception as e:
-        print(f"Error handling signup: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
+        app.logger.error(f"Error in signup: {str(e)}")
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
 @app.route('/logout')
 def logout():
