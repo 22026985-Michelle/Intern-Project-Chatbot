@@ -151,14 +151,15 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         }
 
         .user-profile {
-            flex-shrink: 0; 
+            position: sticky;
+            bottom: 0;
             padding: 1rem;
             border-top: 1px solid var(--border-color);
             background-color: var(--bg-color);
             width: 100%;
-            position: relative;
-            z-index: 2;
+            z-index: 1001;  /* Increased z-index */
         }
+
 
         .user-avatar {
             width: 30px;
@@ -197,15 +198,12 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             transform: translateX(0);
             transition: transform 0.3s ease;
             height: 100vh;
-            padding: 0; 
         }
 
         .sidebar-content {
-            flex: 1 1 auto;
-            display: flex;
-            flex-direction: column;
+            flex: 1;
             overflow-y: auto;
-            padding: 1rem; 
+            padding: 1rem;
         }
 
         .sidebar:hover,
@@ -435,15 +433,15 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             border-radius: 8px;
             box-shadow: 0 2px 10px var(--box-shadow);
             margin-bottom: 0.5rem;
-            z-index: 1000;
-            display: none;
+            z-index: 1002;  /* Higher than user-profile */
+            visibility: hidden;
             opacity: 0;
             transform: translateY(10px);
-            transition: opacity 0.2s ease, transform 0.2s ease;
+            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
         }
 
         .profile-menu.active {
-            display: block;
+            visibility: visible;
             opacity: 1;
             transform: translateY(0);
         }
@@ -707,8 +705,8 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
     </style>
 
     <script>
-        // Initialize DOM elements
         document.addEventListener('DOMContentLoaded', function() {
+            // Initialize DOM elements
             const userInput = document.getElementById('userInput');
             const messagesList = document.getElementById('messagesList');
             const chatContainer = document.getElementById('chatContainer');
@@ -725,6 +723,8 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             const profileMenu = document.getElementById('profileMenu');
             const appearanceMenu = document.getElementById('appearanceMenu');
             let isMenuOpen = false;
+            let isOverSidebar = false;
+            let sidebarTimeout;
 
             const BASE_URL = 'https://internproject-4fq7.onrender.com';
 
@@ -734,14 +734,10 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 userInput.focus();
             }
 
-            window.setTheme = function(theme) {
-                updateTheme(theme);
-                toggleProfileMenu();
-            }
-
-            window.toggleAppearanceMenu = function() {
-                const isVisible = appearanceMenu.style.display === 'block';
-                appearanceMenu.style.display = isVisible ? 'none' : 'block';
+            function updateTheme(theme) {
+                body.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+                themeToggle.textContent = `Switch to ${theme === 'light' ? 'Dark' : 'Light'} Theme`;
             }
 
             function toggleProfileMenu() {
@@ -749,9 +745,14 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 if (isMenuOpen) {
                     profileMenu.classList.add('active');
                     sidebar.style.transform = 'translateX(260px)';
+                    isOverSidebar = true;
                 } else {
                     profileMenu.classList.remove('active');
                     appearanceMenu.classList.remove('active');
+                    isOverSidebar = false;
+                    if (!sidebar.matches(':hover')) {
+                        sidebar.style.transform = '';
+                    }
                 }
             }
 
@@ -759,11 +760,15 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 appearanceMenu.classList.toggle('active');
             }
 
+            // Make functions available globally
             window.setTheme = function(theme) {
                 updateTheme(theme);
                 toggleProfileMenu();
             }
 
+            window.toggleAppearanceMenu = toggleAppearanceMenu;
+
+            // Event Listeners for profile menu
             profileButton.addEventListener('click', (event) => {
                 event.stopPropagation();
                 toggleProfileMenu();
@@ -780,6 +785,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 }
             });
 
+            // Greeting function
             function setGreeting() {
                 const hour = new Date().getHours();
                 if (hour >= 5 && hour < 12) {
@@ -791,6 +797,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 }
             }
 
+            // Message handling
             function addMessage(content, isUser = false) {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
@@ -837,7 +844,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     userInput.value = '';
                     userInput.style.height = 'auto';
 
-                    // Check if there's a file to send
                     const fileToSend = fileInput.files[0];
                     let formData;
                     let fetchOptions;
@@ -872,7 +878,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     const data = await response.json();
                     console.log('Response data:', data);
                     
-                    // Clear file input after successful send
                     if (fileToSend) {
                         removeFile();
                     }
@@ -891,7 +896,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 filePreview.classList.remove('active');
             }
 
-            // Event Listeners
             fileButton.addEventListener('click', () => {
                 fileInput.click();
             });
@@ -909,6 +913,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 }
             });
 
+            // Input handling
             userInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -916,69 +921,44 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 }
             });
 
-            sendButton.addEventListener('click', sendMessage);
-
             userInput.addEventListener('input', function() {
                 this.style.height = 'auto';
                 this.style.height = this.scrollHeight + 'px';
             });
 
-            // Theme handling
-            let currentTheme = localStorage.getItem('theme') || 'light';
-            
-            function updateTheme(theme) {
-                body.setAttribute('data-theme', theme);
-                localStorage.setItem('theme', theme);
-                themeToggle.textContent = `Switch to ${theme === 'light' ? 'Dark' : 'Light'} Theme`;
+            sendButton.addEventListener('click', sendMessage);
+
+            // Sidebar functionality
+            function openSidebar() {
+                isOverSidebar = true;
+                clearTimeout(sidebarTimeout);
+                sidebar.style.transform = 'translateX(260px)';
             }
 
+            function closeSidebar() {
+                if (!isMenuOpen) {
+                    isOverSidebar = false;
+                    sidebarTimeout = setTimeout(() => {
+                        if (!isOverSidebar && !isMenuOpen) {
+                            sidebar.style.transform = '';
+                        }
+                    }, 300);
+                }
+            }
+
+            // Sidebar event listeners
+            sidebar.addEventListener('mouseenter', openSidebar);
+            sidebar.addEventListener('mouseleave', closeSidebar);
+            sidebarTrigger.addEventListener('mouseenter', openSidebar);
+            sidebarTrigger.addEventListener('mouseleave', closeSidebar);
+
+            // Theme initialization
+            let currentTheme = localStorage.getItem('theme') || 'light';
             updateTheme(currentTheme);
 
             themeToggle.addEventListener('click', () => {
                 currentTheme = currentTheme === 'light' ? 'dark' : 'light';
                 updateTheme(currentTheme);
-            });
-
-            // Sidebar functionality
-            let isOverSidebar = false;
-            let sidebarTimeout;
-
-            sidebar.addEventListener('mouseenter', () => {
-                isOverSidebar = true;
-                clearTimeout(sidebarTimeout);
-                requestAnimationFrame(() => {
-                    sidebar.style.transform = 'translateX(260px)';
-                });
-            });
-
-            sidebar.addEventListener('mouseleave', () => {
-                isOverSidebar = false;
-                sidebarTimeout = setTimeout(() => {
-                    if (!isOverSidebar) {
-                        requestAnimationFrame(() => {
-                            sidebar.style.transform = '';
-                        });
-                    }
-                }, 300);
-            });
-
-            sidebarTrigger.addEventListener('mouseenter', () => {
-                isOverSidebar = true;
-                clearTimeout(sidebarTimeout);
-                requestAnimationFrame(() => {
-                    sidebar.style.transform = 'translateX(260px)';
-                });
-            });
-
-            sidebarTrigger.addEventListener('mouseleave', () => {
-                isOverSidebar = false;
-                sidebarTimeout = setTimeout(() => {
-                    if (!isOverSidebar) {
-                        requestAnimationFrame(() => {
-                            sidebar.style.transform = '';
-                        });
-                    }
-                }, 300);
             });
 
             // Initialize
