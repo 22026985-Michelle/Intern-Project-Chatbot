@@ -102,6 +102,11 @@ def api_signup():
         app.logger.error(f"Error in signup: {str(e)}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
 
+@app.route('/Settings')
+@login_required
+def settings_page():
+    """Serve the settings page"""
+    return send_file('settings.html')
 
 @app.route('/logout')
 def logout():

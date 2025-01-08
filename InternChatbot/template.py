@@ -401,6 +401,56 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             to { opacity: 1; transform: translateY(0); }
         }
 
+        .profile-button {
+            background: none;
+            border: none;
+            padding: 0;
+            width: 100%;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            cursor: pointer;
+        }
+
+        .profile-menu {
+            position: absolute;
+            bottom: 100%;
+            left: 0;
+            width: 200px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px var(--box-shadow);
+            margin-bottom: 0.5rem;
+            z-index: 1000;
+        }
+
+        .menu-item {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            text-align: left;
+        }
+
+        .menu-item:hover {
+            background-color: var(--hover-color);
+        }
+
+        .menu-icon {
+            font-size: 1.2rem;
+        }
+
+        .appearance-menu {
+            padding: 0.5rem 0;
+            border-top: 1px solid var(--border-color);
+        }
+
         /* Media Queries */
         @media (max-width: 768px) {
             .theme-toggle {
@@ -460,9 +510,31 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             </div>
         </div>
 
-        <div class="user-profile">
-            <div class="user-avatar">M</div>
-            <div class="user-email">user@example.com</div>
+        <div class="user-profile" id="userProfile">
+            <button class="profile-button" id="profileButton">
+                <div class="user-avatar">M</div>
+                <div class="user-email">user@example.com</div>
+            </button>
+            <div class="profile-menu" id="profileMenu" style="display: none;">
+                <button class="menu-item" onclick="window.location.href='/Settings'">
+                    <span class="menu-icon">⚙️</span>
+                    Settings
+                </button>
+                <button class="menu-item" onclick="toggleAppearanceMenu()">
+                    <span class="menu-icon">🎨</span>
+                    Appearance
+                </button>
+                <div class="appearance-menu" id="appearanceMenu" style="display: none;">
+                    <button class="menu-item" onclick="setTheme('light')">
+                        <span class="menu-icon">☀️</span>
+                        Light
+                    </button>
+                    <button class="menu-item" onclick="setTheme('dark')">
+                        <span class="menu-icon">🌙</span>
+                        Dark
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
     <div class="main-content">
@@ -617,6 +689,10 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             const sidebarTrigger = document.querySelector('.sidebar-trigger');
             const themeToggle = document.getElementById('themeToggle');
             const body = document.body;
+            const profileButton = document.getElementById('profileButton');
+            const profileMenu = document.getElementById('profileMenu');
+            const appearanceMenu = document.getElementById('appearanceMenu');
+            let isMenuOpen = false;
 
             const BASE_URL = 'https://internproject-4fq7.onrender.com';
 
@@ -625,6 +701,38 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 userInput.value = message;
                 userInput.focus();
             }
+            
+            function toggleProfileMenu() {
+                isMenuOpen = !isMenuOpen;
+                profileMenu.style.display = isMenuOpen ? 'block' : 'none';
+                if (!isMenuOpen) {
+                    appearanceMenu.style.display = 'none';
+                }
+            }
+
+            function toggleAppearanceMenu() {
+                const isVisible = appearanceMenu.style.display === 'block';
+                appearanceMenu.style.display = isVisible ? 'none' : 'block';
+            }
+
+            function setTheme(theme) {
+                updateTheme(theme);
+                toggleProfileMenu();
+            }
+
+            document.addEventListener('click', (event) => {
+                const isClickInside = profileButton.contains(event.target) || 
+                                    profileMenu.contains(event.target);
+                
+                if (!isClickInside && isMenuOpen) {
+                    toggleProfileMenu();
+                }
+            });
+
+            profileButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                toggleProfileMenu();
+            });
 
             function setGreeting() {
                 const hour = new Date().getHours();
