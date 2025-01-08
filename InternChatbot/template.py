@@ -157,7 +157,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             border-top: 1px solid var(--border-color);
             background-color: var(--bg-color);
             width: 100%;
-            z-index: 1001;  /* Increased z-index */
+            z-index: 1011;  /* Increased z-index */
         }
 
 
@@ -194,7 +194,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             box-shadow: 2px 0 10px var(--box-shadow);
             display: flex;           
             flex-direction: column;  
-            z-index: 1000;
+            z-index: 1010;
             transform: translateX(0);
             transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             height: 100vh;
@@ -220,6 +220,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             position: relative;
             max-width: 100%;
             padding: 0 1rem;
+            transition: margin-left 0.3s ease;
         }
 
         /* Chat Container Styles */
@@ -241,10 +242,18 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             position: fixed;
             bottom: 0;
             right: 0;
-            width: 100%;
+            width: calc(100% - 260px);  /* Leave space for sidebar */
+            margin-left: 260px;  /* Push right by sidebar width */
             background-color: var(--input-container-bg);
             border-top: 2px solid var(--input-container-border);
             z-index: 1000;
+            transform: translateX(260px);  /* Initially shifted right */
+            transition: width 0.3s ease, transform 0.3s ease;
+        }
+
+        .sidebar:not(:hover) + .main-content .input-container {
+            width: 100%;
+            transform: translateX(0);
         }
 
         .input-wrapper {
@@ -433,7 +442,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             border-radius: 8px;
             box-shadow: 0 2px 10px var(--box-shadow);
             margin-bottom: 0.5rem;
-            z-index: 1002;
+            z-index: 1012;
             opacity: 0;
             pointer-events: none;
             transform: translateY(10px);
