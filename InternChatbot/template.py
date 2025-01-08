@@ -490,34 +490,36 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
     </button>
     <div class="sidebar-trigger"></div>
     <div class="sidebar">
-        <div class="sidebar-header">
-            <button class="new-chat-button">
-                <span>⊕</span>
-                Start new chat
-            </button>
-        </div>
-
-        <div class="section-title">Starred</div>
-        <div class="chat-list">
-            <div class="chat-item">Star projects and chats you use often</div>
-        </div>
-
-        <div class="section-title">Recents</div>
-        <div class="chat-list">
-            <div class="chat-item">
-                <span class="chat-icon">⊙</span>
-                Setting up ngrok for public web access
+        <div class="sidebar-content">
+            <div class="sidebar-header">
+                <button class="new-chat-button">
+                    <span>⊕</span>
+                    Start new chat
+                </button>
             </div>
-            <div class="chat-item">
-                <span class="chat-icon">⊙</span>
-                QA Tester Internship Tasks
+
+            <div class="section-title">Starred</div>
+            <div class="chat-list">
+                <div class="chat-item">Star projects and chats you use often</div>
             </div>
-            <div class="chat-item">
-                <span class="chat-icon">⊙</span>
-                Telegram ChatBot Setup
+
+            <div class="section-title">Recents</div>
+            <div class="chat-list">
+                <div class="chat-item">
+                    <span class="chat-icon">⊙</span>
+                    Setting up ngrok for public web access
+                </div>
+                <div class="chat-item">
+                    <span class="chat-icon">⊙</span>
+                    QA Tester Internship Tasks
+                </div>
+                <div class="chat-item">
+                    <span class="chat-icon">⊙</span>
+                    Telegram ChatBot Setup
+                </div>
             </div>
         </div>
-
+        
         <div class="user-profile" id="userProfile">
             <button class="profile-button" id="profileButton">
                 <div class="user-avatar">M</div>
