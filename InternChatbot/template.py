@@ -151,7 +151,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         }
 
         .user-profile {
-            position: sticky;
+            position: relative;
             bottom: 0;
             padding: 1rem;
             border-top: 1px solid var(--border-color);
@@ -196,7 +196,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             flex-direction: column;  
             z-index: 1000;
             transform: translateX(0);
-            transition: transform 0.3s ease;
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             height: 100vh;
         }
 
@@ -433,16 +433,16 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             border-radius: 8px;
             box-shadow: 0 2px 10px var(--box-shadow);
             margin-bottom: 0.5rem;
-            z-index: 1002;  /* Higher than user-profile */
-            visibility: hidden;
+            z-index: 1002;
             opacity: 0;
+            pointer-events: none;
             transform: translateY(10px);
-            transition: opacity 0.2s ease, transform 0.2s ease, visibility 0.2s;
+            transition: opacity 0.2s ease, transform 0.2s ease;
         }
 
         .profile-menu.active {
-            visibility: visible;
             opacity: 1;
+            pointer-events: auto;
             transform: translateY(0);
         }
 
@@ -778,12 +778,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             
             window.setTheme = function(theme) {
                 updateTheme(theme);
-                isMenuOpen = false;
-                profileMenu.classList.remove('active');
-                appearanceMenu.classList.remove('active');
-                if (!isOverSidebar) {
-                    hideSidebar();
-                }
             };
 
             // Event Listeners
@@ -796,19 +790,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
                 if (!isClickInsideProfile && !isClickInsideMenu && !isClickInsideSidebar && isMenuOpen) {
                     toggleProfileMenu();
-                }
-            });
-
-            // Sidebar Event Listeners
-            sidebar.addEventListener('mouseenter', () => {
-                isOverSidebar = true;
-                showSidebar();
-            });
-
-            sidebar.addEventListener('mouseleave', () => {
-                isOverSidebar = false;
-                if (!isMenuOpen) {
-                    sidebarTimeout = setTimeout(hideSidebar, 300);
                 }
             });
 
