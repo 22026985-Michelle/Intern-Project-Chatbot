@@ -545,7 +545,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 <div class="user-email">user@example.com</div>
             </button>
             <div class="profile-menu" id="profileMenu">
-                <button class="menu-item" onclick="window.location.href='/Settings'">
+                <button class="menu-item" onclick="window.location.href='https://internproject-4fq7.onrender.com/Settings'">
                     <span class="menu-icon">⚙️</span>
                     Settings
                 </button>
@@ -725,6 +725,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             let isMenuOpen = false;
             let isOverSidebar = false;
             let sidebarTimeout = null;
+            updateThemeDisplay();
 
             const BASE_URL = 'https://internproject-4fq7.onrender.com';
 
@@ -763,6 +764,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             }
 
             function toggleAppearanceMenu() {
+                var appearanceMenu = document.getElementById('appearanceMenu');
                 appearanceMenu.classList.toggle('active');
             }
 
@@ -777,8 +779,17 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             window.toggleAppearanceMenu = toggleAppearanceMenu;
             
             window.setTheme = function(theme) {
-                updateTheme(theme);
+                var body = document.body;
+                body.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+                updateThemeDisplay();
             };
+
+            function updateThemeDisplay() {
+                var themeToggle = document.getElementById('themeToggle');
+                var currentTheme = localStorage.getItem('theme') || 'light';
+                themeToggle.textContent = `Switch to ${currentTheme === 'light' ? 'Dark' : 'Light'} Theme`;
+            }
 
             // Event Listeners
             profileButton.addEventListener('click', toggleProfileMenu);
@@ -791,6 +802,18 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 if (!isClickInsideProfile && !isClickInsideMenu && !isClickInsideSidebar && isMenuOpen) {
                     toggleProfileMenu();
                 }
+            });
+
+            document.addEventListener('click', function(event) {
+                var profileMenu = document.getElementById('profileMenu');
+                if (!profileMenu.contains(event.target)) {
+                    profileMenu.classList.remove('active');
+                }
+            });
+
+            document.getElementById('profileButton').addEventListener('click', function(event) {
+                event.stopPropagation();
+                toggleProfileMenu();
             });
 
             sidebarTrigger.addEventListener('mouseenter', () => {
