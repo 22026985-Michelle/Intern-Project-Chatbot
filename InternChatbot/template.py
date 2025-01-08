@@ -428,7 +428,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         .profile-menu {
             position: absolute;
             bottom: 100%;
-            left: 0;
+            left: 1rem;
             width: 200px;
             background-color: var(--bg-color);
             border: 1px solid var(--border-color);
@@ -437,6 +437,15 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             margin-bottom: 0.5rem;
             z-index: 1000;
             display: none;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .profile-menu.active {
+            display: block;
+            opacity: 1;
+            transform: translateY(0);
         }
 
         .menu-item {
@@ -464,6 +473,11 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         .appearance-menu {
             padding: 0.5rem 0;
             border-top: 1px solid var(--border-color);
+            display: none;
+        }
+
+        .appearance-menu.active {
+            display: block;
         }
 
         /* Media Queries */
@@ -532,7 +546,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 <div class="user-avatar">M</div>
                 <div class="user-email">user@example.com</div>
             </button>
-            <div class="profile-menu" id="profileMenu" style="display: none;">
+            <div class="profile-menu" id="profileMenu">
                 <button class="menu-item" onclick="window.location.href='/Settings'">
                     <span class="menu-icon">⚙️</span>
                     Settings
@@ -541,7 +555,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     <span class="menu-icon">🎨</span>
                     Appearance
                 </button>
-                <div class="appearance-menu" id="appearanceMenu" style="display: none;">
+                <div class="appearance-menu" id="appearanceMenu">
                     <button class="menu-item" onclick="setTheme('light')">
                         <span class="menu-icon">☀️</span>
                         Light
@@ -732,18 +746,20 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             function toggleProfileMenu() {
                 isMenuOpen = !isMenuOpen;
-                profileMenu.style.display = isMenuOpen ? 'block' : 'none';
-                if (!isMenuOpen) {
-                    appearanceMenu.style.display = 'none';
+                if (isMenuOpen) {
+                    profileMenu.classList.add('active');
+                    sidebar.style.transform = 'translateX(260px)';
+                } else {
+                    profileMenu.classList.remove('active');
+                    appearanceMenu.classList.remove('active');
                 }
             }
 
             function toggleAppearanceMenu() {
-                const isVisible = appearanceMenu.style.display === 'block';
-                appearanceMenu.style.display = isVisible ? 'none' : 'block';
+                appearanceMenu.classList.toggle('active');
             }
 
-            function setTheme(theme) {
+            window.setTheme = function(theme) {
                 updateTheme(theme);
                 toggleProfileMenu();
             }
@@ -756,7 +772,8 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             // Close menus when clicking outside
             document.addEventListener('click', (event) => {
                 const isClickInside = profileButton.contains(event.target) || 
-                                    profileMenu.contains(event.target);
+                                    profileMenu.contains(event.target) ||
+                                    event.target.closest('.sidebar');
                 
                 if (!isClickInside && isMenuOpen) {
                     toggleProfileMenu();
