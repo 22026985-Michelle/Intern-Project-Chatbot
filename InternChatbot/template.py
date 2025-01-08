@@ -25,7 +25,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             --message-bg: #F9FAFB;
             --send-button-bg: #0099FF;
             --send-button-hover: #007ACC;
-            --input-container-bg: rgba(255, 255, 255, 0.9);
+            --input-container-bg: #FFFFFF;
             --input-container-border: #E5E7EB;
             --box-shadow: rgba(0, 0, 0, 0.05);
         }
@@ -47,7 +47,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             --message-bg: #2D2D2D;
             --send-button-bg: #0099FF;
             --send-button-hover: #007ACC;
-            --input-container-bg: rgba(28, 28, 28, 0.95);
+            --input-container-bg: #1C1C1C;
             --input-container-border: #4B5563;
             --box-shadow: rgba(0, 0, 0, 0.2);
         }
@@ -246,7 +246,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             width: 100%;
             background-color: var(--input-container-bg);
             border-top: 2px solid var(--input-container-border);
-            backdrop-filter: blur(10px);
             z-index: 1000;
         }
 

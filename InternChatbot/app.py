@@ -52,20 +52,24 @@ def api_login():
         email = data.get('email')
         password = data.get('password')
 
-        # Query the database
-        query = "SELECT * FROM users WHERE email = %s AND password = %s"
-        result = execute_query(query, (email, password))
+        # Query the database to get the hashed password
+        query = "SELECT password FROM users WHERE email = %s"
+        result = execute_query(query, (email,))
         
         if result:
-            session['user_email'] = email
-            return jsonify({"status": "success", "message": "Login successful"})
+            stored_hashed_password = result[0]['password']
+            if check_password_hash(stored_hashed_password, password):
+                session['user_email'] = email
+                return jsonify({"status": "success", "message": "Login successful"})
+            else:
+                return jsonify({"error": "Invalid credentials"}), 401
         else:
             return jsonify({"error": "Invalid credentials"}), 401
 
     except Exception as e:
         print(f"Error handling login: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
-
+    
 @app.route('/api/signup', methods=['POST'])
 def api_signup():
     try:

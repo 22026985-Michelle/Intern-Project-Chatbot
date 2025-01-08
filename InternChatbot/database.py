@@ -69,6 +69,9 @@ def create_user(email, password, username):  # Add username parameter
         logger.info(f"User with email {email} already exists")
         return False, "Email already exists"
     
+    # Hash and salt the password before storing
+    hashed_password = generate_password_hash(password)
+    
     # Insert new user
     insert_query = """
     INSERT INTO users (username, email, password, role, created_at) 
@@ -77,7 +80,7 @@ def create_user(email, password, username):  # Add username parameter
     
     try:
         current_time = datetime.now()
-        params = (username, email, password, 'user', current_time)  # Add username to params
+        params = (username, email, hashed_password, 'user', current_time)  # Store hashed password
         rows_affected = execute_query(insert_query, params)
         
         if rows_affected:
