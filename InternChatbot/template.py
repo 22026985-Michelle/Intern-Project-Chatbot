@@ -411,12 +411,18 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         .profile-button {
             background: none;
             border: none;
-            padding: 0;
+            padding: 0.5rem;
             width: 100%;
             display: flex;
             align-items: center;
             gap: 0.5rem;
             cursor: pointer;
+            transition: background-color 0.2s ease;
+            border-radius: 0.5rem;
+        }
+
+        .profile-button:hover {
+            background-color: var(--hover-color);
         }
 
         .profile-menu {
@@ -430,6 +436,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             box-shadow: 0 2px 10px var(--box-shadow);
             margin-bottom: 0.5rem;
             z-index: 1000;
+            display: none;
         }
 
         .menu-item {
@@ -443,6 +450,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             color: var(--text-color);
             cursor: pointer;
             text-align: left;
+            transition: background-color 0.2s ease;
         }
 
         .menu-item:hover {
@@ -712,6 +720,16 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 userInput.focus();
             }
 
+            window.setTheme = function(theme) {
+                updateTheme(theme);
+                toggleProfileMenu();
+            }
+
+            window.toggleAppearanceMenu = function() {
+                const isVisible = appearanceMenu.style.display === 'block';
+                appearanceMenu.style.display = isVisible ? 'none' : 'block';
+            }
+
             function toggleProfileMenu() {
                 isMenuOpen = !isMenuOpen;
                 profileMenu.style.display = isMenuOpen ? 'block' : 'none';
@@ -730,6 +748,12 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 toggleProfileMenu();
             }
 
+            profileButton.addEventListener('click', (event) => {
+                event.stopPropagation();
+                toggleProfileMenu();
+            });
+
+            // Close menus when clicking outside
             document.addEventListener('click', (event) => {
                 const isClickInside = profileButton.contains(event.target) || 
                                     profileMenu.contains(event.target);
@@ -737,11 +761,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 if (!isClickInside && isMenuOpen) {
                     toggleProfileMenu();
                 }
-            });
-
-            profileButton.addEventListener('click', (event) => {
-                event.stopPropagation();
-                toggleProfileMenu();
             });
 
             function setGreeting() {
