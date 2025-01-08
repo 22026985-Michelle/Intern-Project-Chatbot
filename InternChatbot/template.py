@@ -121,6 +121,8 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
         .chat-list {
             width: 100%;
+            flex: 1; 
+            overflow-y: auto; 
         }
 
         .chat-item {
@@ -149,14 +151,14 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         }
 
         .user-profile {
-            margin-top: auto;
+            margin-top: auto; 
             padding: 1rem;
             border-top: 1px solid var(--border-color);
             background-color: var(--bg-color);
             width: 100%;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            position: sticky; 
+            bottom: 0; 
+            z-index: 1; 
         }
 
         .user-avatar {
@@ -198,6 +200,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             z-index: 1000;
             transform: translateX(0);
             transition: transform 0.3s ease;
+            height: 100vh; /* Add this */
         }
 
         .sidebar:hover,
@@ -701,7 +704,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 userInput.value = message;
                 userInput.focus();
             }
-            
+
             function toggleProfileMenu() {
                 isMenuOpen = !isMenuOpen;
                 profileMenu.style.display = isMenuOpen ? 'block' : 'none';
