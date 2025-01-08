@@ -242,13 +242,11 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             position: fixed;
             bottom: 0;
             right: 0;
-            width: calc(100% - 260px);  /* Leave space for sidebar */
-            margin-left: 260px;  /* Push right by sidebar width */
+            width: 100%;  /* Remove the calculation */
+            margin-left: 0;  /* Remove margin */
             background-color: var(--input-container-bg);
             border-top: 2px solid var(--input-container-border);
             z-index: 1000;
-            transform: translateX(260px);  /* Initially shifted right */
-            transition: width 0.3s ease, transform 0.3s ease;
         }
 
         .sidebar:not(:hover) + .main-content .input-container {
@@ -763,6 +761,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 if (isMenuOpen) {
                     showSidebar();
                     profileMenu.classList.add('active');
+                    appearanceMenu.classList.remove('active');  // Reset appearance menu
                 } else {
                     profileMenu.classList.remove('active');
                     appearanceMenu.classList.remove('active');
@@ -811,18 +810,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 if (!isClickInsideProfile && !isClickInsideMenu && !isClickInsideSidebar && isMenuOpen) {
                     toggleProfileMenu();
                 }
-            });
-
-            document.addEventListener('click', function(event) {
-                var profileMenu = document.getElementById('profileMenu');
-                if (!profileMenu.contains(event.target)) {
-                    profileMenu.classList.remove('active');
-                }
-            });
-
-            document.getElementById('profileButton').addEventListener('click', function(event) {
-                event.stopPropagation();
-                toggleProfileMenu();
             });
 
             sidebarTrigger.addEventListener('mouseenter', () => {
