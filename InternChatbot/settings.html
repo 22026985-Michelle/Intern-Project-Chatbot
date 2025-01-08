@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - NCS Internship AI Chatbot</title>
+    <style>
+        :root[data-theme="light"] {
+            --bg-color: #FFFFFF;
+            --text-color: #1C1C1C;
+            --border-color: #E5E7EB;
+            --hover-color: #F5F5F5;
+            --input-bg: #F0F0F0;
+        }
+
+        :root[data-theme="dark"] {
+            --bg-color: #1C1C1C;
+            --text-color: #FFFFFF;
+            --border-color: #4B5563;
+            --hover-color: #2D2D2D;
+            --input-bg: #2D2D2D;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .settings-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .settings-header {
+            margin-bottom: 2rem;
+        }
+
+        .settings-header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .settings-nav {
+            display: flex;
+            gap: 1rem;
+            border-bottom: 1px solid var(--border-color);
+            margin-bottom: 2rem;
+        }
+
+        .nav-item {
+            padding: 0.5rem 1rem;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+        }
+
+        .nav-item.active {
+            border-bottom-color: #0099FF;
+            color: #0099FF;
+        }
+
+        .settings-section {
+            display: none;
+        }
+
+        .settings-section.active {
+            display: block;
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 500;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+        }
+
+        .profile-pic-container {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .profile-pic {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background-color: #E0E0E0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            color: #666;
+        }
+
+        .button {
+            padding: 0.75rem 1.5rem;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background-color 0.2s ease;
+        }
+
+        .primary-button {
+            background-color: #0099FF;
+            color: white;
+        }
+
+        .primary-button:hover {
+            background-color: #007ACC;
+        }
+
+        .danger-button {
+            background-color: #EF4444;
+            color: white;
+        }
+
+        .danger-button:hover {
+            background-color: #DC2626;
+        }
+
+        #profileSection {
+            max-width: 600px;
+        }
+
+        #accountSection {
+            max-width: 600px;
+        }
+    </style>
+</head>
+<body>
+    <div class="settings-container">
+        <div class="settings-header">
+            <h1>Settings</h1>
+            <p>Manage your profile and account settings</p>
+        </div>
+
+        <div class="settings-nav">
+            <div class="nav-item active" onclick="showSection('profile')">Profile</div>
+            <div class="nav-item" onclick="showSection('account')">Account</div>
+        </div>
+
+        <div id="profileSection" class="settings-section active">
+            <form id="profileForm" onsubmit="handleProfileSubmit(event)">
+                <div class="profile-pic-container">
+                    <div class="profile-pic" id="profilePic"></div>
+                    <input type="file" id="profilePicInput" style="display: none" accept="image/*">
+                    <button type="button" class="button primary-button" onclick="document.getElementById('profilePicInput').click()">
+                        Change Picture
+                    </button>
+                </div>
+
+                <div class="form-group">
+                    <label for="name">Name</label>
+                    <input type="text" id="name" name="name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" name="newPassword">
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">Confirm New Password</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword">
+                </div>
+
+                <button type="submit" class="button primary-button">Save Changes</button>
+            </form>
+        </div>
+
+        <div id="accountSection" class="settings-section">
+            <h2>Account Settings</h2>
+            <div style="margin-top: 2rem;">
+                <button onclick="handleLogout()" class="button danger-button">Log Out</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showSection(section) {
+            // Update nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Show selected section
+            document.querySelectorAll('.settings-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(section + 'Section').classList.add('active');
+        }
+
+        function handleLogout() {
+            window.location.href = '/logout';
+        }
+
+        function handleProfileSubmit(event) {
+            event.preventDefault();
+            const formData = new FormData(event.target);
+            
+            // Validate password match if new password is being set
+            const newPassword = formData.get('newPassword');
+            const confirmPassword = formData.get('confirmPassword');
+            
+            if (newPassword && newPassword !== confirmPassword) {
+                alert("Passwords don't match!");
+                return;
+            }
+
+            // Submit form data
+            fetch('/api/update-profile', {
+                method: 'POST',
+                body: formData
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    alert('Profile updated successfully!');
+                } else {
+                    alert(data.error || 'Failed to update profile');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                alert('Failed to update profile');
+            });
+        }
+
+        // Set initial profile data
+        window.addEventListener('DOMContentLoaded', () => {
+            fetch('/api/get-profile')
+                .then(response => response.json())
+                .then(data => {
+                    document.getElementById('name').value = data.name || '';
+                    document.getElementById('email').value = data.email || '';
+                    if (data.avatar) {
+                        document.getElementById('profilePic').innerHTML = data.avatar;
+                    } else {
+                        document.getElementById('profilePic').innerHTML = data.email[0].toUpperCase();
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+        });
+    </script>
+</body>
+</html>

@@ -168,6 +168,55 @@ def chat():
     except Exception as e:
         print(f"Error handling chat request: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
+    
+@app.route('/api/get-profile')
+@login_required
+def get_profile():
+    """Get user profile data"""
+    try:
+        email = session['user_email']
+        query = "SELECT username, email FROM users WHERE email = %s"
+        result = execute_query(query, (email,))
+        
+        if result:
+            return jsonify({
+                "name": result[0]['username'],
+                "email": result[0]['email']
+            })
+        return jsonify({"error": "User not found"}), 404
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/update-profile', methods=['POST'])
+@login_required
+def update_profile():
+    """Update user profile"""
+    try:
+        email = session['user_email']
+        data = request.form
+        
+        updates = []
+        params = []
+        
+        if data.get('name'):
+            updates.append("username = %s")
+            params.append(data['name'])
+            
+        if data.get('newPassword'):
+            updates.append("password = %s")
+            params.append(generate_password_hash(data['newPassword']))
+            
+        if not updates:
+            return jsonify({"error": "No updates provided"}), 400
+            
+        params.append(email)
+        query = f"UPDATE users SET {', '.join(updates)} WHERE email = %s"
+        
+        execute_query(query, tuple(params))
+        
+        return jsonify({"status": "success", "message": "Profile updated successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.after_request
 def after_request(response):

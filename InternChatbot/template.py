@@ -152,14 +152,12 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
         .user-profile {
             position: relative;
-            bottom: 0;
             padding: 1rem;
             border-top: 1px solid var(--border-color);
             background-color: var(--bg-color);
             width: 100%;
-            z-index: 1011;  /* Increased z-index */
+            z-index: 1011;
         }
-
 
         .user-avatar {
             width: 30px;
@@ -424,6 +422,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             cursor: pointer;
             transition: background-color 0.2s ease;
             border-radius: 0.5rem;
+            color: var(--text-color); 
         }
 
         .profile-button:hover {
@@ -545,8 +544,8 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         
         <div class="user-profile" id="userProfile">
             <button class="profile-button" id="profileButton">
-                <div class="user-avatar">M</div>
-                <div class="user-email">user@example.com</div>
+                <div class="user-avatar">{avatar_letter}</div>
+                <div class="user-email">{email}</div>
             </button>
             <div class="profile-menu" id="profileMenu">
                 <button class="menu-item" onclick="window.location.href='https://internproject-4fq7.onrender.com/Settings'">
@@ -777,24 +776,20 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             function updateTheme(theme) {
                 body.setAttribute('data-theme', theme);
                 localStorage.setItem('theme', theme);
-                themeToggle.textContent = `Switch to ${theme === 'light' ? 'Dark' : 'Light'} Theme`;
             }
 
             // Global Functions
             window.toggleAppearanceMenu = toggleAppearanceMenu;
             
             window.setTheme = function(theme) {
-                var body = document.body;
-                body.setAttribute('data-theme', theme);
-                localStorage.setItem('theme', theme);
-                updateThemeDisplay();
+                updateTheme(theme);
+                isMenuOpen = false;
+                profileMenu.classList.remove('active');
+                appearanceMenu.classList.remove('active');
+                if (!isOverSidebar) {
+                    hideSidebar();
+                }
             };
-
-            function updateThemeDisplay() {
-                var themeToggle = document.getElementById('themeToggle');
-                var currentTheme = localStorage.getItem('theme') || 'light';
-                themeToggle.textContent = `Switch to ${currentTheme === 'light' ? 'Dark' : 'Light'} Theme`;
-            }
 
             // Event Listeners
             profileButton.addEventListener('click', toggleProfileMenu);
@@ -981,6 +976,10 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             updateTheme(currentTheme);
             setGreeting();
             setInterval(setGreeting, 60000);
+            
+            // Make sure we have the event listener for the profile button
+            const profileButton = document.getElementById('profileButton');
+            profileButton.addEventListener('click', toggleProfileMenu);
         });
     </script>
 </body>
