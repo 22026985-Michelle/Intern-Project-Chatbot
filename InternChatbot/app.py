@@ -33,12 +33,18 @@ def home():
     """Serve the main chat interface"""
     current_hour = datetime.now().hour
     greeting = "Good morning" if 5 <= current_hour < 12 else "Good afternoon" if 12 <= current_hour < 18 else "Having a late night?"
+    
+    # First get the user's email from session
+    user_email = session.get('user_email', '')
+    
+    # Get the first letter of the email for the avatar
+    avatar_letter = user_email[0].upper() if user_email else 'U'
+    
+    # Replace all placeholders in the template
     modified_template = HTML_TEMPLATE.replace('Having a late night?', greeting)
-    # Replace the default email with the logged in user's email
-    modified_template = modified_template.replace('user@example.com', session['user_email'])
-    # Get first letter of email for avatar
-    avatar_letter = session['user_email'][0].upper()
-    modified_template = modified_template.replace('<div class="user-avatar">M</div>', f'<div class="user-avatar">{avatar_letter}</div>')
+    modified_template = modified_template.replace('{avatar_letter}', avatar_letter)
+    modified_template = modified_template.replace('{email}', user_email)
+    
     return modified_template
 
 @app.route('/login')
