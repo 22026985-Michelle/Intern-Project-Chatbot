@@ -34,6 +34,11 @@ def home():
     current_hour = datetime.now().hour
     greeting = "Good morning" if 5 <= current_hour < 12 else "Good afternoon" if 12 <= current_hour < 18 else "Having a late night?"
     modified_template = HTML_TEMPLATE.replace('Having a late night?', greeting)
+    # Replace the default email with the logged in user's email
+    modified_template = modified_template.replace('user@example.com', session['user_email'])
+    # Get first letter of email for avatar
+    avatar_letter = session['user_email'][0].upper()
+    modified_template = modified_template.replace('<div class="user-avatar">M</div>', f'<div class="user-avatar">{avatar_letter}</div>')
     return modified_template
 
 @app.route('/login')

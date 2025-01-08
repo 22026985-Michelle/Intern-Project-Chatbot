@@ -511,9 +511,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
     </style>
 </head>
 <body data-theme="light">
-    <button class="theme-toggle" id="themeToggle">
-        Switch Theme
-    </button>
     <div class="sidebar-trigger"></div>
     <div class="sidebar">
         <div class="sidebar-content">
