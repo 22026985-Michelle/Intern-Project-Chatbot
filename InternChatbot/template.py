@@ -151,14 +151,13 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         }
 
         .user-profile {
-            margin-top: auto; 
+            margin-top: auto;
             padding: 1rem;
             border-top: 1px solid var(--border-color);
             background-color: var(--bg-color);
             width: 100%;
-            position: sticky; 
-            bottom: 0; 
-            z-index: 1; 
+            position: relative;
+            z-index: 2;      
         }
 
         .user-avatar {
@@ -181,7 +180,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             text-overflow: ellipsis;
             white-space: nowrap;
             max-width: 180px;
-}
+        }
 
         .sidebar {
             position: fixed;
@@ -192,15 +191,21 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             background-color: var(--bg-color);
             border-right: 1px solid var(--sidebar-border);
             box-shadow: 2px 0 10px var(--box-shadow);
-            display: flex;
-            flex-direction: column;
+            display: flex;           
+            flex-direction: column; 
             padding: 1rem;
-            overflow-y: auto;
-            overflow-x: hidden;
             z-index: 1000;
             transform: translateX(0);
             transition: transform 0.3s ease;
-            height: 100vh; /* Add this */
+            min-height: 100vh;     
+        }
+
+        .sidebar-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-height: 0;  
+            overflow-y: auto;
         }
 
         .sidebar:hover,
