@@ -704,7 +704,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         }
     </style>
 
-<script>
+    <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize DOM elements
             const userInput = document.getElementById('userInput');
