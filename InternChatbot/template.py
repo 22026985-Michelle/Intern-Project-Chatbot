@@ -121,8 +121,8 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
         .chat-list {
             width: 100%;
-            flex: 1; 
-            overflow-y: auto; 
+            flex: 1;
+            overflow-y: auto;
         }
 
         .chat-item {
@@ -157,7 +157,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             background-color: var(--bg-color);
             width: 100%;
             position: relative;
-            z-index: 2;      
+            z-index: 2;
         }
 
         .user-avatar {
@@ -192,20 +192,21 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             border-right: 1px solid var(--sidebar-border);
             box-shadow: 2px 0 10px var(--box-shadow);
             display: flex;           
-            flex-direction: column; 
+            flex-direction: column;  
             padding: 1rem;
             z-index: 1000;
             transform: translateX(0);
             transition: transform 0.3s ease;
-            min-height: 100vh;     
+            height: 100vh;
         }
 
         .sidebar-content {
             flex: 1;
             display: flex;
             flex-direction: column;
-            min-height: 0;  
             overflow-y: auto;
+            min-height: 0;
+            margin-bottom: 1rem;
         }
 
         .sidebar:hover,
@@ -547,6 +548,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             </div>
         </div>
     </div>
+    
     <div class="main-content">
         <div class="chat-container" id="chatContainer">
             <div class="greeting">
