@@ -704,7 +704,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         }
     </style>
 
-    <script>
+<script>
         document.addEventListener('DOMContentLoaded', function() {
             // Initialize DOM elements
             const userInput = document.getElementById('userInput');
@@ -724,34 +724,40 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             const appearanceMenu = document.getElementById('appearanceMenu');
             let isMenuOpen = false;
             let isOverSidebar = false;
-            let sidebarTimeout;
+            let sidebarTimeout = null;
 
             const BASE_URL = 'https://internproject-4fq7.onrender.com';
 
-            // Helper Functions
-            function setMessage(message) {
-                userInput.value = message;
-                userInput.focus();
+            // Sidebar Control Functions
+            function showSidebar() {
+                if (sidebarTimeout) {
+                    clearTimeout(sidebarTimeout);
+                    sidebarTimeout = null;
+                }
+                sidebar.style.transform = 'translateX(260px)';
             }
 
-            function updateTheme(theme) {
-                body.setAttribute('data-theme', theme);
-                localStorage.setItem('theme', theme);
-                themeToggle.textContent = `Switch to ${theme === 'light' ? 'Dark' : 'Light'} Theme`;
+            function hideSidebar() {
+                if (!isMenuOpen) {
+                    sidebar.style.transform = '';
+                }
             }
 
-            function toggleProfileMenu() {
+            // Profile and Menu Functions
+            function toggleProfileMenu(event) {
+                if (event) {
+                    event.stopPropagation();
+                }
                 isMenuOpen = !isMenuOpen;
+                
                 if (isMenuOpen) {
+                    showSidebar();
                     profileMenu.classList.add('active');
-                    sidebar.style.transform = 'translateX(260px)';
-                    isOverSidebar = true;
                 } else {
                     profileMenu.classList.remove('active');
                     appearanceMenu.classList.remove('active');
-                    isOverSidebar = false;
-                    if (!sidebar.matches(':hover')) {
-                        sidebar.style.transform = '';
+                    if (!isOverSidebar) {
+                        hideSidebar();
                     }
                 }
             }
@@ -760,32 +766,70 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 appearanceMenu.classList.toggle('active');
             }
 
-            // Make functions available globally
-            window.setTheme = function(theme) {
-                updateTheme(theme);
-                toggleProfileMenu();
+            // Theme Functions
+            function updateTheme(theme) {
+                body.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+                themeToggle.textContent = `Switch to ${theme === 'light' ? 'Dark' : 'Light'} Theme`;
             }
 
+            // Global Functions
             window.toggleAppearanceMenu = toggleAppearanceMenu;
+            
+            window.setTheme = function(theme) {
+                updateTheme(theme);
+                isMenuOpen = false;
+                profileMenu.classList.remove('active');
+                appearanceMenu.classList.remove('active');
+                if (!isOverSidebar) {
+                    hideSidebar();
+                }
+            };
 
-            // Event Listeners for profile menu
-            profileButton.addEventListener('click', (event) => {
-                event.stopPropagation();
-                toggleProfileMenu();
-            });
+            // Event Listeners
+            profileButton.addEventListener('click', toggleProfileMenu);
 
-            // Close menus when clicking outside
             document.addEventListener('click', (event) => {
-                const isClickInside = profileButton.contains(event.target) || 
-                                    profileMenu.contains(event.target) ||
-                                    event.target.closest('.sidebar');
-                
-                if (!isClickInside && isMenuOpen) {
+                const isClickInsideProfile = profileButton.contains(event.target);
+                const isClickInsideMenu = profileMenu.contains(event.target);
+                const isClickInsideSidebar = sidebar.contains(event.target);
+
+                if (!isClickInsideProfile && !isClickInsideMenu && !isClickInsideSidebar && isMenuOpen) {
                     toggleProfileMenu();
                 }
             });
 
-            // Greeting function
+            // Sidebar Event Listeners
+            sidebar.addEventListener('mouseenter', () => {
+                isOverSidebar = true;
+                showSidebar();
+            });
+
+            sidebar.addEventListener('mouseleave', () => {
+                isOverSidebar = false;
+                if (!isMenuOpen) {
+                    sidebarTimeout = setTimeout(hideSidebar, 300);
+                }
+            });
+
+            sidebarTrigger.addEventListener('mouseenter', () => {
+                isOverSidebar = true;
+                showSidebar();
+            });
+
+            sidebarTrigger.addEventListener('mouseleave', () => {
+                isOverSidebar = false;
+                if (!isMenuOpen) {
+                    sidebarTimeout = setTimeout(hideSidebar, 300);
+                }
+            });
+
+            // Helper Functions
+            function setMessage(message) {
+                userInput.value = message;
+                userInput.focus();
+            }
+
             function setGreeting() {
                 const hour = new Date().getHours();
                 if (hour >= 5 && hour < 12) {
@@ -797,7 +841,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 }
             }
 
-            // Message handling
+            // Message Functions
             function addMessage(content, isUser = false) {
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
@@ -889,13 +933,14 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 }
             }
 
-            // File handling
+            // File Handling Functions
             function removeFile() {
                 fileInput.value = '';
                 filePreview.innerHTML = '';
                 filePreview.classList.remove('active');
             }
 
+            // File Event Listeners
             fileButton.addEventListener('click', () => {
                 fileInput.click();
             });
@@ -913,7 +958,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 }
             });
 
-            // Input handling
+            // Input Event Listeners
             userInput.addEventListener('keydown', (e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
@@ -928,40 +973,15 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             sendButton.addEventListener('click', sendMessage);
 
-            // Sidebar functionality
-            function openSidebar() {
-                isOverSidebar = true;
-                clearTimeout(sidebarTimeout);
-                sidebar.style.transform = 'translateX(260px)';
-            }
-
-            function closeSidebar() {
-                if (!isMenuOpen) {
-                    isOverSidebar = false;
-                    sidebarTimeout = setTimeout(() => {
-                        if (!isOverSidebar && !isMenuOpen) {
-                            sidebar.style.transform = '';
-                        }
-                    }, 300);
-                }
-            }
-
-            // Sidebar event listeners
-            sidebar.addEventListener('mouseenter', openSidebar);
-            sidebar.addEventListener('mouseleave', closeSidebar);
-            sidebarTrigger.addEventListener('mouseenter', openSidebar);
-            sidebarTrigger.addEventListener('mouseleave', closeSidebar);
-
-            // Theme initialization
-            let currentTheme = localStorage.getItem('theme') || 'light';
-            updateTheme(currentTheme);
-
+            // Theme Event Listener
             themeToggle.addEventListener('click', () => {
                 currentTheme = currentTheme === 'light' ? 'dark' : 'light';
                 updateTheme(currentTheme);
             });
 
             // Initialize
+            let currentTheme = localStorage.getItem('theme') || 'light';
+            updateTheme(currentTheme);
             setGreeting();
             setInterval(setGreeting, 60000);
         });
