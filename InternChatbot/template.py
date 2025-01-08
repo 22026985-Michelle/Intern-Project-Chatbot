@@ -121,8 +121,8 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
         .chat-list {
             width: 100%;
-            flex: 1;
             overflow-y: auto;
+            min-height: 0; 
         }
 
         .chat-item {
@@ -151,7 +151,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
         }
 
         .user-profile {
-            margin-top: auto;
+            flex-shrink: 0; 
             padding: 1rem;
             border-top: 1px solid var(--border-color);
             background-color: var(--bg-color);
@@ -193,20 +193,19 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             box-shadow: 2px 0 10px var(--box-shadow);
             display: flex;           
             flex-direction: column;  
-            padding: 1rem;
             z-index: 1000;
             transform: translateX(0);
             transition: transform 0.3s ease;
             height: 100vh;
+            padding: 0; 
         }
 
         .sidebar-content {
-            flex: 1;
+            flex: 1 1 auto;
             display: flex;
             flex-direction: column;
             overflow-y: auto;
-            min-height: 0;
-            margin-bottom: 1rem;
+            padding: 1rem; 
         }
 
         .sidebar:hover,
