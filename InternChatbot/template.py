@@ -720,15 +720,14 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             const greetingText = document.querySelector('.greeting-text');
             const sidebar = document.querySelector('.sidebar');
             const sidebarTrigger = document.querySelector('.sidebar-trigger');
-            const themeToggle = document.getElementById('themeToggle');
             const body = document.body;
             const profileButton = document.getElementById('profileButton');
             const profileMenu = document.getElementById('profileMenu');
             const appearanceMenu = document.getElementById('appearanceMenu');
+
             let isMenuOpen = false;
             let isOverSidebar = false;
             let sidebarTimeout = null;
-            updateThemeDisplay();
 
             const BASE_URL = 'https://internproject-4fq7.onrender.com';
 
@@ -757,7 +756,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 if (isMenuOpen) {
                     showSidebar();
                     profileMenu.classList.add('active');
-                    appearanceMenu.classList.remove('active');  // Reset appearance menu
                 } else {
                     profileMenu.classList.remove('active');
                     appearanceMenu.classList.remove('active');
@@ -779,10 +777,15 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             }
 
             // Global Functions
-            window.toggleAppearanceMenu = toggleAppearanceMenu;
+            window.toggleAppearanceMenu = function() {
+                appearanceMenu.classList.toggle('active');
+            };
             
             window.setTheme = function(theme) {
-                updateTheme(theme);
+                body.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+                
+                // Close menus after theme change
                 isMenuOpen = false;
                 profileMenu.classList.remove('active');
                 appearanceMenu.classList.remove('active');
@@ -965,21 +968,12 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             sendButton.addEventListener('click', sendMessage);
 
-            // Theme Event Listener
-            themeToggle.addEventListener('click', () => {
-                currentTheme = currentTheme === 'light' ? 'dark' : 'light';
-                updateTheme(currentTheme);
-            });
 
             // Initialize
             let currentTheme = localStorage.getItem('theme') || 'light';
             updateTheme(currentTheme);
             setGreeting();
             setInterval(setGreeting, 60000);
-            
-            // Make sure we have the event listener for the profile button
-            const profileButton = document.getElementById('profileButton');
-            profileButton.addEventListener('click', toggleProfileMenu);
         });
     </script>
 </body>
