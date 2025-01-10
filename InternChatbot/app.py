@@ -83,25 +83,53 @@ def api_login():
         print(f"Error handling login: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
     
+
+def is_password_strong(password):
+    """
+    Validate password strength.
+    Password should:
+    - Be at least 8 characters long
+    - Contain at least one uppercase letter
+    - Contain at least one lowercase letter
+    - Contain at least one digit
+    - Contain at least one special character (!@#$%^&* etc.)
+    """
+    if len(password) < 8:
+        return False, "Password must be at least 8 characters long."
+    if not re.search(r"[A-Z]", password):
+        return False, "Password must contain at least one uppercase letter."
+    if not re.search(r"[a-z]", password):
+        return False, "Password must contain at least one lowercase letter."
+    if not re.search(r"\d", password):
+        return False, "Password must contain at least one digit."
+    if not re.search(r"[!@#$%^&*(),.?\":{}|<>]", password):
+        return False, "Password must contain at least one special character."
+    return True, None
+
 @app.route('/api/signup', methods=['POST'])
 def api_signup():
     try:
         data = request.get_json()
         if not data:
             return jsonify({"error": "No JSON data received"}), 400
-            
+
         email = data.get('email')
         password = data.get('password')
-        username = data.get('username')  # Add this line
+        username = data.get('username')
 
-        if not email or not password or not username:  # Modify this line
+        if not email or not password or not username:
             return jsonify({"error": "Email, password, and username are required"}), 400
 
+        # Validate password strength
+        is_strong, message = is_password_strong(password)
+        if not is_strong:
+            return jsonify({"error": message}), 400
+
         app.logger.info(f"Attempting to create user with email: {email}")
-        
+
         # Pass username to create_user
-        success, message = create_user(email, password, username)  # Modify this line
-        
+        success, message = create_user(email, password, username)
+
         if success:
             session['user_email'] = email
             app.logger.info(f"Successfully created user: {email}")
@@ -118,7 +146,7 @@ def api_signup():
     except Exception as e:
         app.logger.error(f"Error in signup: {str(e)}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
-
+    
 @app.route('/Settings')
 @login_required
 def settings_page():
