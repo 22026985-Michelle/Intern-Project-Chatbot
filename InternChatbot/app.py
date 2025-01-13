@@ -487,3 +487,15 @@ def update_chat_section(chat_id):
     except Exception as e:
         app.logger.error(f"Error updating chat section: {str(e)}")
         return jsonify({"error": str(e)}), 500
+    
+@app.route('/api/move-chat-to-recents/<int:chat_id>', methods=['PUT'])
+@login_required
+def move_chat_to_recents(chat_id):
+    """Move a chat to the 'Recents' section."""
+    try:
+        # Update the section of the chat to 'Recents'
+        update_query = "UPDATE chats SET section = 'Recents' WHERE chat_id = %s"
+        execute_query(update_query, (chat_id,))
+        return jsonify({"status": "success"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500

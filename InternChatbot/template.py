@@ -1017,7 +1017,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 try {
                     // Create new chat if this is the first message
                     if (!this.currentChatId) {
-                        console.log('Creating new chat...');
                         const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
                             method: 'POST',
                             headers: {
@@ -1032,56 +1031,34 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                             throw new Error(errorData.error || 'Failed to create chat');
                         }
                         
-                        const data = await createResponse.json();
-                        console.log('Create chat response:', data);
-                        
-                        if (!data.chat_id) {
-                            throw new Error('No chat ID received from server');
-                        }
-                        
-                        const data = await createResponse.json();
-                        console.log('Create chat response:', data);
-                        this.currentChatId = data.chat_id;
-
-                        // Generate and set chat title based on first message
+                        const creationData = await createResponse.json();
+                        this.currentChatId = creationData.chat_id;
                         const title = await this.generateChatTitle(message);
                         await this.updateChatTitle(this.currentChatId, title);
                     }
 
-                    // Add user message to UI and send to backend
-                    this.addMessageToUI(message, true);
+                    // Send the message
+                    await this.addMessage(this.currentChatId, message, true);
                     input.value = '';
 
-                    const response = await fetch(`${this.BASE_URL}/api/chat`, {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify({ 
-                            chat_id: this.currentChatId,
-                            message: message 
-                        })
-                    });
-
-                    if (!response.ok) throw new Error('Failed to send message');
-                    const data = await response.json();
-                    this.addMessageToUI(data.response, false);
+                    // Move previous chat to 'Recent' if applicable
+                    if (this.previousChatId && this.previousChatId !== this.currentChatId) {
+                        await this.moveToRecents(this.previousChatId);
+                    }
+                    this.previousChatId = this.currentChatId;
 
                     // Refresh sidebar to show updated chat list
                     await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error sending message:', error);
                     this.addMessageToUI(`Error: ${error.message}`, false);
-                    
-                    // If we failed to create chat, clear the current chat ID
                     if (error.message.includes('Failed to create chat')) {
                         this.currentChatId = null;
                     }
-                    
-                    // Keep the message in the input box if there was an error
-                    input.value = message;
+                    input.value = message;  // Keep the message in the input box if there was an error
                 }
             }
+
 
             addMessageToUI(content, isUser) {
                 const messagesList = document.getElementById('messagesList');
