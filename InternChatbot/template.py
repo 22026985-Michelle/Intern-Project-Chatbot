@@ -758,12 +758,10 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             bindEvents() {
                 // New chat button
-                document.getElementById('newChatButton').addEventListener('click', () => this.createNewChat());
+                document.getElementById('newChatButton').addEventListener('click', () => this.handleNewChat());
                 
-                // Send button
+                // Send button and input
                 document.getElementById('sendButton').addEventListener('click', () => this.sendMessage());
-                
-                // Enter key in input
                 document.getElementById('userInput').addEventListener('keydown', (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();
@@ -774,7 +772,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 // File handling
                 const fileButton = document.getElementById('fileButton');
                 const fileInput = document.getElementById('fileInput');
-                
                 fileButton.addEventListener('click', () => fileInput.click());
                 fileInput.addEventListener('change', this.handleFileSelect.bind(this));
             }
@@ -889,48 +886,114 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 return div;
             }
 
+            async handleNewChat() {
+                try {
+                    // If there's a current chat, move it to recents first
+                    if (this.currentChatId) {
+                        // Get the chat's messages to determine if it's empty
+                        const messages = await this.getChatMessages(this.currentChatId);
+                        if (messages && messages.length > 0) {
+                            await this.moveToRecents(this.currentChatId);
+                        } else {
+                            // If the current chat is empty, delete it
+                            await this.deleteChat(this.currentChatId, true); // silent delete
+                        }
+                    }
+
+                    // Clear the current UI
+                    document.getElementById('messagesList').innerHTML = '';
+                    document.getElementById('userInput').value = '';
+                    this.currentChatId = null;
+
+                    // Don't create a new chat immediately - wait for the first message
+                    await this.loadRecentChats();
+                } catch (error) {
+                    console.error('Error handling new chat:', error);
+                }
+            }
+
+            async moveToRecents(chatId) {
+                try {
+                    // Get current chat info
+                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`);
+                    if (!response.ok) throw new Error('Failed to get chat info');
+                    
+                    // Update the chat's section in the database
+                    await fetch(`${this.BASE_URL}/api/chat/${chatId}/section`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ section: 'Recents' })
+                    });
+
+                    // Maintain only the 5 most recent chats
+                    const recentChats = await this.getRecentChats();
+                    if (recentChats.length >= 5) {
+                        const oldestChat = recentChats[recentChats.length - 1];
+                        await this.deleteChat(oldestChat.chat_id, true);
+                    }
+                } catch (error) {
+                    console.error('Error moving chat to recents:', error);
+                }
+            }
+
+            async getRecentChats() {
+                try {
+                    const response = await fetch(`${this.BASE_URL}/api/chat-history`);
+                    if (!response.ok) throw new Error('Failed to fetch chats');
+                    const data = await response.json();
+                    return data.chats || [];
+                } catch (error) {
+                    console.error('Error getting recent chats:', error);
+                    return [];
+                }
+            }
+            
             async sendMessage() {
                 const input = document.getElementById('userInput');
                 const message = input.value.trim();
                 if (!message) return;
 
                 try {
-                    // If no current chat, create one
+                    // Create new chat if this is the first message
                     if (!this.currentChatId) {
-                        await this.createNewChat();
-                    }
+                        const response = await fetch(`${this.BASE_URL}/api/create-chat`, {
+                            method: 'POST'
+                        });
+                        if (!response.ok) throw new Error('Failed to create chat');
+                        const data = await response.json();
+                        this.currentChatId = data.chat_id;
 
-                    // Generate title if this is the first message
-                    const messagesList = document.getElementById('messagesList');
-                    const isFirstMessage = !messagesList.children.length;
-                    
-                    if (isFirstMessage) {
+                        // Generate and set chat title based on first message
                         const title = await this.generateChatTitle(message);
                         await this.updateChatTitle(this.currentChatId, title);
                     }
 
-                    // Add user message to UI
+                    // Add user message to UI and send to backend
                     this.addMessageToUI(message, true);
-                    
+                    input.value = '';
+
                     const response = await fetch(`${this.BASE_URL}/api/chat`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
                         },
-                        body: JSON.stringify({ message })
+                        body: JSON.stringify({ 
+                            chat_id: this.currentChatId,
+                            message: message 
+                        })
                     });
 
                     if (!response.ok) throw new Error('Failed to send message');
-                    
                     const data = await response.json();
                     this.addMessageToUI(data.response, false);
-                    
-                    // Clear input and refresh sidebar
-                    input.value = '';
+
+                    // Refresh sidebar to show updated chat list
                     await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error sending message:', error);
-                    this.addMessageToUI(`Error: ${error.message}`, false);
+                    this.addMessageToUI('Error: Failed to send message', false);
                 }
             }
 
