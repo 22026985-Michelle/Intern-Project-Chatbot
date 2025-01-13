@@ -561,23 +561,21 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
     <div class="sidebar-trigger"></div>
     <div class="sidebar">
         <div class="sidebar-content">
-            <div class="sidebar-content">
-                <div class="sidebar-header">
-                    <button class="new-chat-button" id="newChatButton">
-                        <span>⊕</span>
-                        Start new chat
-                    </button>
-                </div>
-
-                <div class="section-title">Starred</div>
-                <div class="chat-list" id="starredChats">
-                    <div class="chat-item placeholder-text">Star projects and chats you use often</div>
-                </div>
-
-                <div class="section-title">Recents</div>
-                <div class="chat-list" id="recentChats">
-                </div>
+            <div class="sidebar-header">
+                <button class="new-chat-button" id="newChatButton">
+                    <span>⊕</span>
+                    Start new chat
+                </button>
             </div>
+
+            <div class="section-title">Starred</div>
+            <div class="chat-list" id="starredChats">
+                <div class="chat-item placeholder-text">Star projects and chats you use often</div>
+            </div>
+
+            <div class="section-title">Recents</div>
+            <div class="chat-list" id="recentChats"></div>
+        </div>
         
         <div class="user-profile" id="userProfile">
             <button class="profile-button" id="profileButton">
