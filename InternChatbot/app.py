@@ -280,39 +280,45 @@ def create_chat():
         app.logger.error(f"Error creating chat: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-
 @app.route('/api/chat-history', methods=['GET'])
 @login_required
 def get_chat_history():
     try:
         user_email = session.get('user_email')
         if not user_email:
-            return jsonify({"chats": []}), 200
+            app.logger.error("User email not found in session")
+            return jsonify({"error": "User not authenticated"}), 401
 
         user_query = "SELECT user_id FROM users WHERE email = %s"
         user_result = execute_query(user_query, (user_email,))
         if not user_result:
-            return jsonify({"chats": []}), 200
+            app.logger.error(f"No user found for email: {user_email}")
+            return jsonify({"error": "User not found"}), 404
 
         user_id = user_result[0]['user_id']
 
-        # Query for chat history
         chats_query = """
-        SELECT chat_id, COALESCE(title, 'New Chat') AS title, section, created_at, updated_at,
-               (SELECT content FROM messages WHERE chat_id = c.chat_id ORDER BY created_at DESC LIMIT 1) AS last_message
+        SELECT c.chat_id, COALESCE(c.title, 'New Chat') AS title, c.section, c.created_at, c.updated_at,
+               COALESCE(m.content, '') AS last_message
         FROM chats c
-        WHERE user_id = %s
-        ORDER BY updated_at DESC
+        LEFT JOIN (
+            SELECT chat_id, content
+            FROM messages
+            WHERE chat_id IN (SELECT chat_id FROM chats)
+            ORDER BY created_at DESC LIMIT 1
+        ) m ON c.chat_id = m.chat_id
+        WHERE c.user_id = %s
+        ORDER BY c.updated_at DESC
         LIMIT 5
         """
+        app.logger.info(f"Executing chat history query for user_id: {user_id}")
         chats = execute_query(chats_query, (user_id,))
 
+        app.logger.info(f"Chat history retrieved: {chats}")
         return jsonify({"chats": chats or []}), 200
     except Exception as e:
-        app.logger.error(f"Error getting chat history: {str(e)}")
+        app.logger.error(f"Error in /api/chat-history: {str(e)}")
         return jsonify({"chats": [], "error": "Internal Server Error"}), 500
-
-
 
 
 

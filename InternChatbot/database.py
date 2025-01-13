@@ -37,25 +37,28 @@ def get_db_connection():
 
 def execute_query(query, params=None):
     connection = get_db_connection()
-    if connection:
-        cursor = None
-        try:
-            cursor = connection.cursor(dictionary=True)
-            cursor.execute(query, params)
-            if query.lower().startswith('select'):
-                result = cursor.fetchall()
-                return result
-            else:
-                connection.commit()
-                return cursor.rowcount
-        except Error as e:
-            logger.error(f"Error executing query: {str(e)}")
-            return None
-        finally:
-            if cursor:
-                cursor.close()
-            if connection.is_connected():
-                connection.close()
+    if not connection:
+        logger.error("Failed to connect to the database")
+        return None
+
+    try:
+        cursor = connection.cursor(dictionary=True)
+        cursor.execute(query, params)
+        if query.strip().lower().startswith('select'):
+            result = cursor.fetchall()
+            return result
+        else:
+            connection.commit()
+            return cursor.rowcount
+    except Error as e:
+        logger.error(f"Database query error: {e}")
+        raise  # Re-raise the error for debugging
+    finally:
+        if cursor:
+            cursor.close()
+        if connection.is_connected():
+            connection.close()
+
 
 
 
