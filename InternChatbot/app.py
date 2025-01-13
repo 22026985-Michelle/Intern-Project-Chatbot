@@ -292,17 +292,22 @@ def create_chat():
 def get_chat_history():
     try:
         user_email = session.get('user_email')
+        app.logger.info(f"Getting chat history for user: {user_email}")
+        
         if not user_email:
-            return jsonify({"chats": []}), 200
+            return jsonify({"chats": []}), 200  # Return empty list for no user
         
         user_query = "SELECT user_id FROM users WHERE email = %s"
-        user_result = execute_query(user_query, (user_email,), is_select=True)
+        user_result = execute_query(user_query, (user_email,))
         
         if not user_result:
-            return jsonify({"chats": []}), 200
+            app.logger.warning(f"No user found for email: {user_email}")
+            return jsonify({"chats": []}), 200  # Return empty list for no user
             
         user_id = user_result[0]['user_id']
+        app.logger.info(f"Found user_id: {user_id}")
         
+        # Get recent chats with simpler query
         chats_query = """
         SELECT 
             c.chat_id,
@@ -326,13 +331,14 @@ def get_chat_history():
         LIMIT 5
         """
         
-        chats = execute_query(chats_query, (user_id,), is_select=True)
+        chats = execute_query(chats_query, (user_id,))
+        app.logger.info(f"Retrieved {len(chats) if chats else 0} chats")
+        
         return jsonify({"chats": chats or []}), 200
         
     except Exception as e:
-        logger.error(f"Error getting chat history: {str(e)}")
-        return jsonify({"chats": [], "error": str(e)}), 200
-
+        app.logger.error(f"Error getting chat history: {str(e)}")
+        return jsonify({"chats": [], "error": str(e)}), 200  # Return empty list with error
 
 
 @app.route('/api/chat/<int:chat_id>/messages', methods=['GET'])

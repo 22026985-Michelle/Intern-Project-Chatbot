@@ -35,20 +35,18 @@ def get_db_connection():
         logger.error(f"Error connecting to MySQL: {str(e)}")
         return None
 
-def execute_query(query, params=None, is_select=False):
+def execute_query(query, params=None):
     connection = get_db_connection()
     if connection:
         cursor = None
         try:
             cursor = connection.cursor(dictionary=True)
             cursor.execute(query, params)
-            if is_select:
+            if query.lower().startswith('select'):
                 result = cursor.fetchall()
                 return result
             else:
                 connection.commit()
-                if query.lower().startswith('insert'):
-                    return cursor.lastrowid
                 return cursor.rowcount
         except Error as e:
             logger.error(f"Error executing query: {str(e)}")
