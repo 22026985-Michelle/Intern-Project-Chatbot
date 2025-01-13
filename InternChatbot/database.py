@@ -138,52 +138,83 @@ def create_new_chat(user_id):
 
 def add_message(chat_id, content, is_user=True):
     """Add a message to a chat session"""
-    logger.info(f"Adding message to chat_id: {chat_id}, is_user: {is_user}")
-    
-    query = """
-    INSERT INTO messages (chat_id, content, is_user, created_at)
-    VALUES (%s, %s, %s, NOW())
-    """
+    connection = None
+    cursor = None
     try:
-        result = execute_query(query, (chat_id, content, is_user))
-        logger.info(f"Message insert result: {result}")
+        connection = get_db_connection()
+        if not connection:
+            return False
+
+        cursor = connection.cursor(dictionary=True)
         
-        # Update chat's updated_at timestamp
+        # Add message
+        message_query = """
+        INSERT INTO messages (chat_id, content, is_user, created_at)
+        VALUES (%s, %s, %s, NOW())
+        """
+        cursor.execute(message_query, (chat_id, content, is_user))
+        
+        # Update chat timestamp
         update_query = """
         UPDATE chats SET updated_at = NOW()
         WHERE chat_id = %s
         """
-        update_result = execute_query(update_query, (chat_id,))
-        logger.info(f"Chat update result: {update_result}")
+        cursor.execute(update_query, (chat_id,))
         
+        connection.commit()
         return True
-    except Exception as e:
-        logger.error(f"Error adding message: {str(e)}")
+
+    except Error as e:
+        logger.error(f"Error in add_message: {str(e)}")
+        if connection:
+            connection.rollback()
         return False
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close()
     
 def get_recent_chats(user_id, limit=5):
     """Get recent chats for a user"""
-    query = """
-    SELECT c.chat_id, 
-           c.title,
-           c.is_starred,
-           COALESCE(m.content, 'New Chat') as last_message,
-           c.created_at,
-           c.updated_at
-    FROM chats c
-    LEFT JOIN (
-        SELECT chat_id, content, created_at,
-               ROW_NUMBER() OVER (PARTITION BY chat_id ORDER BY created_at DESC) as rn
-        FROM messages
-    ) m ON c.chat_id = m.chat_id AND m.rn = 1
-    WHERE c.user_id = %s
-    ORDER BY c.is_starred DESC, c.updated_at DESC
-    LIMIT %s
-    """
-    logger.info(f"Getting recent chats for user_id: {user_id}")
-    result = execute_query(query, (user_id, limit))
-    logger.info(f"Recent chats result: {result}")
-    return result if result else []  
+    connection = None
+    cursor = None
+    try:
+        connection = get_db_connection()
+        if not connection:
+            return []
+
+        cursor = connection.cursor(dictionary=True)
+        
+        query = """
+        SELECT c.chat_id, 
+               c.title,
+               c.is_starred,
+               c.created_at,
+               c.updated_at,
+               (SELECT content 
+                FROM messages m 
+                WHERE m.chat_id = c.chat_id 
+                ORDER BY created_at DESC 
+                LIMIT 1) as last_message
+        FROM chats c
+        WHERE c.user_id = %s
+        ORDER BY c.is_starred DESC, c.updated_at DESC
+        LIMIT %s
+        """
+        
+        cursor.execute(query, (user_id, limit))
+        result = cursor.fetchall()
+        return result or []
+
+    except Error as e:
+        logger.error(f"Error in get_recent_chats: {str(e)}")
+        return []
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close() 
 
 def get_chat_messages(chat_id):
     """Get all messages for a specific chat"""

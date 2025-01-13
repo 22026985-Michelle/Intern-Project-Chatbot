@@ -142,64 +142,26 @@ def logout():
 @app.route('/api/chat', methods=['POST'])
 @login_required
 def chat():
-    """Handle chat requests"""
     try:
         if not client:
             return jsonify({"error": "Anthropic client not initialized"}), 500
 
-        # Get user ID from email in session
-        user_email = session.get('user_email')
-        if not user_email:
-            app.logger.error("No user_email found in session")
-            return jsonify({"error": "User not authenticated"}), 401
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
             
-        app.logger.info(f"Looking up user with email: {user_email}")
-        user_query = "SELECT user_id FROM users WHERE email = %s"
-        user_result = execute_query(user_query, (user_email,))
-        
-        if not user_result:
-            app.logger.error(f"No user found for email: {user_email}")
-            return jsonify({"error": "User not found"}), 404
-        
-        user_id = user_result[0]['id']
-        app.logger.info(f"Found user_id: {user_id}")
-
-        # Get or create chat session
-        chat_query = "SELECT chat_id FROM chats WHERE user_id = %s ORDER BY updated_at DESC LIMIT 1"
-        chat_result = execute_query(chat_query, (user_id,))
-        
-        if not chat_result:
-            app.logger.info(f"Creating new chat for user_id: {user_id}")
-            chat_id = create_new_chat(user_id)
-            if not chat_id:
-                app.logger.error("Failed to create new chat")
-                return jsonify({"error": "Failed to create chat session"}), 500
-        else:
-            chat_id = chat_result[0]['chat_id']
+        message = data.get('message')
+        if not message:
+            return jsonify({"error": "No message provided"}), 400
             
-        # Get message content
-        if request.content_type and 'multipart/form-data' in request.content_type:
-            message = request.form.get('message', '')
-            file_content = None
-            
-            if 'file' in request.files:
-                file = request.files['file']
-                if file:
-                    file_content = file.read().decode('utf-8')
+        chat_id = data.get('chat_id')
+        if not chat_id:
+            return jsonify({"error": "No chat_id provided"}), 400
 
-            content = message
-            if file_content:
-                content = f"File content:\n{file_content}\n\nUser message:\n{message}"
-        else:
-            data = request.get_json()
-            content = data.get('message', '')
-
-        if not content:
-            return jsonify({"error": "Message content missing"}), 400
-
-        # Store user message
-        app.logger.info(f"Adding user message to chat_id: {chat_id}")
-        add_message(chat_id, content, is_user=True)
+        # Add user message
+        success = add_message(chat_id, message, is_user=True)
+        if not success:
+            return jsonify({"error": "Failed to save user message"}), 500
 
         # Get bot response
         response = client.messages.create(
@@ -209,24 +171,22 @@ def chat():
             system="You are the Intern Assistant Chatbot, a helpful AI designed to assist interns and junior employees with their tasks. Be friendly and professional.",
             messages=[{
                 "role": "user",
-                "content": content
+                "content": message
             }]
         )
 
         bot_response = response.content[0].text
         
         # Store bot response
-        app.logger.info(f"Adding bot response to chat_id: {chat_id}")
-        add_message(chat_id, bot_response, is_user=False)
-
-        # Cleanup old chats
-        cleanup_old_chats(user_id)
+        success = add_message(chat_id, bot_response, is_user=False)
+        if not success:
+            return jsonify({"error": "Failed to save bot response"}), 500
 
         return jsonify({"response": bot_response})
 
     except Exception as e:
         app.logger.error(f"Error in chat endpoint: {str(e)}")
-        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+        return jsonify({"error": str(e)}), 500
     
     
 @app.route('/api/get-profile')
@@ -342,12 +302,10 @@ def get_chat_history():
             return jsonify({"error": "User not found"}), 404
             
         user_id = user_result[0]['user_id']
-        app.logger.info(f"Found user_id: {user_id}")
         
-        # Get recent chats (limit to 5)
+        # Get recent chats
         chats = get_recent_chats(user_id, limit=5)
         
-        # Return empty array if no chats found
         return jsonify({"chats": chats or []})
         
     except Exception as e:
