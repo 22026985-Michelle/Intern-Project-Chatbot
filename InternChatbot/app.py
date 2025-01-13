@@ -296,21 +296,32 @@ if __name__ == '__main__':
 def create_chat():
     try:
         user_email = session.get('user_email')
+        if not user_email:
+            app.logger.error("No user_email found in session")
+            return jsonify({"error": "User not authenticated"}), 401
+            
         user_query = "SELECT user_id FROM users WHERE email = %s"
         user_result = execute_query(user_query, (user_email,))
         
         if not user_result:
+            app.logger.error(f"No user found for email: {user_email}")
             return jsonify({"error": "User not found"}), 404
             
         user_id = user_result[0]['user_id']
+        app.logger.info(f"Creating new chat for user_id: {user_id}")
         
-        # Create new chat
+        # Create new chat using the database function
         chat_id = create_new_chat(user_id)
         
         if not chat_id:
-            return jsonify({"error": "Failed to create chat"}), 500
+            app.logger.error("Failed to create chat")
+            return jsonify({"error": "Failed to create chat session"}), 500
             
-        return jsonify({"status": "success", "chat_id": chat_id})
+        return jsonify({
+            "status": "success", 
+            "chat_id": chat_id,
+            "message": "Chat created successfully"
+        })
         
     except Exception as e:
         app.logger.error(f"Error creating chat: {str(e)}")

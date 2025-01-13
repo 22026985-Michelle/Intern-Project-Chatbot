@@ -100,39 +100,45 @@ def create_new_chat(user_id):
     """Create a new chat session for a user"""
     logger.info(f"Creating new chat for user_id: {user_id}")
     
-    # First, check how many chats the user has
-    count_query = "SELECT COUNT(*) as chat_count FROM chats WHERE user_id = %s"
-    count_result = execute_query(count_query, (user_id,))
-    
-    if count_result and count_result[0]['chat_count'] >= 100:
-        # If user has too many chats, delete the oldest ones
-        cleanup_old_chats(user_id, keep_count=95)
-    
-    query = """
-    INSERT INTO chats (user_id, created_at, updated_at)
-    VALUES (%s, NOW(), NOW())
-    """
-    rows_affected = execute_query(query, (user_id,))
-    
-    if not rows_affected:
-        logger.error("Failed to create new chat")
+    try:
+        # First, check how many chats the user has
+        count_query = "SELECT COUNT(*) as chat_count FROM chats WHERE user_id = %s"
+        count_result = execute_query(count_query, (user_id,))
+        
+        if count_result and count_result[0]['chat_count'] >= 100:
+            # If user has too many chats, delete the oldest ones
+            cleanup_old_chats(user_id, keep_count=95)
+        
+        # Insert new chat
+        insert_query = """
+        INSERT INTO chats (user_id, created_at, updated_at, section)
+        VALUES (%s, NOW(), NOW(), 'Today')
+        """
+        result = execute_query(insert_query, (user_id,))
+        
+        if not result:
+            logger.error("Failed to insert new chat")
+            return None
+            
+        # Get the created chat_id
+        get_chat_query = """
+        SELECT chat_id FROM chats 
+        WHERE user_id = %s 
+        ORDER BY created_at DESC 
+        LIMIT 1
+        """
+        result = execute_query(get_chat_query, (user_id,))
+        
+        if result and len(result) > 0:
+            chat_id = result[0]['chat_id']
+            logger.info(f"Created new chat with ID: {chat_id}")
+            return chat_id
+            
         return None
-    
-    # Get the created chat_id
-    get_chat_query = """
-    SELECT chat_id FROM chats 
-    WHERE user_id = %s 
-    ORDER BY created_at DESC 
-    LIMIT 1
-    """
-    result = execute_query(get_chat_query, (user_id,))
-    
-    if result:
-        chat_id = result[0]['chat_id']
-        logger.info(f"Created new chat with ID: {chat_id}")
-        return chat_id
-    
-    return None
+        
+    except Exception as e:
+        logger.error(f"Error creating new chat: {str(e)}")
+        return None
 
 def add_message(chat_id, content, is_user=True):
     """Add a message to a chat session"""

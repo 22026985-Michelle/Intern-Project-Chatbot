@@ -912,6 +912,18 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 }
             }
 
+            async getChatMessages(chatId) {
+                try {
+                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`);
+                    if (!response.ok) throw new Error('Failed to get chat messages');
+                    const data = await response.json();
+                    return data.messages;
+                } catch (error) {
+                    console.error('Error getting chat messages:', error);
+                    return [];
+                }
+            }
+
             async moveToRecents(chatId) {
                 try {
                     // Get current chat info
@@ -958,11 +970,21 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 try {
                     // Create new chat if this is the first message
                     if (!this.currentChatId) {
-                        const response = await fetch(`${this.BASE_URL}/api/create-chat`, {
-                            method: 'POST'
+                        const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            },
+                            credentials: 'include'
                         });
-                        if (!response.ok) throw new Error('Failed to create chat');
-                        const data = await response.json();
+                        
+                        if (!createResponse.ok) {
+                            const errorData = await createResponse.json();
+                            throw new Error(errorData.error || 'Failed to create chat');
+                        }
+                        
+                        const data = await createResponse.json();
+                        console.log('Create chat response:', data);
                         this.currentChatId = data.chat_id;
 
                         // Generate and set chat title based on first message
@@ -993,7 +1015,15 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error sending message:', error);
-                    this.addMessageToUI('Error: Failed to send message', false);
+                    this.addMessageToUI(`Error: ${error.message}`, false);
+                    
+                    // If we failed to create chat, clear the current chat ID
+                    if (error.message.includes('Failed to create chat')) {
+                        this.currentChatId = null;
+                    }
+                    
+                    // Keep the message in the input box if there was an error
+                    input.value = message;
                 }
             }
 
