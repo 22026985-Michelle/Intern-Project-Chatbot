@@ -827,11 +827,13 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     }
 
                     const data = await response.json();
+                    console.log('Loaded chats:', data); // Debugging
                     this.updateSidebarChats(data.chats || []);
                 } catch (error) {
                     console.error('Error loading recent chats:', error);
                 }
             }
+
 
             updateNowChat(chats) {
                 const nowSection = document.getElementById('nowChats');

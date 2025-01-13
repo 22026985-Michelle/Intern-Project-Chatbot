@@ -294,6 +294,10 @@ def get_chat_history():
             return jsonify({"error": "User not found"}), 404
             
         user_id = user_result[0]['user_id']
+
+        # Update chat sections before retrieving
+        update_chat_sections(user_id)
+
         chats = get_recent_chats(user_id)
         
         # Format the response
@@ -313,8 +317,9 @@ def get_chat_history():
         return jsonify({"chats": formatted_chats})
         
     except Exception as e:
-        app.logger.error(f"Error in chat history: {str(e)}")  # Fixed closing parenthesis
+        app.logger.error(f"Error in chat history: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
 
 
 @app.route('/api/chat/<int:chat_id>/messages', methods=['GET'])

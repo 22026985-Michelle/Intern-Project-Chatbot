@@ -175,59 +175,49 @@ def add_message(chat_id, content, is_user=True):
         if connection and connection.is_connected():
             connection.close()
     
-def get_recent_chats(user_id):
-    """Get recent chats for a user, properly separated by section"""
+def get_recent_chats(user_id, limit=5):
     query = """
-    WITH OrderedChats AS (
+    WITH LatestMessages AS (
         SELECT 
-            chat_id,
-            title,
-            section,
-            created_at,
-            updated_at,
-            is_starred,
-            ROW_NUMBER() OVER (ORDER BY updated_at DESC) as row_num
-        FROM chats
-        WHERE user_id = %s
-    )
-    SELECT 
-        oc.chat_id,
-        COALESCE(oc.title, 'New Chat') as title,
-        CASE 
-            WHEN oc.row_num = 1 THEN 'Now'
-            ELSE 'Recents'
-        END as section,
-        oc.created_at,
-        oc.updated_at,
-        oc.is_starred,
-        m.content as last_message
-    FROM OrderedChats oc
-    LEFT JOIN (
-        SELECT chat_id, content
-        FROM messages m1
+            chat_id, 
+            content AS last_message, 
+            created_at AS last_message_time
+        FROM messages
         WHERE (chat_id, created_at) IN (
             SELECT chat_id, MAX(created_at)
             FROM messages
             GROUP BY chat_id
         )
-    ) m ON oc.chat_id = m.chat_id
-    WHERE oc.row_num <= 5
-    ORDER BY 
-        CASE WHEN oc.row_num = 1 THEN 0 ELSE 1 END,
-        oc.updated_at DESC;
+    )
+    SELECT 
+        c.chat_id,
+        COALESCE(c.title, 'New Chat') AS title,
+        CASE
+            WHEN c.updated_at > (NOW() - INTERVAL 10 MINUTE) THEN 'Now'
+            ELSE 'Recents'
+        END AS section,
+        c.created_at,
+        c.updated_at,
+        c.is_starred,
+        lm.last_message
+    FROM chats c
+    LEFT JOIN LatestMessages lm ON c.chat_id = lm.chat_id
+    WHERE c.user_id = %s
+    ORDER BY c.is_starred DESC, c.updated_at DESC
+    LIMIT %s
+    """
+    return execute_query(query, (user_id, limit))
+
+
+def update_chat_sections(user_id):
+    """Move inactive chats from 'Now' to 'Recents'"""
+    query = """
+    UPDATE chats
+    SET section = 'Recents'
+    WHERE user_id = %s AND updated_at <= NOW() - INTERVAL 10 MINUTE AND section = 'Now'
     """
     return execute_query(query, (user_id,))
 
-
-def move_chat_to_recents(chat_id):
-    """Move a chat to the Recents section"""
-    update_query = """
-    UPDATE chats 
-    SET section = 'Recents', 
-        updated_at = NOW() 
-    WHERE chat_id = %s
-    """
-    return execute_query(update_query, (chat_id,))
 
 def get_chat_messages(chat_id):
     """Get all messages for a specific chat"""
