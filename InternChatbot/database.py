@@ -43,16 +43,20 @@ def execute_query(query, params=None):
             cursor = connection.cursor(dictionary=True)
             cursor.execute(query, params)
             if query.lower().startswith('select'):
-                result = cursor.fetchall()  # Ensure fetching all results
+                result = cursor.fetchall()
                 return result
             else:
                 connection.commit()
                 return cursor.rowcount
+        except Error as e:
+            logger.error(f"Error executing query: {str(e)}")
+            return None
         finally:
             if cursor:
                 cursor.close()
             if connection.is_connected():
                 connection.close()
+
 
 
 def create_user(email, password, username):  # Add username parameter
@@ -233,3 +237,4 @@ def get_user_by_email(email):
     result = execute_query(query, (email,))
     logger.info(f"User lookup result: {result}")
     return result[0] if result else None
+

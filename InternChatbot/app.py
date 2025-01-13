@@ -340,6 +340,7 @@ def get_chat_history():
         app.logger.error(f"Error getting chat history: {str(e)}")
         return jsonify({"chats": [], "error": str(e)}), 200  # Return empty list with error
 
+
 @app.route('/api/chat/<int:chat_id>/messages', methods=['GET'])
 @login_required
 def get_chat_messages(chat_id):
