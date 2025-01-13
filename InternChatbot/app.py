@@ -296,18 +296,22 @@ def get_chat_history():
 
         user_id = user_result[0]['user_id']
 
+        # Query for chat history
         chats_query = """
-        SELECT chat_id, title, section, created_at, updated_at,
-               (SELECT content FROM messages WHERE chat_id = c.chat_id ORDER BY created_at DESC LIMIT 1) as last_message
+        SELECT chat_id, COALESCE(title, 'New Chat') AS title, section, created_at, updated_at,
+               (SELECT content FROM messages WHERE chat_id = c.chat_id ORDER BY created_at DESC LIMIT 1) AS last_message
         FROM chats c
         WHERE user_id = %s
-        ORDER BY section DESC, updated_at DESC
+        ORDER BY updated_at DESC
+        LIMIT 5
         """
         chats = execute_query(chats_query, (user_id,))
+
         return jsonify({"chats": chats or []}), 200
     except Exception as e:
         app.logger.error(f"Error getting chat history: {str(e)}")
-        return jsonify({"chats": [], "error": str(e)}), 500
+        return jsonify({"chats": [], "error": "Internal Server Error"}), 500
+
 
 
 

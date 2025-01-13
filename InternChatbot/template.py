@@ -8,53 +8,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
     <title>NCS Internship AI Chatbot</title>
     <style>
         /* Theme Variables */
-        /* Recents Section Styles */
-        #recentChats {
-            margin-top: 1rem;
-            padding: 0;
-            list-style: none;
-        }
-
-        .chat-item {
-            padding: 0.75rem 1rem;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            border-radius: 8px;
-            transition: background-color 0.2s ease;
-        }
-
-        .chat-item:hover {
-            background-color: var(--hover-color);
-        }
-
-        .chat-title {
-            font-size: 1rem;
-            font-weight: 500;
-            color: var(--text-color);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-        }
-
-        .chat-actions {
-            display: flex;
-            gap: 0.5rem;
-        }
-
-        .chat-action-button {
-            background: none;
-            border: none;
-            cursor: pointer;
-            font-size: 1.2rem;
-            color: var(--text-color);
-        }
-
-        .chat-action-button:hover {
-            color: var(--send-button-bg);
-        }
-
         :root[data-theme="light"] {
             --bg-color: #FFFFFF;
             --text-color: #1C1C1C;
@@ -870,10 +823,8 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     console.log('Chat history response:', data);
 
                     if (response.ok) {
-                        // Update "Recents" section
+                        // Update "Recents" and "Today" sections
                         this.updateRecentChats(data.chats.filter(chat => chat.section === 'Recents'));
-
-                        // Update "Today" section
                         this.updateTodayChat(data.chats.filter(chat => chat.section === 'Today'));
                     } else {
                         console.error('Error loading chats:', data.error);
@@ -882,8 +833,11 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     }
                 } catch (error) {
                     console.error('Error loading chats:', error);
+                    this.updateRecentChats([]);
+                    this.updateTodayChat([]);
                 }
             }
+
 
             updateStarredChats(chats) {
                 const starredSection = document.getElementById('starredChats');
@@ -1053,7 +1007,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         const title = await this.generateChatTitle(message);
                         await this.updateChatTitle(this.currentChatId, title);
 
-                        // Set the section to "Today"
+                        // Assign the chat to the "Today" section
                         await this.updateChatSection(this.currentChatId, 'Today');
                     }
 
@@ -1094,6 +1048,22 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 `;
                 messagesList.appendChild(messageDiv);
                 messagesList.scrollTop = messagesList.scrollHeight;
+            }
+
+            async updateChatSection(chatId, section) {
+                try {
+                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/section`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ section })
+                    });
+
+                    if (!response.ok) throw new Error('Failed to update chat section');
+                } catch (error) {
+                    console.error('Error updating chat section:', error);
+                }
             }
 
             async updateChatTitle(chatId, title) {
