@@ -163,6 +163,8 @@ def get_recent_chats(user_id, limit=5):
     """Get recent chats for a user"""
     query = """
     SELECT c.chat_id, 
+           c.title,
+           c.is_starred,
            COALESCE(m.content, 'New Chat') as last_message,
            c.created_at,
            c.updated_at
@@ -173,10 +175,14 @@ def get_recent_chats(user_id, limit=5):
         FROM messages
     ) m ON c.chat_id = m.chat_id AND m.rn = 1
     WHERE c.user_id = %s
-    ORDER BY c.updated_at DESC
+    ORDER BY c.is_starred DESC, c.updated_at DESC
     LIMIT %s
     """
-    return execute_query(query, (user_id, limit))
+    logger.info(f"Getting recent chats for user_id: {user_id}")
+    result = execute_query(query, (user_id, limit))
+    logger.info(f"Recent chats result: {result}")
+    return result if result else []  
+
 def get_chat_messages(chat_id):
     """Get all messages for a specific chat"""
     query = """

@@ -139,7 +139,7 @@ def logout():
     session.clear()
     return redirect('/login')
 
-@app.route('/chat', methods=['POST'])
+@app.route('/api/chat', methods=['POST'])
 @login_required
 def chat():
     """Handle chat requests"""
@@ -154,7 +154,7 @@ def chat():
             return jsonify({"error": "User not authenticated"}), 401
             
         app.logger.info(f"Looking up user with email: {user_email}")
-        user_query = "SELECT id FROM users WHERE email = %s"
+        user_query = "SELECT user_id FROM users WHERE email = %s"
         user_result = execute_query(user_query, (user_email,))
         
         if not user_result:
@@ -321,18 +321,23 @@ def create_chat():
 def get_chat_history():
     try:
         user_email = session.get('user_email')
+        app.logger.info(f"Getting chat history for user: {user_email}")
+        
         user_query = "SELECT user_id FROM users WHERE email = %s"
         user_result = execute_query(user_query, (user_email,))
         
         if not user_result:
+            app.logger.error(f"No user found for email: {user_email}")
             return jsonify({"error": "User not found"}), 404
             
         user_id = user_result[0]['user_id']
+        app.logger.info(f"Found user_id: {user_id}")
         
         # Get recent chats (limit to 5)
         chats = get_recent_chats(user_id, limit=5)
         
-        return jsonify({"chats": chats})
+        # Return empty array if no chats found
+        return jsonify({"chats": chats or []})
         
     except Exception as e:
         app.logger.error(f"Error getting chat history: {str(e)}")

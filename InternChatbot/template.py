@@ -745,29 +745,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
     </style>
 
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Initialize DOM elements
-            const userInput = document.getElementById('userInput');
-            const messagesList = document.getElementById('messagesList');
-            const chatContainer = document.getElementById('chatContainer');
-            const sendButton = document.getElementById('sendButton');
-            const fileButton = document.getElementById('fileButton');
-            const fileInput = document.getElementById('fileInput');
-            const filePreview = document.getElementById('filePreview');
-            const greetingText = document.querySelector('.greeting-text');
-            const sidebar = document.querySelector('.sidebar');
-            const sidebarTrigger = document.querySelector('.sidebar-trigger');
-            const body = document.body;
-            const profileButton = document.getElementById('profileButton');
-            const profileMenu = document.getElementById('profileMenu');
-            const appearanceMenu = document.getElementById('appearanceMenu');
-
-            let isMenuOpen = false;
-            let isOverSidebar = false;
-            let sidebarTimeout = null;
-
-            const BASE_URL = 'https://internproject-4fq7.onrender.com';
-
         // Chat Manager Class
         class ChatManager {
             constructor() {
@@ -848,16 +825,34 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     if (!response.ok) throw new Error('Failed to fetch chats');
                     
                     const data = await response.json();
+                    console.log("Chat history response:", data); // Add this line
+                    
+                    if (!data.chats) {
+                        console.error("No chats array in response");
+                        this.updateSidebarChats([]);
+                        return;
+                    }
+                    
                     this.updateSidebarChats(data.chats);
                 } catch (error) {
                     console.error('Error loading chats:', error);
+                    this.updateSidebarChats([]); // Add this line to prevent errors
                 }
             }
 
             updateSidebarChats(chats) {
+                if (!Array.isArray(chats)) {
+                    console.error("Expected chats to be an array", chats);
+                    chats = [];
+                }
+                
                 const recentChats = document.getElementById('recentChats');
+                if (!recentChats) {
+                    console.error("Could not find recentChats element");
+                    return;
+                }
+                
                 recentChats.innerHTML = '';
-
                 chats.forEach(chat => {
                     const chatElement = this.createChatElement(chat);
                     recentChats.appendChild(chatElement);
@@ -919,7 +914,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     // Add user message to UI
                     this.addMessageToUI(message, true);
                     
-                    const response = await fetch(`${this.BASE_URL}/chat`, {
+                    const response = await fetch(`${this.BASE_URL}/api/chat`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -1023,7 +1018,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         this.addMessageToUI(message.content, message.is_user);
                     });
                     
-                    // Update active state in sidebar
                     await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error loading chat:', error);
@@ -1055,65 +1049,30 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             }
         }
 
-        // Initialize when the page loads
-        let chatManager;
-        document.addEventListener('DOMContentLoaded', () => {
-            chatManager = new ChatManager();
-        });
-            // Modify your existing sendMessage function
-            async function sendMessage() {
-                const message = userInput.value.trim();
-                if (!message) return;
-                
-                try {
-                    addMessage(message, true);
-                    addMessageToHistory(message, true); // Add user message to history
-                    
-                    userInput.value = '';
-                    userInput.style.height = 'auto';
+        // Single DOMContentLoaded event listener
+        document.addEventListener('DOMContentLoaded', function() {
+            // Initialize DOM elements
+            const userInput = document.getElementById('userInput');
+            const messagesList = document.getElementById('messagesList');
+            const chatContainer = document.getElementById('chatContainer');
+            const sendButton = document.getElementById('sendButton');
+            const fileButton = document.getElementById('fileButton');
+            const fileInput = document.getElementById('fileInput');
+            const filePreview = document.getElementById('filePreview');
+            const greetingText = document.querySelector('.greeting-text');
+            const sidebar = document.querySelector('.sidebar');
+            const sidebarTrigger = document.querySelector('.sidebar-trigger');
+            const body = document.body;
+            const profileButton = document.getElementById('profileButton');
+            const profileMenu = document.getElementById('profileMenu');
+            const appearanceMenu = document.getElementById('appearanceMenu');
 
-                    const fileToSend = fileInput.files[0];
-                    let formData;
-                    let fetchOptions;
+            let isMenuOpen = false;
+            let isOverSidebar = false;
+            let sidebarTimeout = null;
 
-                    if (fileToSend) {
-                        formData = new FormData();
-                        formData.append('message', message);
-                        formData.append('file', fileToSend);
-                        
-                        fetchOptions = {
-                            method: 'POST',
-                            body: formData
-                        };
-                    } else {
-                        fetchOptions = {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ message })
-                        };
-                    }
-
-                    const response = await fetch(`${BASE_URL}/chat`, fetchOptions);
-
-                    if (!response.ok) {
-                        throw new Error(`Server error: ${response.statusText}`);
-                    }
-
-                    const data = await response.json();
-                    
-                    if (fileToSend) {
-                        removeFile();
-                    }
-
-                    addMessage(data.response);
-                    addMessageToHistory(data.response, false); // Add bot response to history
-                } catch (error) {
-                    console.error('Error:', error);
-                    addMessage(`Error: ${error.message || 'An unknown error occurred'}`);
-                }
-            }
+            // Initialize chat manager
+            window.chatManager = new ChatManager();
 
             // Sidebar Control Functions
             function showSidebar() {
@@ -1149,11 +1108,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 }
             }
 
-            function toggleAppearanceMenu() {
-                var appearanceMenu = document.getElementById('appearanceMenu');
-                appearanceMenu.classList.toggle('active');
-            }
-
             // Theme Functions
             function updateTheme(theme) {
                 body.setAttribute('data-theme', theme);
@@ -1169,13 +1123,17 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 body.setAttribute('data-theme', theme);
                 localStorage.setItem('theme', theme);
                 
-                // Close menus after theme change
                 isMenuOpen = false;
                 profileMenu.classList.remove('active');
                 appearanceMenu.classList.remove('active');
                 if (!isOverSidebar) {
                     hideSidebar();
                 }
+            };
+
+            window.setMessage = function(message) {
+                userInput.value = message;
+                userInput.focus();
             };
 
             // Event Listeners
@@ -1203,12 +1161,10 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 }
             });
 
-            // Helper Functions
-            function setMessage(message) {
-                userInput.value = message;
-                userInput.focus();
-            }
-
+            // Initialize theme and greeting
+            let currentTheme = localStorage.getItem('theme') || 'light';
+            updateTheme(currentTheme);
+            
             function setGreeting() {
                 const hour = new Date().getHours();
                 if (hour >= 5 && hour < 12) {
@@ -1219,146 +1175,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     greetingText.textContent = 'Having a late night?';
                 }
             }
-
-            // Message Functions
-            function addMessage(content, isUser = false) {
-                const messageDiv = document.createElement('div');
-                messageDiv.className = 'message';
-                
-                const avatar = document.createElement('div');
-                avatar.className = 'avatar';
-                avatar.textContent = isUser ? 'U' : 'C';
-                
-                const messageContent = document.createElement('div');
-                messageContent.className = 'message-content';
-
-                if (!isUser && (content.toLowerCase().includes('hello') || content.toLowerCase().includes('hi'))) {
-                    const greetingPart = content.split('\\n')[0];
-                    const options = [
-                        "How can I assist you with technical documentation?",
-                        "Would you like help with coding or system design?",
-                        "Need assistance with project planning or troubleshooting?"
-                    ];
-                    
-                    messageContent.innerHTML = `
-                        ${greetingPart}
-                        <ol class="numbered-list">
-                            ${options.map(option => `<li>${option}</li>`).join('')}
-                        </ol>
-                    `;
-                } else {
-                    messageContent.textContent = content;
-                }
-                
-                messageDiv.appendChild(avatar);
-                messageDiv.appendChild(messageContent);
-                messagesList.appendChild(messageDiv);
-                
-                chatContainer.scrollTop = chatContainer.scrollHeight;
-            }
-
-            async function sendMessage() {
-                const message = userInput.value.trim();
-                if (!message) return;
-                
-                try {
-                    // Add message to UI
-                    addMessage(message, true);
-                    
-                    userInput.value = '';
-                    userInput.style.height = 'auto';
-
-                    const fileToSend = fileInput.files[0];
-                    let formData;
-                    let fetchOptions;
-
-                    // Prepare request data
-                    if (fileToSend) {
-                        formData = new FormData();
-                        formData.append('message', message);
-                        formData.append('file', fileToSend);
-                        
-                        fetchOptions = {
-                            method: 'POST',
-                            body: formData
-                        };
-                    } else {
-                        fetchOptions = {
-                            method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            body: JSON.stringify({ message })
-                        };
-                    }
-
-                    // Send message to server
-                    const response = await fetch(`${BASE_URL}/chat`, fetchOptions);
-
-                    if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(`Server error: ${errorData.details || errorData.error || 'Unknown error'}`);
-                    }
-
-                    const data = await response.json();
-                    
-                    if (fileToSend) {
-                        removeFile();
-                    }
-
-                    // Add bot response to UI
-                    addMessage(data.response);
-
-                } catch (error) {
-                    console.error('Error:', error);
-                    addMessage(`Error: ${error.message || 'An unknown error occurred'}`);
-                }
-            }
-
-            // File Handling Functions
-            function removeFile() {
-                fileInput.value = '';
-                filePreview.innerHTML = '';
-                filePreview.classList.remove('active');
-            }
-
-            // File Event Listeners
-            fileButton.addEventListener('click', () => {
-                fileInput.click();
-            });
-
-            fileInput.addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    filePreview.innerHTML = `
-                        <div class="file-preview-content">
-                            <span>📄 ${file.name}</span>
-                            <span class="file-remove" onclick="removeFile()">✕</span>
-                        </div>
-                    `;
-                    filePreview.classList.add('active');
-                }
-            });
-
-            // Input Event Listeners
-            userInput.addEventListener('keydown', (e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                }
-            });
-
-            userInput.addEventListener('input', function() {
-                this.style.height = 'auto';
-                this.style.height = this.scrollHeight + 'px';
-            });
-
-            sendButton.addEventListener('click', sendMessage);
-
-
-            // Initialize
-            let currentTheme = localStorage.getItem('theme') || 'light';
-            updateTheme(currentTheme);
+            
             setGreeting();
             setInterval(setGreeting, 60000);
         });
