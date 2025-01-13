@@ -97,7 +97,7 @@ def create_user(email, password, username):  # Add username parameter
         return False, str(e)
     
 def create_new_chat(user_id):
-    """Create a new chat and move existing 'Now' chats to 'Recents'"""
+    """Create a new chat"""
     try:
         connection = get_db_connection()
         if not connection:
@@ -105,19 +105,10 @@ def create_new_chat(user_id):
             
         cursor = connection.cursor(dictionary=True)
         
-        # First move existing 'Now' chats to 'Recents'
-        move_query = """
-        UPDATE chats 
-        SET section = 'Recents',
-            updated_at = NOW()
-        WHERE user_id = %s AND section = 'Now'
-        """
-        cursor.execute(move_query, (user_id,))
-        
-        # Then create the new chat
+        # Create the new chat
         insert_query = """
-        INSERT INTO chats (user_id, section, created_at, updated_at)
-        VALUES (%s, 'Now', NOW(), NOW())
+        INSERT INTO chats (user_id, created_at, updated_at)
+        VALUES (%s, NOW(), NOW())
         """
         cursor.execute(insert_query, (user_id,))
         chat_id = cursor.lastrowid
@@ -143,7 +134,8 @@ def create_new_chat(user_id):
             cursor.close()
         if connection and connection.is_connected():
             connection.close()
-            
+
+
 def add_message(chat_id, content, is_user=True):
     """Add a message to a chat session"""
     connection = None
@@ -184,31 +176,48 @@ def add_message(chat_id, content, is_user=True):
             connection.close()
     
 def get_recent_chats(user_id):
-    """Get chats for a user, separated by section"""
+    """Get recent chats for a user, properly separated by section"""
     query = """
+    WITH OrderedChats AS (
+        SELECT 
+            chat_id,
+            title,
+            section,
+            created_at,
+            updated_at,
+            is_starred,
+            ROW_NUMBER() OVER (ORDER BY updated_at DESC) as row_num
+        FROM chats
+        WHERE user_id = %s
+    )
     SELECT 
-        c.chat_id,
-        COALESCE(c.title, 'New Chat') as title,
-        c.section,
-        c.created_at,
-        c.updated_at,
-        c.is_starred,
-        (SELECT content 
-         FROM messages m 
-         WHERE m.chat_id = c.chat_id 
-         ORDER BY created_at DESC 
-         LIMIT 1) as last_message
-    FROM chats c
-    WHERE c.user_id = %s
-    ORDER BY 
+        oc.chat_id,
+        COALESCE(oc.title, 'New Chat') as title,
         CASE 
-            WHEN c.section = 'Now' THEN 1
-            WHEN c.section = 'Recents' THEN 2
-            ELSE 3
-        END,
-        c.updated_at DESC
+            WHEN oc.row_num = 1 THEN 'Now'
+            ELSE 'Recents'
+        END as section,
+        oc.created_at,
+        oc.updated_at,
+        oc.is_starred,
+        m.content as last_message
+    FROM OrderedChats oc
+    LEFT JOIN (
+        SELECT chat_id, content
+        FROM messages m1
+        WHERE (chat_id, created_at) IN (
+            SELECT chat_id, MAX(created_at)
+            FROM messages
+            GROUP BY chat_id
+        )
+    ) m ON oc.chat_id = m.chat_id
+    WHERE oc.row_num <= 5
+    ORDER BY 
+        CASE WHEN oc.row_num = 1 THEN 0 ELSE 1 END,
+        oc.updated_at DESC;
     """
     return execute_query(query, (user_id,))
+
 
 def move_chat_to_recents(chat_id):
     """Move a chat to the Recents section"""

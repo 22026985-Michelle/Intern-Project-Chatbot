@@ -819,23 +819,17 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 try {
                     const response = await fetch(`${this.BASE_URL}/api/chat-history`, {
                         method: 'GET',
-                        credentials: 'include',
-                        headers: { 'Content-Type': 'application/json' }
+                        credentials: 'include'
                     });
 
+                    if (!response.ok) {
+                        throw new Error('Failed to load chats');
+                    }
+
                     const data = await response.json();
-                    if (!response.ok) throw new Error(data.error);
-
-                    // Separate chats into "Now" and "Recents"
-                    const nowChats = data.chats.filter(chat => chat.section === 'Now');
-                    const recentChats = data.chats.filter(chat => chat.section === 'Recents');
-
-                    this.updateNowChat(nowChats);
-                    this.updateRecentChats(recentChats);
+                    this.updateSidebarChats(data.chats || []);
                 } catch (error) {
-                    console.error('Error loading chats:', error);
-                    this.updateNowChat([]);
-                    this.updateRecentChats([]);
+                    console.error('Error loading recent chats:', error);
                 }
             }
 
@@ -871,51 +865,60 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             }
 
             updateSidebarChats(chats) {
+                if (!Array.isArray(chats)) {
+                    console.error("Expected chats to be an array", chats);
+                    return;
+                }
+
+                // Separate chats by section
                 const nowChats = chats.filter(chat => chat.section === 'Now');
                 const recentChats = chats.filter(chat => chat.section === 'Recents');
-                
+
                 // Update Now section
                 const nowSection = document.getElementById('nowChats');
-                nowSection.innerHTML = '';
-                
-                if (nowChats.length === 0) {
-                    nowSection.innerHTML = '<div class="chat-item placeholder-text">No active chats yet</div>';
-                } else {
-                    nowChats.forEach(chat => {
-                        nowSection.appendChild(this.createChatElement(chat));
-                    });
+                if (nowSection) {
+                    nowSection.innerHTML = '';
+                    if (nowChats.length === 0) {
+                        nowSection.innerHTML = '<div class="chat-item placeholder-text">No active chats yet</div>';
+                    } else {
+                        nowChats.forEach(chat => {
+                            nowSection.appendChild(this.createChatElement(chat));
+                        });
+                    }
                 }
-                
+
                 // Update Recents section
                 const recentSection = document.getElementById('recentChats');
-                recentSection.innerHTML = '';
-                
-                if (recentChats.length === 0) {
-                    recentSection.innerHTML = '<div class="chat-item placeholder-text">No recent chats yet</div>';
-                } else {
-                    recentChats.forEach(chat => {
-                        recentSection.appendChild(this.createChatElement(chat));
-                    });
+                if (recentSection) {
+                    recentSection.innerHTML = '';
+                    if (recentChats.length === 0) {
+                        recentSection.innerHTML = '<div class="chat-item placeholder-text">No recent chats yet</div>';
+                    } else {
+                        recentChats.forEach(chat => {
+                            recentSection.appendChild(this.createChatElement(chat));
+                        });
+                    }
                 }
             }
 
             createChatElement(chat) {
                 const div = document.createElement('div');
-                div.className = 'chat-item';
-
+                div.className = `chat-item${chat.chat_id === this.currentChatId ? ' active' : ''}`;
+                
                 div.innerHTML = `
+                    <span class="chat-icon">💭</span>
                     <span class="chat-title">${chat.title || 'New Chat'}</span>
                     <div class="chat-actions">
                         <button class="chat-action-button delete-button" title="Delete chat">🗑</button>
                     </div>
                 `;
 
-                // Handle click to load the chat
+                // Add click handler for loading chat
                 div.querySelector('.chat-title').addEventListener('click', () => {
                     this.loadChat(chat.chat_id);
                 });
 
-                // Handle delete button
+                // Add click handler for delete button
                 div.querySelector('.delete-button').addEventListener('click', async (e) => {
                     e.stopPropagation();
                     await this.deleteChat(chat.chat_id);
@@ -924,28 +927,27 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 return div;
             }
 
-
             async handleNewChat() {
                 try {
                     // Create new chat
                     const response = await fetch(`${this.BASE_URL}/api/create-chat`, {
                         method: 'POST',
-                        credentials: 'include',
-                        headers: { 'Content-Type': 'application/json' }
+                        credentials: 'include'
                     });
-                    
+
+                    if (!response.ok) {
+                        throw new Error('Failed to create new chat');
+                    }
+
                     const data = await response.json();
-                    if (!response.ok) throw new Error(data.error);
-                    
                     this.currentChatId = data.chat_id;
-                    
-                    // Clear messages and input
+
+                    // Clear current chat
                     document.getElementById('messagesList').innerHTML = '';
                     document.getElementById('userInput').value = '';
-                    
+
                     // Refresh chat list
                     await this.loadRecentChats();
-                    
                 } catch (error) {
                     console.error('Error creating new chat:', error);
                 }

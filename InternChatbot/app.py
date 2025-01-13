@@ -296,18 +296,24 @@ def get_chat_history():
         user_id = user_result[0]['user_id']
         chats = get_recent_chats(user_id)
         
-        # Organize chats by section
-        organized_chats = []
+        # Format the response
+        formatted_chats = []
         for chat in chats:
-            chat['created_at'] = chat['created_at'].isoformat() if chat['created_at'] else None
-            chat['updated_at'] = chat['updated_at'].isoformat() if chat['updated_at'] else None
-            organized_chats.append(chat)
+            formatted_chat = {
+                'chat_id': chat['chat_id'],
+                'title': chat['title'],
+                'section': chat['section'],
+                'created_at': chat['created_at'].isoformat() if chat['created_at'] else None,
+                'updated_at': chat['updated_at'].isoformat() if chat['updated_at'] else None,
+                'is_starred': chat['is_starred'],
+                'last_message': chat['last_message']
+            }
+            formatted_chats.append(formatted_chat)
             
-        return jsonify({"chats": organized_chats})
+        return jsonify({"chats": formatted_chats})
         
     except Exception as e:
-        app.logger.error(f"Error in chat history: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        app.logger.error(f"Error in chat history: {str(e)
 
 
 @app.route('/api/chat/<int:chat_id>/messages', methods=['GET'])
