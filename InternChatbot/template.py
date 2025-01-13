@@ -8,6 +8,53 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
     <title>NCS Internship AI Chatbot</title>
     <style>
         /* Theme Variables */
+        /* Recents Section Styles */
+        #recentChats {
+            margin-top: 1rem;
+            padding: 0;
+            list-style: none;
+        }
+
+        .chat-item {
+            padding: 0.75rem 1rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-radius: 8px;
+            transition: background-color 0.2s ease;
+        }
+
+        .chat-item:hover {
+            background-color: var(--hover-color);
+        }
+
+        .chat-title {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--text-color);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .chat-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .chat-action-button {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 1.2rem;
+            color: var(--text-color);
+        }
+
+        .chat-action-button:hover {
+            color: var(--send-button-bg);
+        }
+
         :root[data-theme="light"] {
             --bg-color: #FFFFFF;
             --text-color: #1C1C1C;
@@ -569,7 +616,9 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             </div>
 
             <div class="section-title">Recents</div>
-            <div class="chat-list" id="recentChats"></div>
+            <div class="chat-list" id="recentChats">
+                <div class="chat-item placeholder-text">No recent chats yet</div>
+            </div>
         </div>
         
         <div class="user-profile" id="userProfile">
@@ -814,26 +863,25 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     const response = await fetch(`${this.BASE_URL}/api/chat-history`, {
                         method: 'GET',
                         credentials: 'include',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
+                        headers: { 'Content-Type': 'application/json' }
                     });
 
-                    if (!response.ok) {
-                        throw new Error(`HTTP error! status: ${response.status}`);
-                    }
-                    
                     const data = await response.json();
-                    console.log("Chat history response:", data);
+                    console.log('Chat history response:', data);
 
-                    // Update both sections
-                    this.updateStarredChats(data.chats.filter(chat => chat.is_starred));
-                    this.updateRecentChats(data.chats.filter(chat => !chat.is_starred));
+                    if (response.ok) {
+                        // Update "Recents" section
+                        this.updateRecentChats(data.chats.filter(chat => chat.section === 'Recents'));
+
+                        // Update "Today" section
+                        this.updateTodayChat(data.chats.filter(chat => chat.section === 'Today'));
+                    } else {
+                        console.error('Error loading chats:', data.error);
+                        this.updateRecentChats([]);
+                        this.updateTodayChat([]);
+                    }
                 } catch (error) {
                     console.error('Error loading chats:', error);
-                    // Show empty states for both sections on error
-                    this.updateStarredChats([]);
-                    this.updateRecentChats([]);
                 }
             }
 
@@ -857,18 +905,23 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             updateRecentChats(chats) {
                 const recentSection = document.getElementById('recentChats');
-                recentSection.innerHTML = '';
-                
+                if (!recentSection) return;
+
+                recentSection.innerHTML = ''; // Clear existing chats
+
                 if (chats.length === 0) {
-                    // Don't show any placeholder for recent chats when empty
+                    // Show placeholder text if there are no recent chats
+                    recentSection.innerHTML = `<div class="chat-item placeholder-text">No recent chats yet</div>`;
                     return;
                 }
 
-                // Only show the 5 most recent chats
-                chats.slice(0, 5).forEach(chat => {
-                    recentSection.appendChild(this.createChatElement(chat));
+                // Loop through chats and create chat elements
+                chats.forEach(chat => {
+                    const chatElement = this.createChatElement(chat);
+                    recentSection.appendChild(chatElement);
                 });
             }
+
 
             updateSidebarChats(chats) {
                 if (!Array.isArray(chats)) {
@@ -891,29 +944,21 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             createChatElement(chat) {
                 const div = document.createElement('div');
-                div.className = `chat-item${this.currentChatId === chat.chat_id ? ' active' : ''}`;
+                div.className = 'chat-item';
 
                 div.innerHTML = `
-                    <span class="chat-icon">⊙</span>
                     <span class="chat-title">${chat.title || 'New Chat'}</span>
                     <div class="chat-actions">
-                        <button class="chat-action-button star-button" title="${chat.is_starred ? 'Unstar chat' : 'Star chat'}">
-                            ${chat.is_starred ? '⭐' : '★'}
-                        </button>
                         <button class="chat-action-button delete-button" title="Delete chat">🗑</button>
                     </div>
                 `;
 
-                // Add click handlers
+                // Handle click to load the chat
                 div.querySelector('.chat-title').addEventListener('click', () => {
                     this.loadChat(chat.chat_id);
                 });
 
-                div.querySelector('.star-button').addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    await this.toggleStarChat(chat.chat_id, !chat.is_starred);
-                });
-
+                // Handle delete button
                 div.querySelector('.delete-button').addEventListener('click', async (e) => {
                     e.stopPropagation();
                     await this.deleteChat(chat.chat_id);
@@ -922,20 +967,25 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 return div;
             }
 
+
             async handleNewChat() {
                 try {
-                    document.getElementById('messagesList').innerHTML = ''; // Clear messages
-                    document.getElementById('userInput').value = ''; // Clear input
-
-                    this.currentChatId = null; // Reset chat ID
-
-                    // Move previous chat to "Recents" if applicable
-                    if (this.previousChatId) {
-                        await this.moveToRecents(this.previousChatId);
+                    // Move the current chat to "Recents" if it exists
+                    if (this.currentChatId) {
+                        await this.moveToRecents(this.currentChatId);
                     }
-                    this.previousChatId = null;
 
+                    // Reset UI for the new chat
+                    document.getElementById('messagesList').innerHTML = '';
+                    document.getElementById('userInput').value = '';
+
+                    // Reset current chat ID (new chat will be created on first message)
+                    this.currentChatId = null;
+
+                    // Update chat sections
                     await this.loadRecentChats();
+
+                    console.log('New chat initialized');
                 } catch (error) {
                     console.error('Error handling new chat:', error);
                 }
@@ -955,25 +1005,14 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             async moveToRecents(chatId) {
                 try {
-                    // Get current chat info
-                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`);
-                    if (!response.ok) throw new Error('Failed to get chat info');
-                    
-                    // Update the chat's section in the database
-                    await fetch(`${this.BASE_URL}/api/chat/${chatId}/section`, {
+                    // Update chat section to "Recents"
+                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/section`, {
                         method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
+                        headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ section: 'Recents' })
                     });
 
-                    // Maintain only the 5 most recent chats
-                    const recentChats = await this.getRecentChats();
-                    if (recentChats.length >= 5) {
-                        const oldestChat = recentChats[recentChats.length - 1];
-                        await this.deleteChat(oldestChat.chat_id, true);
-                    }
+                    if (!response.ok) throw new Error('Failed to move chat to recents');
                 } catch (error) {
                     console.error('Error moving chat to recents:', error);
                 }
@@ -990,32 +1029,39 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     return [];
                 }
             }
-            
+                        
             async sendMessage() {
                 const input = document.getElementById('userInput');
                 const message = input.value.trim();
                 if (!message) return;
 
                 try {
-                    // Create new chat if this is the first message
+                    // Create a new chat if this is the first message
                     if (!this.currentChatId) {
                         const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
                             method: 'POST',
                             credentials: 'include',
                             headers: { 'Content-Type': 'application/json' }
                         });
-                        if (!createResponse.ok) throw new Error('Failed to create chat');
-                        
-                        const chatData = await createResponse.json();
-                        this.currentChatId = chatData.chat_id;
+
+                        const creationData = await createResponse.json();
+                        if (!createResponse.ok) throw new Error(creationData.error);
+
+                        this.currentChatId = creationData.chat_id;
+
+                        // Generate a dynamic title for the chat
                         const title = await this.generateChatTitle(message);
                         await this.updateChatTitle(this.currentChatId, title);
+
+                        // Set the section to "Today"
+                        await this.updateChatSection(this.currentChatId, 'Today');
                     }
 
-                    this.addMessageToUI(message, true); // Add user message to UI
-                    input.value = ''; // Clear input
+                    // Add user message to the UI
+                    this.addMessageToUI(message, true);
+                    input.value = '';
 
-                    // Send message to backend
+                    // Send the message to the backend
                     const response = await fetch(`${this.BASE_URL}/api/chat`, {
                         method: 'POST',
                         credentials: 'include',
@@ -1023,11 +1069,17 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         body: JSON.stringify({ chat_id: this.currentChatId, message })
                     });
 
-                    if (!response.ok) throw new Error('Failed to send message');
                     const data = await response.json();
-                    this.addMessageToUI(data.response, false); // Add bot response
+                    if (!response.ok) throw new Error(data.error);
+
+                    // Add bot response to the UI
+                    this.addMessageToUI(data.response, false);
+
+                    // Refresh the sidebar
+                    await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error sending message:', error);
+                    this.addMessageToUI(`Error: ${error.message}`, false);
                 }
             }
 
@@ -1122,6 +1174,23 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 } catch (error) {
                     console.error('Error loading chat:', error);
                 }
+            }
+
+
+            updateTodayChat(chats) {
+                const todaySection = document.getElementById('messagesList');
+                if (!todaySection) return;
+
+                todaySection.innerHTML = '';
+
+                if (chats.length === 0) {
+                    todaySection.innerHTML = `<div class="placeholder-text">Start a new chat or prompt here</div>`;
+                    return;
+                }
+
+                chats.forEach(chat => {
+                    todaySection.appendChild(this.createChatElement(chat));
+                });
             }
 
             handleFileSelect(e) {

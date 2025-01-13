@@ -257,35 +257,29 @@ def create_chat():
     try:
         user_email = session.get('user_email')
         if not user_email:
-            app.logger.error("No user_email found in session")
             return jsonify({"error": "User not authenticated"}), 401
-            
+
         user_query = "SELECT user_id FROM users WHERE email = %s"
         user_result = execute_query(user_query, (user_email,))
-        
         if not user_result:
-            app.logger.error(f"No user found for email: {user_email}")
             return jsonify({"error": "User not found"}), 404
-            
+
         user_id = user_result[0]['user_id']
-        app.logger.info(f"Creating new chat for user_id: {user_id}")
-        
-        # Create new chat using the database function
+
+        # Create a new chat and assign it to "Today"
         chat_id = create_new_chat(user_id)
-        
         if not chat_id:
-            app.logger.error("Failed to create chat")
-            return jsonify({"error": "Failed to create chat session"}), 500
-            
-        return jsonify({
-            "status": "success", 
-            "chat_id": chat_id,
-            "message": "Chat created successfully"
-        })
-        
+            return jsonify({"error": "Failed to create chat"}), 500
+
+        # Assign the new chat to "Today"
+        update_section_query = "UPDATE chats SET section = 'Today' WHERE chat_id = %s"
+        execute_query(update_section_query, (chat_id,))
+
+        return jsonify({"status": "success", "chat_id": chat_id})
     except Exception as e:
         app.logger.error(f"Error creating chat: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
 
 @app.route('/api/chat-history', methods=['GET'])
 @login_required
@@ -301,19 +295,20 @@ def get_chat_history():
             return jsonify({"chats": []}), 200
 
         user_id = user_result[0]['user_id']
+
         chats_query = """
-        SELECT c.chat_id, COALESCE(c.title, 'New Chat') as title, c.created_at, c.updated_at, 
+        SELECT chat_id, title, section, created_at, updated_at,
                (SELECT content FROM messages WHERE chat_id = c.chat_id ORDER BY created_at DESC LIMIT 1) as last_message
         FROM chats c
-        WHERE c.user_id = %s
-        ORDER BY c.updated_at DESC
-        LIMIT 5
+        WHERE user_id = %s
+        ORDER BY section DESC, updated_at DESC
         """
         chats = execute_query(chats_query, (user_id,))
         return jsonify({"chats": chats or []}), 200
     except Exception as e:
         app.logger.error(f"Error getting chat history: {str(e)}")
-        return jsonify({"chats": [], "error": str(e)}), 200
+        return jsonify({"chats": [], "error": str(e)}), 500
+
 
 
 
