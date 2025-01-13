@@ -97,36 +97,53 @@ def create_user(email, password, username):  # Add username parameter
         return False, str(e)
     
 def create_new_chat(user_id):
-    """Create a new chat session for a user"""
-    logger.info(f"Creating new chat for user_id: {user_id}")
-    
+    """Create a new chat and move existing 'Now' chats to 'Recents'"""
     try:
-        # First, check how many chats the user has
-        count_query = "SELECT COUNT(*) as chat_count FROM chats WHERE user_id = %s"
-        count_result = execute_query(count_query, (user_id,))
-        
-        if count_result and count_result[0]['chat_count'] >= 100:
-            # If user has too many chats, delete the oldest ones
-            cleanup_old_chats(user_id, keep_count=95)
-        
-        # Insert new chat and get ID directly
-        insert_query = """
-        INSERT INTO chats (user_id, created_at, updated_at, section)
-        VALUES (%s, NOW(), NOW(), 'Today')
-        """
-        chat_id = execute_query(insert_query, (user_id,))
-        
-        if chat_id:
-            logger.info(f"Created new chat with ID: {chat_id}")
-            return chat_id
+        connection = get_db_connection()
+        if not connection:
+            return None
             
-        logger.error("Failed to create chat - no ID returned")
-        return None
+        cursor = connection.cursor(dictionary=True)
         
-    except Exception as e:
+        # First move existing 'Now' chats to 'Recents'
+        move_query = """
+        UPDATE chats 
+        SET section = 'Recents',
+            updated_at = NOW()
+        WHERE user_id = %s AND section = 'Now'
+        """
+        cursor.execute(move_query, (user_id,))
+        
+        # Then create the new chat
+        insert_query = """
+        INSERT INTO chats (user_id, section, created_at, updated_at)
+        VALUES (%s, 'Now', NOW(), NOW())
+        """
+        cursor.execute(insert_query, (user_id,))
+        chat_id = cursor.lastrowid
+        
+        # Cleanup old chats if needed
+        count_query = "SELECT COUNT(*) as chat_count FROM chats WHERE user_id = %s"
+        cursor.execute(count_query, (user_id,))
+        result = cursor.fetchone()
+        
+        if result and result['chat_count'] > 100:
+            cleanup_old_chats(user_id, keep_count=95)
+            
+        connection.commit()
+        return chat_id
+        
+    except Error as e:
         logger.error(f"Error in create_new_chat: {str(e)}")
+        if connection:
+            connection.rollback()
         return None
-
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close()
+            
 def add_message(chat_id, content, is_user=True):
     """Add a message to a chat session"""
     connection = None
@@ -166,46 +183,42 @@ def add_message(chat_id, content, is_user=True):
         if connection and connection.is_connected():
             connection.close()
     
-def get_recent_chats(user_id, limit=5):
-    """Get recent chats for a user"""
-    connection = None
-    cursor = None
-    try:
-        connection = get_db_connection()
-        if not connection:
-            return []
+def get_recent_chats(user_id):
+    """Get chats for a user, separated by section"""
+    query = """
+    SELECT 
+        c.chat_id,
+        COALESCE(c.title, 'New Chat') as title,
+        c.section,
+        c.created_at,
+        c.updated_at,
+        c.is_starred,
+        (SELECT content 
+         FROM messages m 
+         WHERE m.chat_id = c.chat_id 
+         ORDER BY created_at DESC 
+         LIMIT 1) as last_message
+    FROM chats c
+    WHERE c.user_id = %s
+    ORDER BY 
+        CASE 
+            WHEN c.section = 'Now' THEN 1
+            WHEN c.section = 'Recents' THEN 2
+            ELSE 3
+        END,
+        c.updated_at DESC
+    """
+    return execute_query(query, (user_id,))
 
-        cursor = connection.cursor(dictionary=True)
-        
-        query = """
-        SELECT c.chat_id, 
-               c.title,
-               c.is_starred,
-               c.created_at,
-               c.updated_at,
-               (SELECT content 
-                FROM messages m 
-                WHERE m.chat_id = c.chat_id 
-                ORDER BY created_at DESC 
-                LIMIT 1) as last_message
-        FROM chats c
-        WHERE c.user_id = %s
-        ORDER BY c.is_starred DESC, c.updated_at DESC
-        LIMIT %s
-        """
-        
-        cursor.execute(query, (user_id, limit))
-        result = cursor.fetchall()
-        return result or []
-
-    except Error as e:
-        logger.error(f"Error in get_recent_chats: {str(e)}")
-        return []
-    finally:
-        if cursor:
-            cursor.close()
-        if connection and connection.is_connected():
-            connection.close() 
+def move_chat_to_recents(chat_id):
+    """Move a chat to the Recents section"""
+    update_query = """
+    UPDATE chats 
+    SET section = 'Recents', 
+        updated_at = NOW() 
+    WHERE chat_id = %s
+    """
+    return execute_query(update_query, (chat_id,))
 
 def get_chat_messages(chat_id):
     """Get all messages for a specific chat"""

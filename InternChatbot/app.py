@@ -286,40 +286,28 @@ def get_chat_history():
     try:
         user_email = session.get('user_email')
         if not user_email:
-            app.logger.error("User email not found in session")
             return jsonify({"error": "User not authenticated"}), 401
-
+            
         user_query = "SELECT user_id FROM users WHERE email = %s"
         user_result = execute_query(user_query, (user_email,))
         if not user_result:
-            app.logger.error(f"No user found for email: {user_email}")
             return jsonify({"error": "User not found"}), 404
-
+            
         user_id = user_result[0]['user_id']
-
-        chats_query = """
-        SELECT c.chat_id, COALESCE(c.title, 'New Chat') AS title, c.section, c.created_at, c.updated_at,
-               (SELECT content 
-                FROM messages m 
-                WHERE m.chat_id = c.chat_id 
-                ORDER BY created_at DESC 
-                LIMIT 1) AS last_message
-        FROM chats c
-        WHERE c.user_id = %s
-        ORDER BY c.updated_at DESC
-        LIMIT 5
-        """
-        app.logger.info(f"Executing chat history query for user_id: {user_id}")
-        chats = execute_query(chats_query, (user_id,))
-
-        # Log the chat states for debugging
-        app.logger.info(f"Retrieved chats: {chats}")
-        return jsonify({"chats": chats or []}), 200
+        chats = get_recent_chats(user_id)
+        
+        # Organize chats by section
+        organized_chats = []
+        for chat in chats:
+            chat['created_at'] = chat['created_at'].isoformat() if chat['created_at'] else None
+            chat['updated_at'] = chat['updated_at'].isoformat() if chat['updated_at'] else None
+            organized_chats.append(chat)
+            
+        return jsonify({"chats": organized_chats})
+        
     except Exception as e:
-        app.logger.error(f"Error in /api/chat-history: {str(e)}")
-        return jsonify({"chats": [], "error": "Internal Server Error"}), 500
-
-
+        app.logger.error(f"Error in chat history: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/chat/<int:chat_id>/messages', methods=['GET'])

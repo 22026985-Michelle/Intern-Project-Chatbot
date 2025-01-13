@@ -871,22 +871,32 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             }
 
             updateSidebarChats(chats) {
-                if (!Array.isArray(chats)) {
-                    console.error("Expected chats to be an array", chats);
-                    chats = [];
+                const nowChats = chats.filter(chat => chat.section === 'Now');
+                const recentChats = chats.filter(chat => chat.section === 'Recents');
+                
+                // Update Now section
+                const nowSection = document.getElementById('nowChats');
+                nowSection.innerHTML = '';
+                
+                if (nowChats.length === 0) {
+                    nowSection.innerHTML = '<div class="chat-item placeholder-text">No active chats yet</div>';
+                } else {
+                    nowChats.forEach(chat => {
+                        nowSection.appendChild(this.createChatElement(chat));
+                    });
                 }
                 
-                const recentChats = document.getElementById('recentChats');
-                if (!recentChats) {
-                    console.error("Could not find recentChats element");
-                    return;
-                }
+                // Update Recents section
+                const recentSection = document.getElementById('recentChats');
+                recentSection.innerHTML = '';
                 
-                recentChats.innerHTML = '';
-                chats.forEach(chat => {
-                    const chatElement = this.createChatElement(chat);
-                    recentChats.appendChild(chatElement);
-                });
+                if (recentChats.length === 0) {
+                    recentSection.innerHTML = '<div class="chat-item placeholder-text">No recent chats yet</div>';
+                } else {
+                    recentChats.forEach(chat => {
+                        recentSection.appendChild(this.createChatElement(chat));
+                    });
+                }
             }
 
             createChatElement(chat) {
@@ -917,24 +927,27 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             async handleNewChat() {
                 try {
-                    // Move the current chat to "Recents" if it exists
-                    if (this.currentChatId) {
-                        await this.moveToRecents(this.currentChatId);
-                    }
-
-                    // Reset UI for the new chat
+                    // Create new chat
+                    const response = await fetch(`${this.BASE_URL}/api/create-chat`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+                    
+                    const data = await response.json();
+                    if (!response.ok) throw new Error(data.error);
+                    
+                    this.currentChatId = data.chat_id;
+                    
+                    // Clear messages and input
                     document.getElementById('messagesList').innerHTML = '';
                     document.getElementById('userInput').value = '';
-
-                    // Reset current chat ID (new chat will be created on first message)
-                    this.currentChatId = null;
-
-                    // Update chat sections
+                    
+                    // Refresh chat list
                     await this.loadRecentChats();
-
-                    console.log('New chat initialized');
+                    
                 } catch (error) {
-                    console.error('Error handling new chat:', error);
+                    console.error('Error creating new chat:', error);
                 }
             }
 
@@ -981,56 +994,51 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 const input = document.getElementById('userInput');
                 const message = input.value.trim();
                 if (!message) return;
-
+                
                 try {
-                    // Move the current chat to "Recents" if it exists
-                    if (this.currentChatId) {
-                        await this.moveToRecents(this.currentChatId);
-                    }
-
-                    // Create a new chat if there isn't one
                     if (!this.currentChatId) {
+                        // Create new chat if none exists
                         const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
                             method: 'POST',
                             credentials: 'include',
                             headers: { 'Content-Type': 'application/json' }
                         });
-
-                        const creationData = await createResponse.json();
-                        if (!createResponse.ok) throw new Error(creationData.error);
-
-                        this.currentChatId = creationData.chat_id;
-
-                        // Assign the chat to "Now"
-                        await this.updateChatSection(this.currentChatId, 'Now');
+                        
+                        const createData = await createResponse.json();
+                        if (!createResponse.ok) throw new Error(createData.error);
+                        
+                        this.currentChatId = createData.chat_id;
                     }
-
-                    // Add user message to the UI
+                    
+                    // Add user message to UI
                     this.addMessageToUI(message, true);
                     input.value = '';
-
-                    // Send the message to the backend
+                    
+                    // Send message to backend
                     const response = await fetch(`${this.BASE_URL}/api/chat`, {
                         method: 'POST',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ chat_id: this.currentChatId, message })
+                        body: JSON.stringify({
+                            chat_id: this.currentChatId,
+                            message: message
+                        })
                     });
-
+                    
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.error);
-
-                    // Add bot response to the UI
+                    
+                    // Add bot response to UI
                     this.addMessageToUI(data.response, false);
-
-                    // Refresh the sidebar
+                    
+                    // Refresh chat list
                     await this.loadRecentChats();
+                    
                 } catch (error) {
                     console.error('Error sending message:', error);
                     this.addMessageToUI(`Error: ${error.message}`, false);
                 }
             }
-
 
 
             addMessageToUI(content, isUser) {
