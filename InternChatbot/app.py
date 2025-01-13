@@ -299,29 +299,6 @@ def get_chat_history():
 
         user_id = user_result[0]['user_id']
 
-<<<<<<< HEAD
-        # Fetch the recent chats for the user
-        chats = get_recent_chats(user_id)
-        if chats is None:
-            app.logger.error(f"Failed to fetch chats for user_id: {user_id}")
-            return jsonify({"error": "Failed to fetch chat history"}), 500
-
-        # Format the response for the frontend
-        formatted_chats = []
-        for chat in chats:
-            formatted_chat = {
-                'chat_id': chat['chat_id'],
-                'title': chat.get('title', 'New Chat'),
-                'section': chat.get('section', 'Recents'),
-                'created_at': chat['created_at'].isoformat() if chat['created_at'] else None,
-                'updated_at': chat['updated_at'].isoformat() if chat['updated_at'] else None,
-                'last_message': chat.get('last_message', '')
-            }
-            formatted_chats.append(formatted_chat)
-
-        return jsonify({"chats": formatted_chats})
-
-=======
         chats_query = """
         SELECT c.chat_id, COALESCE(c.title, 'New Chat') AS title, c.section, c.created_at, c.updated_at,
                (SELECT content 
@@ -340,7 +317,6 @@ def get_chat_history():
         # Log the chat states for debugging
         app.logger.info(f"Retrieved chats: {chats}")
         return jsonify({"chats": chats or []}), 200
->>>>>>> da6c849 (dddd)
     except Exception as e:
         # Log the exception for debugging
         app.logger.error(f"Error fetching chat history: {str(e)}")
