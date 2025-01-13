@@ -457,18 +457,19 @@ def update_chat_section(chat_id):
     try:
         data = request.get_json()
         section = data.get('section')
-        
+
         if not section:
             return jsonify({"error": "Section is required"}), 400
-            
+
+        # Update section in database
         query = "UPDATE chats SET section = %s WHERE chat_id = %s"
         execute_query(query, (section, chat_id))
-        
+
         return jsonify({"status": "success"})
-        
     except Exception as e:
         app.logger.error(f"Error updating chat section: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
     
 @app.route('/api/move-chat-to-recents/<int:chat_id>', methods=['PUT'])
 @login_required

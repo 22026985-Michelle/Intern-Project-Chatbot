@@ -820,59 +820,34 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     const response = await fetch(`${this.BASE_URL}/api/chat-history`, {
                         method: 'GET',
                         credentials: 'include',
-                        headers: { 'Content-Type': 'application/json' },
+                        headers: { 'Content-Type': 'application/json' }
                     });
 
                     const data = await response.json();
-                    console.log('Chat history response:', data);
+                    if (!response.ok) throw new Error(data.error);
 
-                    if (response.ok) {
-                        // Update "Now" and "Recents" sections
-                        this.updateNowChats(data.chats.filter(chat => chat.section === 'Now'));
-                        this.updateRecentChats(data.chats.filter(chat => chat.section === 'Recents'));
-                    } else {
-                        console.error('Error loading chats:', data.error);
-                        this.updateNowChats([]);
-                        this.updateRecentChats([]);
-                    }
+                    // Separate chats into "Now" and "Recents" sections
+                    const nowChats = data.chats.filter(chat => chat.section === 'Now');
+                    const recentChats = data.chats.filter(chat => chat.section === 'Recents');
+
+                    this.updateNowChat(nowChats);
+                    this.updateRecentChats(recentChats);
                 } catch (error) {
                     console.error('Error loading chats:', error);
-                    this.updateNowChats([]);
+                    this.updateNowChat([]);
                     this.updateRecentChats([]);
                 }
             }
 
-
-            updateStarredChats(chats) {
-                const starredSection = document.getElementById('starredChats');
-                starredSection.innerHTML = '';
-                
-                if (chats.length === 0) {
-                    starredSection.innerHTML = `
-                        <div class="chat-item placeholder-text">
-                            Star projects and chats you use often
-                        </div>
-                    `;
-                    return;
-                }
-
-                chats.forEach(chat => {
-                    starredSection.appendChild(this.createChatElement(chat));
-                });
-            }
-
             updateRecentChats(chats) {
                 const recentSection = document.getElementById('recentChats');
-                if (!recentSection) return;
+                recentSection.innerHTML = '';
 
-                // Handle empty chat array
                 if (chats.length === 0) {
                     recentSection.innerHTML = `<div class="chat-item placeholder-text">No recent chats yet</div>`;
                     return;
                 }
 
-                // Clear and populate chats
-                recentSection.innerHTML = '';
                 chats.forEach(chat => {
                     recentSection.appendChild(this.createChatElement(chat));
                 });
@@ -991,12 +966,17 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 if (!message) return;
 
                 try {
-                    // If no current chat ID exists, create a new chat
+                    // Move the current chat to "Recents" if it exists
+                    if (this.currentChatId) {
+                        await this.moveToRecents(this.currentChatId);
+                    }
+
+                    // Create a new chat if this is the first message
                     if (!this.currentChatId) {
                         const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
                             method: 'POST',
                             credentials: 'include',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: { 'Content-Type': 'application/json' }
                         });
 
                         const creationData = await createResponse.json();
@@ -1012,11 +992,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         await this.updateChatSection(this.currentChatId, 'Now');
                     }
 
-                    // Move the previous chat to "Recents" if applicable
-                    else {
-                        await this.updateChatSection(this.currentChatId, 'Recents');
-                    }
-
                     // Add user message to the UI
                     this.addMessageToUI(message, true);
                     input.value = '';
@@ -1026,7 +1001,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         method: 'POST',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ chat_id: this.currentChatId, message }),
+                        body: JSON.stringify({ chat_id: this.currentChatId, message })
                     });
 
                     const data = await response.json();
@@ -1035,7 +1010,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     // Add bot response to the UI
                     this.addMessageToUI(data.response, false);
 
-                    // Refresh the sidebar (update "Recents" and "Now")
+                    // Refresh the sidebar to reflect the updated sections
                     await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error sending message:', error);
@@ -1149,11 +1124,9 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 }
             }
 
-            updateNowChats(chats) {
+            updateNowChat(chats) {
                 const nowSection = document.getElementById('nowChats');
-                if (!nowSection) return;
-
-                nowSection.innerHTML = ''; // Clear the current "Now" section content
+                nowSection.innerHTML = '';
 
                 if (chats.length === 0) {
                     nowSection.innerHTML = `<div class="chat-item placeholder-text">No active chats yet</div>`;
@@ -1161,8 +1134,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 }
 
                 chats.forEach(chat => {
-                    const chatElement = this.createChatElement(chat);
-                    nowSection.appendChild(chatElement);
+                    nowSection.appendChild(this.createChatElement(chat));
                 });
             }
 
