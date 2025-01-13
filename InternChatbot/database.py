@@ -215,20 +215,18 @@ def get_chat_messages(chat_id):
     return execute_query(query, (chat_id,))
 
 def cleanup_old_chats(user_id, keep_count=5):
-    """Remove old chats keeping only the most recent ones"""
     query = """
     DELETE FROM chats 
-    WHERE chat_id IN (
-        SELECT chat_id FROM (
-            SELECT chat_id 
-            FROM chats 
-            WHERE user_id = %s 
-            ORDER BY updated_at DESC 
-            LIMIT 1000 OFFSET %s
-        ) as old_chats
+    WHERE chat_id NOT IN (
+        SELECT chat_id 
+        FROM chats 
+        WHERE user_id = %s 
+        ORDER BY updated_at DESC 
+        LIMIT %s
     )
     """
     execute_query(query, (user_id, keep_count))
+
 
 def get_user_by_email(email):
     """Get user details by email"""

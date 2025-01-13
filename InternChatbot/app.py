@@ -292,53 +292,29 @@ def create_chat():
 def get_chat_history():
     try:
         user_email = session.get('user_email')
-        app.logger.info(f"Getting chat history for user: {user_email}")
-        
         if not user_email:
-            return jsonify({"chats": []}), 200  # Return empty list for no user
-        
+            return jsonify({"chats": []}), 200
+
         user_query = "SELECT user_id FROM users WHERE email = %s"
         user_result = execute_query(user_query, (user_email,))
-        
         if not user_result:
-            app.logger.warning(f"No user found for email: {user_email}")
-            return jsonify({"chats": []}), 200  # Return empty list for no user
-            
+            return jsonify({"chats": []}), 200
+
         user_id = user_result[0]['user_id']
-        app.logger.info(f"Found user_id: {user_id}")
-        
-        # Get recent chats with simpler query
         chats_query = """
-        SELECT 
-            c.chat_id,
-            COALESCE(c.title, 'New Chat') as title,
-            c.created_at,
-            c.updated_at,
-            c.is_starred,
-            m.content as last_message
+        SELECT c.chat_id, COALESCE(c.title, 'New Chat') as title, c.created_at, c.updated_at, 
+               (SELECT content FROM messages WHERE chat_id = c.chat_id ORDER BY created_at DESC LIMIT 1) as last_message
         FROM chats c
-        LEFT JOIN (
-            SELECT chat_id, content
-            FROM messages
-            WHERE message_id IN (
-                SELECT MAX(message_id)
-                FROM messages
-                GROUP BY chat_id
-            )
-        ) m ON c.chat_id = m.chat_id
         WHERE c.user_id = %s
-        ORDER BY c.is_starred DESC, c.updated_at DESC
+        ORDER BY c.updated_at DESC
         LIMIT 5
         """
-        
         chats = execute_query(chats_query, (user_id,))
-        app.logger.info(f"Retrieved {len(chats) if chats else 0} chats")
-        
         return jsonify({"chats": chats or []}), 200
-        
     except Exception as e:
         app.logger.error(f"Error getting chat history: {str(e)}")
-        return jsonify({"chats": [], "error": str(e)}), 200  # Return empty list with error
+        return jsonify({"chats": [], "error": str(e)}), 200
+
 
 
 @app.route('/api/chat/<int:chat_id>/messages', methods=['GET'])

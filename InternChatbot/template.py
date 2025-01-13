@@ -568,11 +568,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 </button>
             </div>
 
-            <div class="section-title">Starred</div>
-            <div class="chat-list" id="starredChats">
-                <div class="chat-item placeholder-text">Star projects and chats you use often</div>
-            </div>
-
             <div class="section-title">Recents</div>
             <div class="chat-list" id="recentChats"></div>
         </div>
@@ -929,31 +924,18 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             async handleNewChat() {
                 try {
-                    // Clear the current UI first
-                    document.getElementById('messagesList').innerHTML = '';
-                    document.getElementById('userInput').value = '';
-                    
-                    // Reset the greeting message
-                    const greetingDiv = document.createElement('div');
-                    greetingDiv.className = 'greeting';
-                    greetingDiv.innerHTML = `
-                        <div class="greeting-logo">
-                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                                <path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
-                                <path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
-                            </svg>
-                        </div>
-                        <h1 class="greeting-text">How can I help you today?</h1>
-                    `;
-                    document.getElementById('messagesList').appendChild(greetingDiv);
+                    document.getElementById('messagesList').innerHTML = ''; // Clear messages
+                    document.getElementById('userInput').value = ''; // Clear input
 
-                    // Reset current chat ID - new chat will be created on first message
-                    this.currentChatId = null;
+                    this.currentChatId = null; // Reset chat ID
 
-                    // Focus on the input
-                    document.getElementById('userInput').focus();
+                    // Move previous chat to "Recents" if applicable
+                    if (this.previousChatId) {
+                        await this.moveToRecents(this.previousChatId);
+                    }
+                    this.previousChatId = null;
 
-                    console.log('New chat UI reset completed');
+                    await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error handling new chat:', error);
                 }
@@ -1019,46 +1001,35 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     if (!this.currentChatId) {
                         const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json'
-                            },
-                            credentials: 'include'
+                            credentials: 'include',
+                            headers: { 'Content-Type': 'application/json' }
                         });
+                        if (!createResponse.ok) throw new Error('Failed to create chat');
                         
-                        if (!createResponse.ok) {
-                            const errorData = await createResponse.json();
-                            console.error('Create chat response error:', errorData);
-                            throw new Error(errorData.error || 'Failed to create chat');
-                        }
-                        
-                        const creationData = await createResponse.json();
-                        this.currentChatId = creationData.chat_id;
+                        const chatData = await createResponse.json();
+                        this.currentChatId = chatData.chat_id;
                         const title = await this.generateChatTitle(message);
                         await this.updateChatTitle(this.currentChatId, title);
                     }
 
-                    // Add user message to UI and send to backend
-                    this.addMessageToUI(message, true); // corrected method name
-                    input.value = '';
+                    this.addMessageToUI(message, true); // Add user message to UI
+                    input.value = ''; // Clear input
 
-                    // Move previous chat to 'Recent' if applicable
-                    if (this.previousChatId && this.previousChatId !== this.currentChatId) {
-                        await this.moveToRecents(this.previousChatId);
-                    }
-                    this.previousChatId = this.currentChatId;
+                    // Send message to backend
+                    const response = await fetch(`${this.BASE_URL}/api/chat`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ chat_id: this.currentChatId, message })
+                    });
 
-                    // Refresh sidebar to show updated chat list
-                    await this.loadRecentChats();
+                    if (!response.ok) throw new Error('Failed to send message');
+                    const data = await response.json();
+                    this.addMessageToUI(data.response, false); // Add bot response
                 } catch (error) {
                     console.error('Error sending message:', error);
-                    this.addMessageToUI(`Error: ${error.message}`, false); // corrected method name
-                    if (error.message.includes('Failed to create chat')) {
-                        this.currentChatId = null;
-                    }
-                    input.value = message;  // Keep the message in the input box if there was an error
                 }
             }
-
 
 
             addMessageToUI(content, isUser) {
