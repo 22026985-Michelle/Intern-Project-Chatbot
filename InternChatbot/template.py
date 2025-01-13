@@ -826,7 +826,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.error);
 
-                    // Separate chats into "Now" and "Recents" sections
+                    // Separate chats into "Now" and "Recents"
                     const nowChats = data.chats.filter(chat => chat.section === 'Now');
                     const recentChats = data.chats.filter(chat => chat.section === 'Recents');
 
@@ -837,6 +837,20 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     this.updateNowChat([]);
                     this.updateRecentChats([]);
                 }
+            }
+
+            updateNowChat(chats) {
+                const nowSection = document.getElementById('nowChats');
+                nowSection.innerHTML = '';
+
+                if (chats.length === 0) {
+                    nowSection.innerHTML = `<div class="chat-item placeholder-text">No active chats yet</div>`;
+                    return;
+                }
+
+                chats.forEach(chat => {
+                    nowSection.appendChild(this.createChatElement(chat));
+                });
             }
 
             updateRecentChats(chats) {
@@ -971,7 +985,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         await this.moveToRecents(this.currentChatId);
                     }
 
-                    // Create a new chat if this is the first message
+                    // Create a new chat if there isn't one
                     if (!this.currentChatId) {
                         const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
                             method: 'POST',
@@ -984,11 +998,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
                         this.currentChatId = creationData.chat_id;
 
-                        // Generate a dynamic title for the chat
-                        const title = await this.generateChatTitle(message);
-                        await this.updateChatTitle(this.currentChatId, title);
-
-                        // Assign the chat to the "Now" section
+                        // Assign the chat to "Now"
                         await this.updateChatSection(this.currentChatId, 'Now');
                     }
 
@@ -1010,13 +1020,14 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     // Add bot response to the UI
                     this.addMessageToUI(data.response, false);
 
-                    // Refresh the sidebar to reflect the updated sections
+                    // Refresh the sidebar
                     await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error sending message:', error);
                     this.addMessageToUI(`Error: ${error.message}`, false);
                 }
             }
+
 
 
             addMessageToUI(content, isUser) {
@@ -1122,20 +1133,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 } catch (error) {
                     console.error('Error loading chat:', error);
                 }
-            }
-
-            updateNowChat(chats) {
-                const nowSection = document.getElementById('nowChats');
-                nowSection.innerHTML = '';
-
-                if (chats.length === 0) {
-                    nowSection.innerHTML = `<div class="chat-item placeholder-text">No active chats yet</div>`;
-                    return;
-                }
-
-                chats.forEach(chat => {
-                    nowSection.appendChild(this.createChatElement(chat));
-                });
             }
 
             handleFileSelect(e) {

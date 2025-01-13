@@ -299,14 +299,12 @@ def get_chat_history():
 
         chats_query = """
         SELECT c.chat_id, COALESCE(c.title, 'New Chat') AS title, c.section, c.created_at, c.updated_at,
-               COALESCE(m.content, '') AS last_message
+               (SELECT content 
+                FROM messages m 
+                WHERE m.chat_id = c.chat_id 
+                ORDER BY created_at DESC 
+                LIMIT 1) AS last_message
         FROM chats c
-        LEFT JOIN (
-            SELECT chat_id, content
-            FROM messages
-            WHERE chat_id IN (SELECT chat_id FROM chats)
-            ORDER BY created_at DESC LIMIT 1
-        ) m ON c.chat_id = m.chat_id
         WHERE c.user_id = %s
         ORDER BY c.updated_at DESC
         LIMIT 5
@@ -314,11 +312,13 @@ def get_chat_history():
         app.logger.info(f"Executing chat history query for user_id: {user_id}")
         chats = execute_query(chats_query, (user_id,))
 
-        app.logger.info(f"Chat history retrieved: {chats}")
+        # Log the chat states for debugging
+        app.logger.info(f"Retrieved chats: {chats}")
         return jsonify({"chats": chats or []}), 200
     except Exception as e:
         app.logger.error(f"Error in /api/chat-history: {str(e)}")
         return jsonify({"chats": [], "error": "Internal Server Error"}), 500
+
 
 
 
@@ -470,15 +470,20 @@ def update_chat_section(chat_id):
         app.logger.error(f"Error updating chat section: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-    
 @app.route('/api/move-chat-to-recents/<int:chat_id>', methods=['PUT'])
 @login_required
 def move_chat_to_recents(chat_id):
     """Move a chat to the 'Recents' section."""
     try:
         # Update the section of the chat to 'Recents'
-        update_query = "UPDATE chats SET section = 'Recents' WHERE chat_id = %s"
-        execute_query(update_query, (chat_id,))
+        update_query = "UPDATE chats SET section = 'Recents', updated_at = NOW() WHERE chat_id = %s"
+        rows_affected = execute_query(update_query, (chat_id,))
+        
+        if rows_affected == 0:
+            return jsonify({"error": "Chat not found or update failed"}), 404
+        
         return jsonify({"status": "success"})
     except Exception as e:
+        app.logger.error(f"Error moving chat to recents: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
