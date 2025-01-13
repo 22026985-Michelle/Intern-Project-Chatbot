@@ -724,88 +724,12 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             const profileButton = document.getElementById('profileButton');
             const profileMenu = document.getElementById('profileMenu');
             const appearanceMenu = document.getElementById('appearanceMenu');
-            const MAX_CONVERSATIONS = 5;
-            const MAX_MESSAGES_PER_CONVERSATION = 10;
-            const COOKIE_NAME = 'chat_history';
 
             let isMenuOpen = false;
             let isOverSidebar = false;
             let sidebarTimeout = null;
 
             const BASE_URL = 'https://internproject-4fq7.onrender.com';
-
-            function loadChatHistory() {
-                try {
-                    const history = localStorage.getItem(COOKIE_NAME);
-                    return history ? JSON.parse(history) : [];
-                } catch (error) {
-                    console.error('Error loading chat history:', error);
-                    return [];
-                }
-            }
-
-            function saveChatHistory(conversations) {
-                try {
-                    // Keep only the last 5 conversations
-                    const trimmedConversations = conversations.slice(-MAX_CONVERSATIONS);
-                    
-                    // For each conversation, keep only essential information and limit messages
-                    const minimalConversations = trimmedConversations.map(conv => ({
-                        id: conv.id,
-                        timestamp: conv.timestamp,
-                        messages: conv.messages.slice(-MAX_MESSAGES_PER_CONVERSATION).map(msg => ({
-                            content: msg.content.slice(0, 150), // Limit message length
-                            isUser: msg.isUser
-                        }))
-                    }));
-                    
-                    localStorage.setItem(COOKIE_NAME, JSON.stringify(minimalConversations));
-                } catch (error) {
-                    console.error('Error saving chat history:', error);
-                }
-            }
-
-            function addMessageToHistory(content, isUser) {
-                try {
-                    const conversations = loadChatHistory();
-                    const currentTime = new Date().getTime();
-                    
-                    // Get current conversation or create new one
-                    let currentConversation = conversations[conversations.length - 1];
-                    if (!currentConversation || 
-                        currentTime - currentConversation.timestamp > 30 * 60 * 1000) { // New conversation after 30 min
-                        currentConversation = {
-                            id: currentTime.toString(),
-                            timestamp: currentTime,
-                            messages: []
-                        };
-                        conversations.push(currentConversation);
-                    }
-                    
-                    // Add message to current conversation
-                    currentConversation.messages.push({
-                        content,
-                        isUser
-                    });
-                    
-                    saveChatHistory(conversations);
-                    return currentConversation.id;
-                } catch (error) {
-                    console.error('Error adding message to history:', error);
-                }
-            }
-
-            function displayChatHistory() {
-                const conversations = loadChatHistory();
-                messagesList.innerHTML = ''; // Clear existing messages
-                
-                if (conversations.length > 0) {
-                    const latestConversation = conversations[conversations.length - 1];
-                    latestConversation.messages.forEach(msg => {
-                        addMessage(msg.content, msg.isUser);
-                    });
-                }
-            }
 
             // Modify your existing sendMessage function
             async function sendMessage() {
@@ -861,9 +785,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     addMessage(`Error: ${error.message || 'An unknown error occurred'}`);
                 }
             }
-
-            // Initialize chat history when page loads
-            displayChatHistory();
 
             // Sidebar Control Functions
             function showSidebar() {
@@ -1012,8 +933,9 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 if (!message) return;
                 
                 try {
-                    console.log('Sending message:', message);
+                    // Add message to UI
                     addMessage(message, true);
+                    
                     userInput.value = '';
                     userInput.style.height = 'auto';
 
@@ -1021,6 +943,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     let formData;
                     let fetchOptions;
 
+                    // Prepare request data
                     if (fileToSend) {
                         formData = new FormData();
                         formData.append('message', message);
@@ -1040,24 +963,25 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         };
                     }
 
+                    // Send message to server
                     const response = await fetch(`${BASE_URL}/chat`, fetchOptions);
 
                     if (!response.ok) {
                         const errorData = await response.json();
-                        console.error('Server error:', errorData);
                         throw new Error(`Server error: ${errorData.details || errorData.error || 'Unknown error'}`);
                     }
 
                     const data = await response.json();
-                    console.log('Response data:', data);
                     
                     if (fileToSend) {
                         removeFile();
                     }
 
+                    // Add bot response to UI
                     addMessage(data.response);
+
                 } catch (error) {
-                    console.error('Error details:', error);
+                    console.error('Error:', error);
                     addMessage(`Error: ${error.message || 'An unknown error occurred'}`);
                 }
             }

@@ -139,6 +139,26 @@ def chat():
         if not client:
             return jsonify({"error": "Anthropic client not initialized"}), 500
 
+        # Get user ID from email in session
+        user_email = session.get('user_email')
+        user_query = "SELECT id FROM users WHERE email = %s"
+        user_result = execute_query(user_query, (user_email,))
+        if not user_result:
+            return jsonify({"error": "User not found"}), 404
+        
+        user_id = user_result[0]['id']
+
+        # Get or create chat session
+        chat_query = "SELECT chat_id FROM chats WHERE user_id = %s ORDER BY updated_at DESC LIMIT 1"
+        chat_result = execute_query(chat_query, (user_id,))
+        
+        if not chat_result:
+            # Create new chat if none exists
+            chat_id = create_new_chat(user_id)
+        else:
+            chat_id = chat_result[0]['chat_id']
+            
+        # Get message content
         if request.content_type and 'multipart/form-data' in request.content_type:
             message = request.form.get('message', '')
             file_content = None
@@ -158,6 +178,10 @@ def chat():
         if not content:
             return jsonify({"error": "Message content missing"}), 400
 
+        # Store user message
+        add_message(chat_id, content, is_user=True)
+
+        # Get bot response
         response = client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=1000,
@@ -169,11 +193,52 @@ def chat():
             }]
         )
 
-        return jsonify({"response": response.content[0].text})
+        bot_response = response.content[0].text
+        
+        # Store bot response
+        add_message(chat_id, bot_response, is_user=False)
+
+        # Cleanup old chats
+        cleanup_old_chats(user_id)
+
+        return jsonify({"response": bot_response})
 
     except Exception as e:
         print(f"Error handling chat request: {str(e)}")
         return jsonify({"error": "Internal server error"}), 500
+    
+@app.route('/api/chat-history', methods=['GET'])
+@login_required
+def get_chat_history():
+    """Get user's chat history"""
+    try:
+        user_email = session.get('user_email')
+        user_query = "SELECT id FROM users WHERE email = %s"
+        user_result = execute_query(user_query, (user_email,))
+        
+        if not user_result:
+            return jsonify({"error": "User not found"}), 404
+            
+        user_id = user_result[0]['id']
+        
+        # Get recent chats
+        chats = get_recent_chats(user_id)
+        
+        return jsonify({"chats": chats})
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/chat/<chat_id>/messages', methods=['GET'])
+@login_required
+def get_chat_history_messages(chat_id):
+    """Get messages for a specific chat"""
+    try:
+        messages = get_chat_messages(chat_id)
+        return jsonify({"messages": messages})
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
     
 @app.route('/api/get-profile')
 @login_required
