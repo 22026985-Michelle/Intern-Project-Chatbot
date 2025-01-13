@@ -855,13 +855,16 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             updateRecentChats(chats) {
                 const recentSection = document.getElementById('recentChats');
-                recentSection.innerHTML = '';
+                if (!recentSection) return; // Ensure the section exists in the DOM
 
                 if (chats.length === 0) {
+                    // Add placeholder if no recent chats exist
                     recentSection.innerHTML = `<div class="chat-item placeholder-text">No recent chats yet</div>`;
                     return;
                 }
 
+                // Clear the section and add new chat items
+                recentSection.innerHTML = '';
                 chats.forEach(chat => {
                     recentSection.appendChild(this.createChatElement(chat));
                 });
