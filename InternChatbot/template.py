@@ -819,7 +819,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 try {
                     const response = await fetch(`${this.BASE_URL}/api/chat-history`, {
                         method: 'GET',
-                        credentials: 'include'
+                        credentials: 'include',
                     });
 
                     if (!response.ok) {
@@ -827,12 +827,17 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     }
 
                     const data = await response.json();
-                    console.log('Loaded chats:', data); // Debugging
+                    if (data.error) {
+                        console.error('Backend error:', data.error);
+                        return;
+                    }
+
                     this.updateSidebarChats(data.chats || []);
                 } catch (error) {
                     console.error('Error loading recent chats:', error);
                 }
             }
+
 
 
             updateNowChat(chats) {

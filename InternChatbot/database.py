@@ -176,37 +176,50 @@ def add_message(chat_id, content, is_user=True):
             connection.close()
     
 def get_recent_chats(user_id, limit=5):
-    query = """
-    WITH LatestMessages AS (
-        SELECT 
-            chat_id, 
-            content AS last_message, 
-            created_at AS last_message_time
-        FROM messages
-        WHERE (chat_id, created_at) IN (
-            SELECT chat_id, MAX(created_at)
-            FROM messages
-            GROUP BY chat_id
+    try:
+        query = """
+        WITH OrderedChats AS (
+            SELECT 
+                chat_id,
+                title,
+                section,
+                created_at,
+                updated_at,
+                ROW_NUMBER() OVER (ORDER BY updated_at DESC) AS row_num
+            FROM chats
+            WHERE user_id = %s
         )
-    )
-    SELECT 
-        c.chat_id,
-        COALESCE(c.title, 'New Chat') AS title,
-        CASE
-            WHEN c.updated_at > (NOW() - INTERVAL 10 MINUTE) THEN 'Now'
-            ELSE 'Recents'
-        END AS section,
-        c.created_at,
-        c.updated_at,
-        c.is_starred,
-        lm.last_message
-    FROM chats c
-    LEFT JOIN LatestMessages lm ON c.chat_id = lm.chat_id
-    WHERE c.user_id = %s
-    ORDER BY c.is_starred DESC, c.updated_at DESC
-    LIMIT %s
-    """
-    return execute_query(query, (user_id, limit))
+        SELECT 
+            oc.chat_id,
+            COALESCE(oc.title, 'New Chat') AS title,
+            CASE 
+                WHEN oc.row_num = 1 THEN 'Now'
+                ELSE 'Recents'
+            END AS section,
+            oc.created_at,
+            oc.updated_at,
+            m.content AS last_message
+        FROM OrderedChats oc
+        LEFT JOIN (
+            SELECT chat_id, content
+            FROM messages
+            WHERE (chat_id, created_at) IN (
+                SELECT chat_id, MAX(created_at)
+                FROM messages
+                GROUP BY chat_id
+            )
+        ) m ON oc.chat_id = m.chat_id
+        WHERE oc.row_num <= %s
+        ORDER BY 
+            CASE WHEN oc.row_num = 1 THEN 0 ELSE 1 END,
+            oc.updated_at DESC
+        """
+        return execute_query(query, (user_id, limit))
+
+    except Exception as e:
+        logger.error(f"Error fetching recent chats: {str(e)}")
+        return None
+
 
 
 def update_chat_sections(user_id):

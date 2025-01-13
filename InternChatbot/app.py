@@ -284,41 +284,47 @@ def create_chat():
 @login_required
 def get_chat_history():
     try:
+        # Fetch the current user's email from the session
         user_email = session.get('user_email')
         if not user_email:
+            app.logger.error("User not authenticated.")
             return jsonify({"error": "User not authenticated"}), 401
-            
+
+        # Get the user's ID from the database
         user_query = "SELECT user_id FROM users WHERE email = %s"
         user_result = execute_query(user_query, (user_email,))
         if not user_result:
+            app.logger.error(f"No user found with email: {user_email}")
             return jsonify({"error": "User not found"}), 404
-            
+
         user_id = user_result[0]['user_id']
 
-        # Update chat sections before retrieving
-        update_chat_sections(user_id)
-
+        # Fetch the recent chats for the user
         chats = get_recent_chats(user_id)
-        
-        # Format the response
+        if chats is None:
+            app.logger.error(f"Failed to fetch chats for user_id: {user_id}")
+            return jsonify({"error": "Failed to fetch chat history"}), 500
+
+        # Format the response for the frontend
         formatted_chats = []
         for chat in chats:
             formatted_chat = {
                 'chat_id': chat['chat_id'],
-                'title': chat['title'],
-                'section': chat['section'],
+                'title': chat.get('title', 'New Chat'),
+                'section': chat.get('section', 'Recents'),
                 'created_at': chat['created_at'].isoformat() if chat['created_at'] else None,
                 'updated_at': chat['updated_at'].isoformat() if chat['updated_at'] else None,
-                'is_starred': chat['is_starred'],
-                'last_message': chat['last_message']
+                'last_message': chat.get('last_message', '')
             }
             formatted_chats.append(formatted_chat)
-            
+
         return jsonify({"chats": formatted_chats})
-        
+
     except Exception as e:
-        app.logger.error(f"Error in chat history: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        # Log the exception for debugging
+        app.logger.error(f"Error fetching chat history: {str(e)}")
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+
 
 
 
