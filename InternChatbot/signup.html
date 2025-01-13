@@ -193,80 +193,126 @@
         confirmPasswordInput.addEventListener('input', checkPasswordMatch);
 
         // Password strength checker
-        passwordInput.addEventListener('input', function() {
-            const password = this.value;
-            let strength = 0;
-            let message = '';
+// Password strength checker with detailed policy validation
+passwordInput.addEventListener('input', function () {
+    const password = this.value;
+    const requirements = {
+        length: password.length >= 8,
+        uppercase: /[A-Z]/.test(password),
+        lowercase: /[a-z]/.test(password),
+        digit: /\d/.test(password),
+        specialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+    };
 
-            if (password.length >= 8) strength++;
-            if (password.match(/[a-z]/) && password.match(/[A-Z]/)) strength++;
-            if (password.match(/\d/)) strength++;
-            if (password.match(/[^a-zA-Z\d]/)) strength++;
+    let strength = 0;
+    let message = '<ul style="margin: 0; padding-left: 20px;">';
 
-            switch(strength) {
-                case 0:
-                case 1:
-                    message = '<span class="strength-weak">Weak password</span>';
-                    break;
-                case 2:
-                    message = '<span class="strength-medium">Medium password</span>';
-                    break;
-                case 3:
-                case 4:
-                    message = '<span class="strength-strong">Strong password</span>';
-                    break;
-            }
+    // Evaluate each requirement and provide feedback
+    if (requirements.length) {
+        strength++;
+        message += '<li style="color: #10B981;">✔ At least 8 characters</li>';
+    } else {
+        message += '<li style="color: #EF4444;">✘ At least 8 characters</li>';
+    }
 
-            passwordStrength.innerHTML = message;
+    if (requirements.uppercase) {
+        strength++;
+        message += '<li style="color: #10B981;">✔ At least one uppercase letter</li>';
+    } else {
+        message += '<li style="color: #EF4444;">✘ At least one uppercase letter</li>';
+    }
+
+    if (requirements.lowercase) {
+        strength++;
+        message += '<li style="color: #10B981;">✔ At least one lowercase letter</li>';
+    } else {
+        message += '<li style="color: #EF4444;">✘ At least one lowercase letter</li>';
+    }
+
+    if (requirements.digit) {
+        strength++;
+        message += '<li style="color: #10B981;">✔ At least one digit</li>';
+    } else {
+        message += '<li style="color: #EF4444;">✘ At least one digit</li>';
+    }
+
+    if (requirements.specialChar) {
+        strength++;
+        message += '<li style="color: #10B981;">✔ At least one special character</li>';
+    } else {
+        message += '<li style="color: #EF4444;">✘ At least one special character</li>';
+    }
+
+    message += '</ul>';
+
+    // Display the password strength message
+    passwordStrength.innerHTML = message;
+
+    // Optionally indicate overall strength
+    if (strength <= 2) {
+        passwordStrength.innerHTML += '<p class="strength-weak">Weak password</p>';
+    } else if (strength === 3 || strength === 4) {
+        passwordStrength.innerHTML += '<p class="strength-medium">Medium password</p>';
+    } else if (strength === 5) {
+        passwordStrength.innerHTML += '<p class="strength-strong">Strong password</p>';
+    }
+});
+
+// Prevent submission if password doesn't meet the policy
+signupForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const username = document.getElementById('username').value;
+    const email = document.getElementById('email').value;
+    const password = passwordInput.value;
+    const confirmPassword = confirmPasswordInput.value;
+
+    // Basic validation
+    if (password !== confirmPassword) {
+        errorMessage.textContent = 'Passwords do not match';
+        errorMessage.style.display = 'block';
+        return;
+    }
+
+    // Check if the password meets the full policy
+    const policyCheck = {
+        length: password.length >= 8,
+        uppercase: /[A-Z]/.test(password),
+        lowercase: /[a-z]/.test(password),
+        digit: /\d/.test(password),
+        specialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+    };
+
+    if (!policyCheck.length || !policyCheck.uppercase || !policyCheck.lowercase || !policyCheck.digit || !policyCheck.specialChar) {
+        errorMessage.textContent = 'Password must meet all the strength requirements.';
+        errorMessage.style.display = 'block';
+        return;
+    }
+
+    try {
+        const response = await fetch(`${BASE_URL}/api/signup`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ username, email, password }),
         });
 
-        signupForm.addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const username = document.getElementById('username').value; // Add this line
-            const email = document.getElementById('email').value;
-            const password = passwordInput.value;
-            const confirmPassword = confirmPasswordInput.value;
+        const data = await response.json();
 
-            // Basic validation
-            if (password !== confirmPassword) {
-                errorMessage.textContent = 'Passwords do not match';
-                errorMessage.style.display = 'block';
-                return;
-            }
+        if (response.ok) {
+            localStorage.setItem('userEmail', email);
+            window.location.href = '/';
+        } else {
+            errorMessage.textContent = data.error || 'Signup failed';
+            errorMessage.style.display = 'block';
+        }
+    } catch (error) {
+        errorMessage.textContent = 'An error occurred. Please try again.';
+        errorMessage.style.display = 'block';
+    }
+});
 
-            if (password.length < 8) {
-                errorMessage.textContent = 'Password must be at least 8 characters long';
-                errorMessage.style.display = 'block';
-                return;
-            }
-
-            try {
-                const response = await fetch(`${BASE_URL}/api/signup`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ username, email, password }) // Add username here
-                });
-
-                const data = await response.json();
-
-                if (response.ok) {
-                    // Store the user email if needed
-                    localStorage.setItem('userEmail', email);
-                    
-                    // Redirect to main chat interface
-                    window.location.href = '/';
-                } else {
-                    errorMessage.textContent = data.error || 'Signup failed';
-                    errorMessage.style.display = 'block';
-                }
-            } catch (error) {
-                errorMessage.textContent = 'An error occurred. Please try again.';
-                errorMessage.style.display = 'block';
-            }
-        });
     </script>
 </body>
 </html>
