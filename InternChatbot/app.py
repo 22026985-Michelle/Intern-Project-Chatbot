@@ -313,7 +313,8 @@ def get_chat_history():
         return jsonify({"chats": formatted_chats})
         
     except Exception as e:
-        app.logger.error(f"Error in chat history: {str(e)
+        app.logger.error(f"Error in chat history: {str(e)}")  # Fixed closing parenthesis
+        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/api/chat/<int:chat_id>/messages', methods=['GET'])
