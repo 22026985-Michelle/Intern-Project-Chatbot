@@ -41,35 +41,19 @@ def execute_query(query, params=None):
         cursor = None
         try:
             cursor = connection.cursor(dictionary=True)
-            logger.debug(f"Executing query: {query}")
-            logger.debug(f"Query parameters: {params}")
             cursor.execute(query, params)
-            
             if query.lower().startswith('select'):
-                result = cursor.fetchall()
-                logger.debug(f"Query result: {result}")
+                result = cursor.fetchall()  # Ensure fetching all results
                 return result
             else:
                 connection.commit()
-                # For INSERT queries that need the last ID
-                if query.lower().startswith('insert'):
-                    last_id = cursor.lastrowid
-                    logger.debug(f"Last inserted ID: {last_id}")
-                    return last_id
-                logger.debug(f"Query affected {cursor.rowcount} rows")
                 return cursor.rowcount
-                
-        except Error as e:
-            logger.error(f"Error executing query: {str(e)}")
-            logger.error(f"Failed query: {query}")
-            logger.error(f"Failed parameters: {params}")
-            return None
         finally:
             if cursor:
                 cursor.close()
             if connection.is_connected():
                 connection.close()
-                logger.debug("Database connection closed")
+
 
 def create_user(email, password, username):  # Add username parameter
     logger.info(f"Attempting to create user with email: {email}")

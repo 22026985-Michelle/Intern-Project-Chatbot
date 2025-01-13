@@ -1037,8 +1037,8 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         await this.updateChatTitle(this.currentChatId, title);
                     }
 
-                    // Send the message
-                    await this.addMessage(this.currentChatId, message, true);
+                    // Add user message to UI and send to backend
+                    this.addMessageToUI(message, true); // corrected method name
                     input.value = '';
 
                     // Move previous chat to 'Recent' if applicable
@@ -1051,13 +1051,14 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error sending message:', error);
-                    this.addMessageToUI(`Error: ${error.message}`, false);
+                    this.addMessageToUI(`Error: ${error.message}`, false); // corrected method name
                     if (error.message.includes('Failed to create chat')) {
                         this.currentChatId = null;
                     }
                     input.value = message;  // Keep the message in the input box if there was an error
                 }
             }
+
 
 
             addMessageToUI(content, isUser) {
