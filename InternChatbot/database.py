@@ -38,26 +38,35 @@ def get_db_connection():
 def execute_query(query, params=None):
     connection = get_db_connection()
     if connection:
+        cursor = None
         try:
-            with connection.cursor(dictionary=True) as cursor:
-                logger.debug(f"Executing query: {query}")
-                logger.debug(f"Query parameters: {params}")
-                cursor.execute(query, params)
-                if query.lower().startswith('select'):
-                    result = cursor.fetchall()
-                    logger.debug(f"Query result: {result}")
-                    return result
-                else:
-                    connection.commit()
-                    logger.debug(f"Query affected {cursor.rowcount} rows")
-                    logger.debug(f"Last inserted ID: {cursor.lastrowid}")
-                    return cursor.rowcount
+            cursor = connection.cursor(dictionary=True)
+            logger.debug(f"Executing query: {query}")
+            logger.debug(f"Query parameters: {params}")
+            cursor.execute(query, params)
+            
+            if query.lower().startswith('select'):
+                result = cursor.fetchall()
+                logger.debug(f"Query result: {result}")
+                return result
+            else:
+                connection.commit()
+                # For INSERT queries that need the last ID
+                if query.lower().startswith('insert'):
+                    last_id = cursor.lastrowid
+                    logger.debug(f"Last inserted ID: {last_id}")
+                    return last_id
+                logger.debug(f"Query affected {cursor.rowcount} rows")
+                return cursor.rowcount
+                
         except Error as e:
             logger.error(f"Error executing query: {str(e)}")
             logger.error(f"Failed query: {query}")
             logger.error(f"Failed parameters: {params}")
             return None
         finally:
+            if cursor:
+                cursor.close()
             if connection.is_connected():
                 connection.close()
                 logger.debug("Database connection closed")
@@ -109,35 +118,22 @@ def create_new_chat(user_id):
             # If user has too many chats, delete the oldest ones
             cleanup_old_chats(user_id, keep_count=95)
         
-        # Insert new chat
+        # Insert new chat and get ID directly
         insert_query = """
         INSERT INTO chats (user_id, created_at, updated_at, section)
         VALUES (%s, NOW(), NOW(), 'Today')
         """
-        result = execute_query(insert_query, (user_id,))
+        chat_id = execute_query(insert_query, (user_id,))
         
-        if not result:
-            logger.error("Failed to insert new chat")
-            return None
-            
-        # Get the created chat_id
-        get_chat_query = """
-        SELECT chat_id FROM chats 
-        WHERE user_id = %s 
-        ORDER BY created_at DESC 
-        LIMIT 1
-        """
-        result = execute_query(get_chat_query, (user_id,))
-        
-        if result and len(result) > 0:
-            chat_id = result[0]['chat_id']
+        if chat_id:
             logger.info(f"Created new chat with ID: {chat_id}")
             return chat_id
             
+        logger.error("Failed to create chat - no ID returned")
         return None
         
     except Exception as e:
-        logger.error(f"Error creating new chat: {str(e)}")
+        logger.error(f"Error in create_new_chat: {str(e)}")
         return None
 
 def add_message(chat_id, content, is_user=True):
