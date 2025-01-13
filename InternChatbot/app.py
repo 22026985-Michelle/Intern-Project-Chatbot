@@ -294,23 +294,51 @@ def get_chat_history():
         user_email = session.get('user_email')
         app.logger.info(f"Getting chat history for user: {user_email}")
         
+        if not user_email:
+            return jsonify({"chats": []}), 200  # Return empty list for no user
+        
         user_query = "SELECT user_id FROM users WHERE email = %s"
         user_result = execute_query(user_query, (user_email,))
         
         if not user_result:
-            app.logger.error(f"No user found for email: {user_email}")
-            return jsonify({"error": "User not found"}), 404
+            app.logger.warning(f"No user found for email: {user_email}")
+            return jsonify({"chats": []}), 200  # Return empty list for no user
             
         user_id = user_result[0]['user_id']
+        app.logger.info(f"Found user_id: {user_id}")
         
-        # Get recent chats
-        chats = get_recent_chats(user_id, limit=5)
+        # Get recent chats with simpler query
+        chats_query = """
+        SELECT 
+            c.chat_id,
+            COALESCE(c.title, 'New Chat') as title,
+            c.created_at,
+            c.updated_at,
+            c.is_starred,
+            m.content as last_message
+        FROM chats c
+        LEFT JOIN (
+            SELECT chat_id, content
+            FROM messages
+            WHERE message_id IN (
+                SELECT MAX(message_id)
+                FROM messages
+                GROUP BY chat_id
+            )
+        ) m ON c.chat_id = m.chat_id
+        WHERE c.user_id = %s
+        ORDER BY c.is_starred DESC, c.updated_at DESC
+        LIMIT 5
+        """
         
-        return jsonify({"chats": chats or []})
+        chats = execute_query(chats_query, (user_id,))
+        app.logger.info(f"Retrieved {len(chats) if chats else 0} chats")
+        
+        return jsonify({"chats": chats or []}), 200
         
     except Exception as e:
         app.logger.error(f"Error getting chat history: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"chats": [], "error": str(e)}), 200  # Return empty list with error
 
 @app.route('/api/chat/<int:chat_id>/messages', methods=['GET'])
 @login_required

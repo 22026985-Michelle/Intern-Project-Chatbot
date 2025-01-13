@@ -816,23 +816,63 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             async loadRecentChats() {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/chat-history`);
-                    if (!response.ok) throw new Error('Failed to fetch chats');
-                    
-                    const data = await response.json();
-                    console.log("Chat history response:", data); // Add this line
-                    
-                    if (!data.chats) {
-                        console.error("No chats array in response");
-                        this.updateSidebarChats([]);
-                        return;
+                    const response = await fetch(`${this.BASE_URL}/api/chat-history`, {
+                        method: 'GET',
+                        credentials: 'include',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! status: ${response.status}`);
                     }
                     
-                    this.updateSidebarChats(data.chats);
+                    const data = await response.json();
+                    console.log("Chat history response:", data);
+
+                    // Update both sections
+                    this.updateStarredChats(data.chats.filter(chat => chat.is_starred));
+                    this.updateRecentChats(data.chats.filter(chat => !chat.is_starred));
                 } catch (error) {
                     console.error('Error loading chats:', error);
-                    this.updateSidebarChats([]); // Add this line to prevent errors
+                    // Show empty states for both sections on error
+                    this.updateStarredChats([]);
+                    this.updateRecentChats([]);
                 }
+            }
+
+            updateStarredChats(chats) {
+                const starredSection = document.getElementById('starredChats');
+                starredSection.innerHTML = '';
+                
+                if (chats.length === 0) {
+                    starredSection.innerHTML = `
+                        <div class="chat-item placeholder-text">
+                            Star projects and chats you use often
+                        </div>
+                    `;
+                    return;
+                }
+
+                chats.forEach(chat => {
+                    starredSection.appendChild(this.createChatElement(chat));
+                });
+            }
+
+            updateRecentChats(chats) {
+                const recentSection = document.getElementById('recentChats');
+                recentSection.innerHTML = '';
+                
+                if (chats.length === 0) {
+                    // Don't show any placeholder for recent chats when empty
+                    return;
+                }
+
+                // Only show the 5 most recent chats
+                chats.slice(0, 5).forEach(chat => {
+                    recentSection.appendChild(this.createChatElement(chat));
+                });
             }
 
             updateSidebarChats(chats) {
@@ -856,10 +896,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             createChatElement(chat) {
                 const div = document.createElement('div');
-                div.className = 'chat-item';
-                if (chat.chat_id === this.currentChatId) {
-                    div.classList.add('active');
-                }
+                div.className = `chat-item${this.currentChatId === chat.chat_id ? ' active' : ''}`;
 
                 div.innerHTML = `
                     <span class="chat-icon">⊙</span>
@@ -873,14 +910,18 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 `;
 
                 // Add click handlers
-                div.querySelector('.chat-title').addEventListener('click', () => this.loadChat(chat.chat_id));
-                div.querySelector('.star-button').addEventListener('click', (e) => {
-                    e.stopPropagation();
-                    this.toggleStarChat(chat.chat_id, !chat.is_starred);
+                div.querySelector('.chat-title').addEventListener('click', () => {
+                    this.loadChat(chat.chat_id);
                 });
-                div.querySelector('.delete-button').addEventListener('click', (e) => {
+
+                div.querySelector('.star-button').addEventListener('click', async (e) => {
                     e.stopPropagation();
-                    this.deleteChat(chat.chat_id);
+                    await this.toggleStarChat(chat.chat_id, !chat.is_starred);
+                });
+
+                div.querySelector('.delete-button').addEventListener('click', async (e) => {
+                    e.stopPropagation();
+                    await this.deleteChat(chat.chat_id);
                 });
 
                 return div;
@@ -888,25 +929,31 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             async handleNewChat() {
                 try {
-                    // If there's a current chat, move it to recents first
-                    if (this.currentChatId) {
-                        // Get the chat's messages to determine if it's empty
-                        const messages = await this.getChatMessages(this.currentChatId);
-                        if (messages && messages.length > 0) {
-                            await this.moveToRecents(this.currentChatId);
-                        } else {
-                            // If the current chat is empty, delete it
-                            await this.deleteChat(this.currentChatId, true); // silent delete
-                        }
-                    }
-
-                    // Clear the current UI
+                    // Clear the current UI first
                     document.getElementById('messagesList').innerHTML = '';
                     document.getElementById('userInput').value = '';
+                    
+                    // Reset the greeting message
+                    const greetingDiv = document.createElement('div');
+                    greetingDiv.className = 'greeting';
+                    greetingDiv.innerHTML = `
+                        <div class="greeting-logo">
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
+                                <path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
+                            </svg>
+                        </div>
+                        <h1 class="greeting-text">How can I help you today?</h1>
+                    `;
+                    document.getElementById('messagesList').appendChild(greetingDiv);
+
+                    // Reset current chat ID - new chat will be created on first message
                     this.currentChatId = null;
 
-                    // Don't create a new chat immediately - wait for the first message
-                    await this.loadRecentChats();
+                    // Focus on the input
+                    document.getElementById('userInput').focus();
+
+                    console.log('New chat UI reset completed');
                 } catch (error) {
                     console.error('Error handling new chat:', error);
                 }
@@ -970,6 +1017,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 try {
                     // Create new chat if this is the first message
                     if (!this.currentChatId) {
+                        console.log('Creating new chat...');
                         const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
                             method: 'POST',
                             headers: {
@@ -980,7 +1028,15 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         
                         if (!createResponse.ok) {
                             const errorData = await createResponse.json();
+                            console.error('Create chat response error:', errorData);
                             throw new Error(errorData.error || 'Failed to create chat');
+                        }
+                        
+                        const data = await createResponse.json();
+                        console.log('Create chat response:', data);
+                        
+                        if (!data.chat_id) {
+                            throw new Error('No chat ID received from server');
                         }
                         
                         const data = await createResponse.json();
@@ -1063,10 +1119,13 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         headers: {
                             'Content-Type': 'application/json'
                         },
+                        credentials: 'include',
                         body: JSON.stringify({ is_starred: starred })
                     });
-                    
-                    if (!response.ok) throw new Error('Failed to star/unstar chat');
+
+                    if (!response.ok) throw new Error('Failed to update star status');
+
+                    // Reload chat list to reflect changes
                     await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error starring chat:', error);
@@ -1075,19 +1134,20 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             async deleteChat(chatId) {
                 if (!confirm('Are you sure you want to delete this chat?')) return;
-                
+
                 try {
                     const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}`, {
-                        method: 'DELETE'
+                        method: 'DELETE',
+                        credentials: 'include'
                     });
-                    
+
                     if (!response.ok) throw new Error('Failed to delete chat');
-                    
+
                     if (chatId === this.currentChatId) {
                         this.currentChatId = null;
                         document.getElementById('messagesList').innerHTML = '';
                     }
-                    
+
                     await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error deleting chat:', error);
