@@ -820,7 +820,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     const response = await fetch(`${this.BASE_URL}/api/chat-history`, {
                         method: 'GET',
                         credentials: 'include',
-                        headers: { 'Content-Type': 'application/json' }
+                        headers: { 'Content-Type': 'application/json' },
                     });
 
                     const data = await response.json();
@@ -865,18 +865,16 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 const recentSection = document.getElementById('recentChats');
                 if (!recentSection) return;
 
-                console.log('Updating Recent Chats:', chats); // Debugging
-
-                recentSection.innerHTML = ''; // Clear existing chats
-
+                // Handle empty chat array
                 if (chats.length === 0) {
                     recentSection.innerHTML = `<div class="chat-item placeholder-text">No recent chats yet</div>`;
                     return;
                 }
 
+                // Clear and populate chats
+                recentSection.innerHTML = '';
                 chats.forEach(chat => {
-                    const chatElement = this.createChatElement(chat);
-                    recentSection.appendChild(chatElement);
+                    recentSection.appendChild(this.createChatElement(chat));
                 });
             }
 
@@ -993,12 +991,12 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 if (!message) return;
 
                 try {
-                    // Create a new chat if this is the first message
+                    // If no current chat ID exists, create a new chat
                     if (!this.currentChatId) {
                         const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
                             method: 'POST',
                             credentials: 'include',
-                            headers: { 'Content-Type': 'application/json' }
+                            headers: { 'Content-Type': 'application/json' },
                         });
 
                         const creationData = await createResponse.json();
@@ -1014,6 +1012,11 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         await this.updateChatSection(this.currentChatId, 'Now');
                     }
 
+                    // Move the previous chat to "Recents" if applicable
+                    else {
+                        await this.updateChatSection(this.currentChatId, 'Recents');
+                    }
+
                     // Add user message to the UI
                     this.addMessageToUI(message, true);
                     input.value = '';
@@ -1023,7 +1026,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         method: 'POST',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ chat_id: this.currentChatId, message })
+                        body: JSON.stringify({ chat_id: this.currentChatId, message }),
                     });
 
                     const data = await response.json();
@@ -1032,14 +1035,13 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     // Add bot response to the UI
                     this.addMessageToUI(data.response, false);
 
-                    // Refresh the sidebar
+                    // Refresh the sidebar (update "Recents" and "Now")
                     await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error sending message:', error);
                     this.addMessageToUI(`Error: ${error.message}`, false);
                 }
             }
-
 
 
             addMessageToUI(content, isUser) {
