@@ -832,14 +832,26 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         return;
                     }
 
+<<<<<<< HEAD
                     this.updateSidebarChats(data.chats || []);
+=======
+                    // Separate chats into "Now" and "Recents"
+                    const nowChats = data.chats.filter(chat => chat.section === 'Now');
+                    const recentChats = data.chats.filter(chat => chat.section === 'Recents');
+
+                    this.updateNowChat(nowChats);
+                    this.updateRecentChats(recentChats);
+>>>>>>> da6c849 (dddd)
                 } catch (error) {
                     console.error('Error loading recent chats:', error);
                 }
             }
 
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> da6c849 (dddd)
             updateNowChat(chats) {
                 const nowSection = document.getElementById('nowChats');
                 nowSection.innerHTML = '';
@@ -1005,6 +1017,15 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 if (!message) return;
                 
                 try {
+<<<<<<< HEAD
+=======
+                    // Move the current chat to "Recents" if it exists
+                    if (this.currentChatId) {
+                        await this.moveToRecents(this.currentChatId);
+                    }
+
+                    // Create a new chat if there isn't one
+>>>>>>> da6c849 (dddd)
                     if (!this.currentChatId) {
                         // Create new chat if none exists
                         const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
@@ -1012,11 +1033,22 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                             credentials: 'include',
                             headers: { 'Content-Type': 'application/json' }
                         });
+<<<<<<< HEAD
                         
                         const createData = await createResponse.json();
                         if (!createResponse.ok) throw new Error(createData.error);
                         
                         this.currentChatId = createData.chat_id;
+=======
+
+                        const creationData = await createResponse.json();
+                        if (!createResponse.ok) throw new Error(creationData.error);
+
+                        this.currentChatId = creationData.chat_id;
+
+                        // Assign the chat to "Now"
+                        await this.updateChatSection(this.currentChatId, 'Now');
+>>>>>>> da6c849 (dddd)
                     }
                     
                     // Add user message to UI
@@ -1039,8 +1071,13 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     
                     // Add bot response to UI
                     this.addMessageToUI(data.response, false);
+<<<<<<< HEAD
                     
                     // Refresh chat list
+=======
+
+                    // Refresh the sidebar
+>>>>>>> da6c849 (dddd)
                     await this.loadRecentChats();
                     
                 } catch (error) {
@@ -1048,6 +1085,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     this.addMessageToUI(`Error: ${error.message}`, false);
                 }
             }
+
 
 
             addMessageToUI(content, isUser) {

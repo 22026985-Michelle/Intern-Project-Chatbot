@@ -299,6 +299,7 @@ def get_chat_history():
 
         user_id = user_result[0]['user_id']
 
+<<<<<<< HEAD
         # Fetch the recent chats for the user
         chats = get_recent_chats(user_id)
         if chats is None:
@@ -320,10 +321,31 @@ def get_chat_history():
 
         return jsonify({"chats": formatted_chats})
 
+=======
+        chats_query = """
+        SELECT c.chat_id, COALESCE(c.title, 'New Chat') AS title, c.section, c.created_at, c.updated_at,
+               (SELECT content 
+                FROM messages m 
+                WHERE m.chat_id = c.chat_id 
+                ORDER BY created_at DESC 
+                LIMIT 1) AS last_message
+        FROM chats c
+        WHERE c.user_id = %s
+        ORDER BY c.updated_at DESC
+        LIMIT 5
+        """
+        app.logger.info(f"Executing chat history query for user_id: {user_id}")
+        chats = execute_query(chats_query, (user_id,))
+
+        # Log the chat states for debugging
+        app.logger.info(f"Retrieved chats: {chats}")
+        return jsonify({"chats": chats or []}), 200
+>>>>>>> da6c849 (dddd)
     except Exception as e:
         # Log the exception for debugging
         app.logger.error(f"Error fetching chat history: {str(e)}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
+
 
 
 
