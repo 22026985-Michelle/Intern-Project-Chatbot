@@ -567,11 +567,15 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     Start new chat
                 </button>
             </div>
-
+            <div class="section-title">Now</div>
+            <div class="chat-list" id="nowChats">
+                <div class="chat-item placeholder-text">No active chats yet</div>
+            </div>
             <div class="section-title">Recents</div>
             <div class="chat-list" id="recentChats">
                 <div class="chat-item placeholder-text">No recent chats yet</div>
             </div>
+            
         </div>
         
         <div class="user-profile" id="userProfile">
@@ -823,18 +827,18 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     console.log('Chat history response:', data);
 
                     if (response.ok) {
-                        // Update "Recents" and "Today" sections
+                        // Update "Now" and "Recents" sections
+                        this.updateNowChats(data.chats.filter(chat => chat.section === 'Now'));
                         this.updateRecentChats(data.chats.filter(chat => chat.section === 'Recents'));
-                        this.updateTodayChat(data.chats.filter(chat => chat.section === 'Today'));
                     } else {
                         console.error('Error loading chats:', data.error);
+                        this.updateNowChats([]);
                         this.updateRecentChats([]);
-                        this.updateTodayChat([]);
                     }
                 } catch (error) {
                     console.error('Error loading chats:', error);
+                    this.updateNowChats([]);
                     this.updateRecentChats([]);
-                    this.updateTodayChat([]);
                 }
             }
 
@@ -1006,8 +1010,8 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         const title = await this.generateChatTitle(message);
                         await this.updateChatTitle(this.currentChatId, title);
 
-                        // Assign the chat to the "Today" section
-                        await this.updateChatSection(this.currentChatId, 'Today');
+                        // Assign the chat to the "Now" section
+                        await this.updateChatSection(this.currentChatId, 'Now');
                     }
 
                     // Add user message to the UI
@@ -1035,6 +1039,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     this.addMessageToUI(`Error: ${error.message}`, false);
                 }
             }
+
 
 
             addMessageToUI(content, isUser) {
@@ -1142,20 +1147,20 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 }
             }
 
-            updateTodayChat(chats) {
-                const todaySection = document.getElementById('recentChats'); // Correct target
-                if (!todaySection) return;
+            updateNowChats(chats) {
+                const nowSection = document.getElementById('nowChats');
+                if (!nowSection) return;
 
-                todaySection.innerHTML = ''; // Clear the current sidebar content
+                nowSection.innerHTML = ''; // Clear the current "Now" section content
 
                 if (chats.length === 0) {
-                    todaySection.innerHTML = `<div class="chat-item placeholder-text">No recent chats yet</div>`;
+                    nowSection.innerHTML = `<div class="chat-item placeholder-text">No active chats yet</div>`;
                     return;
                 }
 
                 chats.forEach(chat => {
                     const chatElement = this.createChatElement(chat);
-                    todaySection.appendChild(chatElement);
+                    nowSection.appendChild(chatElement);
                 });
             }
 

@@ -272,7 +272,7 @@ def create_chat():
             return jsonify({"error": "Failed to create chat"}), 500
 
         # Assign the new chat to "Today"
-        update_section_query = "UPDATE chats SET section = 'Today' WHERE chat_id = %s"
+        update_section_query = "UPDATE chats SET section = 'Now' WHERE chat_id = %s"
         execute_query(update_section_query, (chat_id,))
 
         return jsonify({"status": "success", "chat_id": chat_id})
