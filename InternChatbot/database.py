@@ -40,7 +40,8 @@ def execute_query(query, params=None):
     if connection:
         try:
             with connection.cursor(dictionary=True) as cursor:
-                logger.debug(f"Executing query: {query} with params: {params}")
+                logger.debug(f"Executing query: {query}")
+                logger.debug(f"Query parameters: {params}")
                 cursor.execute(query, params)
                 if query.lower().startswith('select'):
                     result = cursor.fetchall()
@@ -49,9 +50,12 @@ def execute_query(query, params=None):
                 else:
                     connection.commit()
                     logger.debug(f"Query affected {cursor.rowcount} rows")
+                    logger.debug(f"Last inserted ID: {cursor.lastrowid}")
                     return cursor.rowcount
         except Error as e:
             logger.error(f"Error executing query: {str(e)}")
+            logger.error(f"Failed query: {query}")
+            logger.error(f"Failed parameters: {params}")
             return None
         finally:
             if connection.is_connected():
@@ -94,37 +98,52 @@ def create_user(email, password, username):  # Add username parameter
     
 def create_new_chat(user_id):
     """Create a new chat session for a user"""
+    logger.info(f"Creating new chat for user_id: {user_id}")
     query = """
     INSERT INTO chats (user_id, created_at, updated_at)
     VALUES (%s, NOW(), NOW())
     """
-    execute_query(query, (user_id,))
+    rows_affected = execute_query(query, (user_id,))
+    logger.info(f"Chat creation result: {rows_affected}")
     
     # Get the created chat_id
-    get_chat_query = """
-    SELECT chat_id FROM chats 
-    WHERE user_id = %s 
-    ORDER BY created_at DESC 
-    LIMIT 1
-    """
-    result = execute_query(get_chat_query, (user_id,))
-    return result[0]['chat_id'] if result else None
+    if rows_affected:
+        get_chat_query = """
+        SELECT chat_id FROM chats 
+        WHERE user_id = %s 
+        ORDER BY created_at DESC 
+        LIMIT 1
+        """
+        result = execute_query(get_chat_query, (user_id,))
+        logger.info(f"Retrieved new chat_id: {result}")
+        return result[0]['chat_id'] if result else None
+    return None
 
 def add_message(chat_id, content, is_user=True):
     """Add a message to a chat session"""
+    logger.info(f"Adding message to chat_id: {chat_id}, is_user: {is_user}")
+    
     query = """
     INSERT INTO messages (chat_id, content, is_user, created_at)
     VALUES (%s, %s, %s, NOW())
     """
-    execute_query(query, (chat_id, content, is_user))
+    try:
+        result = execute_query(query, (chat_id, content, is_user))
+        logger.info(f"Message insert result: {result}")
+        
+        # Update chat's updated_at timestamp
+        update_query = """
+        UPDATE chats SET updated_at = NOW()
+        WHERE chat_id = %s
+        """
+        update_result = execute_query(update_query, (chat_id,))
+        logger.info(f"Chat update result: {update_result}")
+        
+        return True
+    except Exception as e:
+        logger.error(f"Error adding message: {str(e)}")
+        return False
     
-    # Update chat's updated_at timestamp
-    update_query = """
-    UPDATE chats SET updated_at = NOW()
-    WHERE chat_id = %s
-    """
-    execute_query(update_query, (chat_id,))
-
 def get_recent_chats(user_id, limit=10):
     """Get recent chats for a user"""
     query = """
@@ -165,3 +184,11 @@ def cleanup_old_chats(user_id, keep_count=10):
     )
     """
     execute_query(query, (user_id, keep_count))
+
+def get_user_by_email(email):
+    """Get user details by email"""
+    logger.info(f"Looking up user with email: {email}")
+    query = "SELECT user_id, username, email, role FROM users WHERE email = %s"
+    result = execute_query(query, (email,))
+    logger.info(f"User lookup result: {result}")
+    return result[0] if result else None

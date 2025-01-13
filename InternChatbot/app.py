@@ -65,23 +65,31 @@ def api_login():
         email = data.get('email')
         password = data.get('password')
 
+        app.logger.info(f"Login attempt for email: {email}")
+
         # Query the database to get the hashed password
-        query = "SELECT password FROM users WHERE email = %s"
+        query = "SELECT user_id, password FROM users WHERE email = %s"
         result = execute_query(query, (email,))
+        
+        app.logger.info(f"Database query result: {result}")
         
         if result:
             stored_hashed_password = result[0]['password']
             if check_password_hash(stored_hashed_password, password):
                 session['user_email'] = email
+                session['user_id'] = result[0]['user_id']  # Store user_id in session
+                app.logger.info(f"Login successful for {email}. Session data: {session}")
                 return jsonify({"status": "success", "message": "Login successful"})
             else:
+                app.logger.warning(f"Invalid password for {email}")
                 return jsonify({"error": "Invalid credentials"}), 401
         else:
+            app.logger.warning(f"No user found for email: {email}")
             return jsonify({"error": "Invalid credentials"}), 401
 
     except Exception as e:
-        print(f"Error handling login: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
+        app.logger.error(f"Error in login endpoint: {str(e)}")
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
     
 @app.route('/api/signup', methods=['POST'])
 def api_signup():
@@ -141,20 +149,31 @@ def chat():
 
         # Get user ID from email in session
         user_email = session.get('user_email')
+        if not user_email:
+            app.logger.error("No user_email found in session")
+            return jsonify({"error": "User not authenticated"}), 401
+            
+        app.logger.info(f"Looking up user with email: {user_email}")
         user_query = "SELECT id FROM users WHERE email = %s"
         user_result = execute_query(user_query, (user_email,))
+        
         if not user_result:
+            app.logger.error(f"No user found for email: {user_email}")
             return jsonify({"error": "User not found"}), 404
         
         user_id = user_result[0]['id']
+        app.logger.info(f"Found user_id: {user_id}")
 
         # Get or create chat session
         chat_query = "SELECT chat_id FROM chats WHERE user_id = %s ORDER BY updated_at DESC LIMIT 1"
         chat_result = execute_query(chat_query, (user_id,))
         
         if not chat_result:
-            # Create new chat if none exists
+            app.logger.info(f"Creating new chat for user_id: {user_id}")
             chat_id = create_new_chat(user_id)
+            if not chat_id:
+                app.logger.error("Failed to create new chat")
+                return jsonify({"error": "Failed to create chat session"}), 500
         else:
             chat_id = chat_result[0]['chat_id']
             
@@ -179,6 +198,7 @@ def chat():
             return jsonify({"error": "Message content missing"}), 400
 
         # Store user message
+        app.logger.info(f"Adding user message to chat_id: {chat_id}")
         add_message(chat_id, content, is_user=True)
 
         # Get bot response
@@ -196,6 +216,7 @@ def chat():
         bot_response = response.content[0].text
         
         # Store bot response
+        app.logger.info(f"Adding bot response to chat_id: {chat_id}")
         add_message(chat_id, bot_response, is_user=False)
 
         # Cleanup old chats
@@ -204,8 +225,8 @@ def chat():
         return jsonify({"response": bot_response})
 
     except Exception as e:
-        print(f"Error handling chat request: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
+        app.logger.error(f"Error in chat endpoint: {str(e)}")
+        return jsonify({"error": f"Internal server error: {str(e)}"}), 500
     
 @app.route('/api/chat-history', methods=['GET'])
 @login_required
@@ -291,7 +312,8 @@ def update_profile():
 
 @app.after_request
 def after_request(response):
-    """Add CORS headers"""
+    """Log session data after each request"""
+    app.logger.info(f"Current session data: {session}")
     response.headers.add('Access-Control-Allow-Origin', '*')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
