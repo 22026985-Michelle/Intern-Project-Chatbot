@@ -861,21 +861,20 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 const recentSection = document.getElementById('recentChats');
                 if (!recentSection) return;
 
+                console.log('Updating Recent Chats:', chats); // Debugging
+
                 recentSection.innerHTML = ''; // Clear existing chats
 
                 if (chats.length === 0) {
-                    // Show placeholder text if there are no recent chats
                     recentSection.innerHTML = `<div class="chat-item placeholder-text">No recent chats yet</div>`;
                     return;
                 }
 
-                // Loop through chats and create chat elements
                 chats.forEach(chat => {
                     const chatElement = this.createChatElement(chat);
                     recentSection.appendChild(chatElement);
                 });
             }
-
 
             updateSidebarChats(chats) {
                 if (!Array.isArray(chats)) {
@@ -1124,7 +1123,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     console.error('Error deleting chat:', error);
                 }
             }
-
             async loadChat(chatId) {
                 try {
                     const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`);
@@ -1134,32 +1132,30 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     this.currentChatId = chatId;
                     
                     const messagesList = document.getElementById('messagesList');
-                    messagesList.innerHTML = '';
+                    messagesList.innerHTML = ''; // Clear previous messages
                     
                     data.messages.forEach(message => {
                         this.addMessageToUI(message.content, message.is_user);
                     });
-                    
-                    await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error loading chat:', error);
                 }
             }
 
-
             updateTodayChat(chats) {
-                const todaySection = document.getElementById('messagesList');
+                const todaySection = document.getElementById('recentChats'); // Correct target
                 if (!todaySection) return;
 
-                todaySection.innerHTML = '';
+                todaySection.innerHTML = ''; // Clear the current sidebar content
 
                 if (chats.length === 0) {
-                    todaySection.innerHTML = `<div class="placeholder-text">Start a new chat or prompt here</div>`;
+                    todaySection.innerHTML = `<div class="chat-item placeholder-text">No recent chats yet</div>`;
                     return;
                 }
 
                 chats.forEach(chat => {
-                    todaySection.appendChild(this.createChatElement(chat));
+                    const chatElement = this.createChatElement(chat);
+                    todaySection.appendChild(chatElement);
                 });
             }
 
