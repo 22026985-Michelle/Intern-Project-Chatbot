@@ -99,24 +99,39 @@ def create_user(email, password, username):  # Add username parameter
 def create_new_chat(user_id):
     """Create a new chat session for a user"""
     logger.info(f"Creating new chat for user_id: {user_id}")
+    
+    # First, check how many chats the user has
+    count_query = "SELECT COUNT(*) as chat_count FROM chats WHERE user_id = %s"
+    count_result = execute_query(count_query, (user_id,))
+    
+    if count_result and count_result[0]['chat_count'] >= 100:
+        # If user has too many chats, delete the oldest ones
+        cleanup_old_chats(user_id, keep_count=95)
+    
     query = """
     INSERT INTO chats (user_id, created_at, updated_at)
     VALUES (%s, NOW(), NOW())
     """
     rows_affected = execute_query(query, (user_id,))
-    logger.info(f"Chat creation result: {rows_affected}")
+    
+    if not rows_affected:
+        logger.error("Failed to create new chat")
+        return None
     
     # Get the created chat_id
-    if rows_affected:
-        get_chat_query = """
-        SELECT chat_id FROM chats 
-        WHERE user_id = %s 
-        ORDER BY created_at DESC 
-        LIMIT 1
-        """
-        result = execute_query(get_chat_query, (user_id,))
-        logger.info(f"Retrieved new chat_id: {result}")
-        return result[0]['chat_id'] if result else None
+    get_chat_query = """
+    SELECT chat_id FROM chats 
+    WHERE user_id = %s 
+    ORDER BY created_at DESC 
+    LIMIT 1
+    """
+    result = execute_query(get_chat_query, (user_id,))
+    
+    if result:
+        chat_id = result[0]['chat_id']
+        logger.info(f"Created new chat with ID: {chat_id}")
+        return chat_id
+    
     return None
 
 def add_message(chat_id, content, is_user=True):
@@ -144,21 +159,24 @@ def add_message(chat_id, content, is_user=True):
         logger.error(f"Error adding message: {str(e)}")
         return False
     
-def get_recent_chats(user_id, limit=10):
+def get_recent_chats(user_id, limit=5):
     """Get recent chats for a user"""
     query = """
     SELECT c.chat_id, 
-           m.content as last_message,
+           COALESCE(m.content, 'New Chat') as last_message,
            c.created_at,
            c.updated_at
     FROM chats c
-    LEFT JOIN messages m ON c.chat_id = m.chat_id
+    LEFT JOIN (
+        SELECT chat_id, content, created_at,
+               ROW_NUMBER() OVER (PARTITION BY chat_id ORDER BY created_at DESC) as rn
+        FROM messages
+    ) m ON c.chat_id = m.chat_id AND m.rn = 1
     WHERE c.user_id = %s
     ORDER BY c.updated_at DESC
     LIMIT %s
     """
     return execute_query(query, (user_id, limit))
-
 def get_chat_messages(chat_id):
     """Get all messages for a specific chat"""
     query = """
@@ -169,7 +187,7 @@ def get_chat_messages(chat_id):
     """
     return execute_query(query, (chat_id,))
 
-def cleanup_old_chats(user_id, keep_count=10):
+def cleanup_old_chats(user_id, keep_count=5):
     """Remove old chats keeping only the most recent ones"""
     query = """
     DELETE FROM chats 

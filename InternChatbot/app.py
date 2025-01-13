@@ -228,38 +228,6 @@ def chat():
         app.logger.error(f"Error in chat endpoint: {str(e)}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
     
-@app.route('/api/chat-history', methods=['GET'])
-@login_required
-def get_chat_history():
-    """Get user's chat history"""
-    try:
-        user_email = session.get('user_email')
-        user_query = "SELECT id FROM users WHERE email = %s"
-        user_result = execute_query(user_query, (user_email,))
-        
-        if not user_result:
-            return jsonify({"error": "User not found"}), 404
-            
-        user_id = user_result[0]['id']
-        
-        # Get recent chats
-        chats = get_recent_chats(user_id)
-        
-        return jsonify({"chats": chats})
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/chat/<chat_id>/messages', methods=['GET'])
-@login_required
-def get_chat_history_messages(chat_id):
-    """Get messages for a specific chat"""
-    try:
-        messages = get_chat_messages(chat_id)
-        return jsonify({"messages": messages})
-        
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
     
 @app.route('/api/get-profile')
 @login_required
@@ -322,3 +290,179 @@ def after_request(response):
 if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
+
+@app.route('/api/create-chat', methods=['POST'])
+@login_required
+def create_chat():
+    try:
+        user_email = session.get('user_email')
+        user_query = "SELECT user_id FROM users WHERE email = %s"
+        user_result = execute_query(user_query, (user_email,))
+        
+        if not user_result:
+            return jsonify({"error": "User not found"}), 404
+            
+        user_id = user_result[0]['user_id']
+        
+        # Create new chat
+        chat_id = create_new_chat(user_id)
+        
+        if not chat_id:
+            return jsonify({"error": "Failed to create chat"}), 500
+            
+        return jsonify({"status": "success", "chat_id": chat_id})
+        
+    except Exception as e:
+        app.logger.error(f"Error creating chat: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/chat-history', methods=['GET'])
+@login_required
+def get_chat_history():
+    try:
+        user_email = session.get('user_email')
+        user_query = "SELECT user_id FROM users WHERE email = %s"
+        user_result = execute_query(user_query, (user_email,))
+        
+        if not user_result:
+            return jsonify({"error": "User not found"}), 404
+            
+        user_id = user_result[0]['user_id']
+        
+        # Get recent chats (limit to 5)
+        chats = get_recent_chats(user_id, limit=5)
+        
+        return jsonify({"chats": chats})
+        
+    except Exception as e:
+        app.logger.error(f"Error getting chat history: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/chat/<int:chat_id>/messages', methods=['GET'])
+@login_required
+def get_chat_messages(chat_id):
+    try:
+        # Verify the chat belongs to the current user
+        user_email = session.get('user_email')
+        user_query = "SELECT user_id FROM users WHERE email = %s"
+        user_result = execute_query(user_query, (user_email,))
+        
+        if not user_result:
+            return jsonify({"error": "User not found"}), 404
+            
+        user_id = user_result[0]['user_id']
+        
+        # Check chat ownership
+        chat_query = "SELECT user_id FROM chats WHERE chat_id = %s"
+        chat_result = execute_query(chat_query, (chat_id,))
+        
+        if not chat_result or chat_result[0]['user_id'] != user_id:
+            return jsonify({"error": "Chat not found"}), 404
+        
+        messages = get_chat_messages(chat_id)
+        return jsonify({"messages": messages})
+        
+    except Exception as e:
+        app.logger.error(f"Error getting chat messages: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+    
+@app.route('/api/generate-title', methods=['POST'])
+@login_required
+def generate_chat_title():
+    try:
+        data = request.get_json()
+        message = data.get('message', '')
+        
+        # Use Claude to generate a concise title
+        response = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=50,
+            temperature=0,
+            system="Generate a short, concise title (max 6 words) for a chat based on the first message.",
+            messages=[{
+                "role": "user",
+                "content": message
+            }]
+        )
+        
+        title = response.content[0].text.strip()
+        return jsonify({"title": title})
+        
+    except Exception as e:
+        app.logger.error(f"Error generating title: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/chat/<int:chat_id>/title', methods=['PUT'])
+@login_required
+def update_chat_title(chat_id):
+    try:
+        data = request.get_json()
+        title = data.get('title')
+        
+        if not title:
+            return jsonify({"error": "Title is required"}), 400
+            
+        # Update title in database
+        query = "UPDATE chats SET title = %s WHERE chat_id = %s"
+        execute_query(query, (title, chat_id))
+        
+        return jsonify({"status": "success"})
+        
+    except Exception as e:
+        app.logger.error(f"Error updating chat title: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+# Update your get_recent_chats function to include titles
+def get_recent_chats(user_id, limit=5):
+    query = """
+    SELECT c.chat_id, 
+           c.title,
+           m.content as last_message,
+           c.created_at,
+           c.updated_at,
+           c.is_starred
+    FROM chats c
+    LEFT JOIN (
+        SELECT chat_id, content, created_at,
+               ROW_NUMBER() OVER (PARTITION BY chat_id ORDER BY created_at DESC) as rn
+        FROM messages
+    ) m ON c.chat_id = m.chat_id AND m.rn = 1
+    WHERE c.user_id = %s
+    ORDER BY c.is_starred DESC, c.updated_at DESC
+    LIMIT %s
+    """
+    return execute_query(query, (user_id, limit))
+
+@app.route('/api/chat/<int:chat_id>/star', methods=['PUT'])
+@login_required
+def toggle_star_chat(chat_id):
+    try:
+        data = request.get_json()
+        is_starred = data.get('is_starred', False)
+        
+        # Update star status in database
+        query = "UPDATE chats SET is_starred = %s WHERE chat_id = %s"
+        execute_query(query, (is_starred, chat_id))
+        
+        return jsonify({"status": "success"})
+        
+    except Exception as e:
+        app.logger.error(f"Error starring chat: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/chat/<int:chat_id>', methods=['DELETE'])
+@login_required
+def delete_chat(chat_id):
+    try:
+        # Delete chat and its messages
+        delete_messages_query = "DELETE FROM messages WHERE chat_id = %s"
+        execute_query(delete_messages_query, (chat_id,))
+        
+        delete_chat_query = "DELETE FROM chats WHERE chat_id = %s"
+        execute_query(delete_chat_query, (chat_id,))
+        
+        return jsonify({"status": "success"})
+        
+    except Exception as e:
+        app.logger.error(f"Error deleting chat: {str(e)}")
+        return jsonify({"error": str(e)}), 500

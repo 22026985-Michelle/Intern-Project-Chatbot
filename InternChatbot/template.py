@@ -146,6 +146,47 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             background-color: var(--hover-color);
         }
 
+        .chat-item:hover .chat-actions {
+            opacity: 1;
+        }   
+
+        .chat-action-button {
+            background: none;
+            border: none;
+            padding: 0.25rem;
+            cursor: pointer;
+            color: var(--text-color);
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+
+            
+        .chat-action-button:hover {
+            opacity: 1;
+        }
+
+        .placeholder-text {
+            color: var(--text-color);
+            opacity: 0.7;
+            cursor: default;
+        }
+
+        .placeholder-text:hover {
+            background-color: transparent;
+        }
+
+        .chat-item.active {
+            background-color: var(--hover-color);
+            border-color: var(--send-button-bg);
+        }
+
+        .chat-title {
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
         .chat-icon {
             opacity: 0.7;
         }
@@ -233,6 +274,13 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             z-index: 1;
             background-color: var(--chat-bg);
             border-radius: 8px;
+        }
+
+        .chat-actions {
+            display: flex;
+            gap: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.2s ease;
         }
 
         /* Input Container Styles */
@@ -513,34 +561,23 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
     <div class="sidebar-trigger"></div>
     <div class="sidebar">
         <div class="sidebar-content">
-            <div class="sidebar-header">
-                <button class="new-chat-button">
-                    <span>⊕</span>
-                    Start new chat
-                </button>
-            </div>
+            <div class="sidebar-content">
+                <div class="sidebar-header">
+                    <button class="new-chat-button" id="newChatButton">
+                        <span>⊕</span>
+                        Start new chat
+                    </button>
+                </div>
 
-            <div class="section-title">Starred</div>
-            <div class="chat-list">
-                <div class="chat-item">Star projects and chats you use often</div>
-            </div>
+                <div class="section-title">Starred</div>
+                <div class="chat-list" id="starredChats">
+                    <div class="chat-item placeholder-text">Star projects and chats you use often</div>
+                </div>
 
-            <div class="section-title">Recents</div>
-            <div class="chat-list">
-                <div class="chat-item">
-                    <span class="chat-icon">⊙</span>
-                    Setting up ngrok for public web access
-                </div>
-                <div class="chat-item">
-                    <span class="chat-icon">⊙</span>
-                    QA Tester Internship Tasks
-                </div>
-                <div class="chat-item">
-                    <span class="chat-icon">⊙</span>
-                    Telegram ChatBot Setup
+                <div class="section-title">Recents</div>
+                <div class="chat-list" id="recentChats">
                 </div>
             </div>
-        </div>
         
         <div class="user-profile" id="userProfile">
             <button class="profile-button" id="profileButton">
@@ -731,6 +768,298 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             const BASE_URL = 'https://internproject-4fq7.onrender.com';
 
+        // Chat Manager Class
+        class ChatManager {
+            constructor() {
+                this.currentChatId = null;
+                this.BASE_URL = 'https://internproject-4fq7.onrender.com';
+                this.init();
+            }
+
+            init() {
+                this.bindEvents();
+                this.loadRecentChats();
+            }
+
+            bindEvents() {
+                // New chat button
+                document.getElementById('newChatButton').addEventListener('click', () => this.createNewChat());
+                
+                // Send button
+                document.getElementById('sendButton').addEventListener('click', () => this.sendMessage());
+                
+                // Enter key in input
+                document.getElementById('userInput').addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+
+                // File handling
+                const fileButton = document.getElementById('fileButton');
+                const fileInput = document.getElementById('fileInput');
+                
+                fileButton.addEventListener('click', () => fileInput.click());
+                fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+            }
+
+            async generateChatTitle(message) {
+                try {
+                    const response = await fetch(`${this.BASE_URL}/api/generate-title`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ message })
+                    });
+
+                    if (!response.ok) throw new Error('Failed to generate title');
+                    const data = await response.json();
+                    return data.title;
+                } catch (error) {
+                    console.error('Error generating title:', error);
+                    return 'New Chat';
+                }
+            }
+
+            async createNewChat() {
+                try {
+                    const response = await fetch(`${this.BASE_URL}/api/create-chat`, {
+                        method: 'POST'
+                    });
+
+                    if (!response.ok) throw new Error('Failed to create chat');
+                    const data = await response.json();
+                    
+                    this.currentChatId = data.chat_id;
+                    document.getElementById('messagesList').innerHTML = '';
+                    document.getElementById('userInput').value = '';
+                    
+                    await this.loadRecentChats();
+                } catch (error) {
+                    console.error('Error creating chat:', error);
+                }
+            }
+
+            async loadRecentChats() {
+                try {
+                    const response = await fetch(`${this.BASE_URL}/api/chat-history`);
+                    if (!response.ok) throw new Error('Failed to fetch chats');
+                    
+                    const data = await response.json();
+                    this.updateSidebarChats(data.chats);
+                } catch (error) {
+                    console.error('Error loading chats:', error);
+                }
+            }
+
+            updateSidebarChats(chats) {
+                const recentChats = document.getElementById('recentChats');
+                recentChats.innerHTML = '';
+
+                chats.forEach(chat => {
+                    const chatElement = this.createChatElement(chat);
+                    recentChats.appendChild(chatElement);
+                });
+            }
+
+            createChatElement(chat) {
+                const div = document.createElement('div');
+                div.className = 'chat-item';
+                if (chat.chat_id === this.currentChatId) {
+                    div.classList.add('active');
+                }
+
+                div.innerHTML = `
+                    <span class="chat-icon">⊙</span>
+                    <span class="chat-title">${chat.title || 'New Chat'}</span>
+                    <div class="chat-actions">
+                        <button class="chat-action-button star-button" title="${chat.is_starred ? 'Unstar chat' : 'Star chat'}">
+                            ${chat.is_starred ? '⭐' : '★'}
+                        </button>
+                        <button class="chat-action-button delete-button" title="Delete chat">🗑</button>
+                    </div>
+                `;
+
+                // Add click handlers
+                div.querySelector('.chat-title').addEventListener('click', () => this.loadChat(chat.chat_id));
+                div.querySelector('.star-button').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.toggleStarChat(chat.chat_id, !chat.is_starred);
+                });
+                div.querySelector('.delete-button').addEventListener('click', (e) => {
+                    e.stopPropagation();
+                    this.deleteChat(chat.chat_id);
+                });
+
+                return div;
+            }
+
+            async sendMessage() {
+                const input = document.getElementById('userInput');
+                const message = input.value.trim();
+                if (!message) return;
+
+                try {
+                    // If no current chat, create one
+                    if (!this.currentChatId) {
+                        await this.createNewChat();
+                    }
+
+                    // Generate title if this is the first message
+                    const messagesList = document.getElementById('messagesList');
+                    const isFirstMessage = !messagesList.children.length;
+                    
+                    if (isFirstMessage) {
+                        const title = await this.generateChatTitle(message);
+                        await this.updateChatTitle(this.currentChatId, title);
+                    }
+
+                    // Add user message to UI
+                    this.addMessageToUI(message, true);
+                    
+                    const response = await fetch(`${this.BASE_URL}/chat`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ message })
+                    });
+
+                    if (!response.ok) throw new Error('Failed to send message');
+                    
+                    const data = await response.json();
+                    this.addMessageToUI(data.response, false);
+                    
+                    // Clear input and refresh sidebar
+                    input.value = '';
+                    await this.loadRecentChats();
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    this.addMessageToUI(`Error: ${error.message}`, false);
+                }
+            }
+
+            addMessageToUI(content, isUser) {
+                const messagesList = document.getElementById('messagesList');
+                const messageDiv = document.createElement('div');
+                messageDiv.className = 'message';
+                messageDiv.innerHTML = `
+                    <div class="avatar">${isUser ? 'U' : 'C'}</div>
+                    <div class="message-content">${content}</div>
+                `;
+                messagesList.appendChild(messageDiv);
+                messagesList.scrollTop = messagesList.scrollHeight;
+            }
+
+            async updateChatTitle(chatId, title) {
+                try {
+                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/title`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ title })
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to update chat title');
+                    await this.loadRecentChats();
+                } catch (error) {
+                    console.error('Error updating chat title:', error);
+                }
+            }
+
+            async toggleStarChat(chatId, starred) {
+                try {
+                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/star`, {
+                        method: 'PUT',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({ is_starred: starred })
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to star/unstar chat');
+                    await this.loadRecentChats();
+                } catch (error) {
+                    console.error('Error starring chat:', error);
+                }
+            }
+
+            async deleteChat(chatId) {
+                if (!confirm('Are you sure you want to delete this chat?')) return;
+                
+                try {
+                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}`, {
+                        method: 'DELETE'
+                    });
+                    
+                    if (!response.ok) throw new Error('Failed to delete chat');
+                    
+                    if (chatId === this.currentChatId) {
+                        this.currentChatId = null;
+                        document.getElementById('messagesList').innerHTML = '';
+                    }
+                    
+                    await this.loadRecentChats();
+                } catch (error) {
+                    console.error('Error deleting chat:', error);
+                }
+            }
+
+            async loadChat(chatId) {
+                try {
+                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`);
+                    if (!response.ok) throw new Error('Failed to load chat messages');
+                    
+                    const data = await response.json();
+                    this.currentChatId = chatId;
+                    
+                    const messagesList = document.getElementById('messagesList');
+                    messagesList.innerHTML = '';
+                    
+                    data.messages.forEach(message => {
+                        this.addMessageToUI(message.content, message.is_user);
+                    });
+                    
+                    // Update active state in sidebar
+                    await this.loadRecentChats();
+                } catch (error) {
+                    console.error('Error loading chat:', error);
+                }
+            }
+
+            handleFileSelect(e) {
+                const file = e.target.files[0];
+                const filePreview = document.getElementById('filePreview');
+                
+                if (file) {
+                    filePreview.innerHTML = `
+                        <div class="file-preview-content">
+                            <span>📄 ${file.name}</span>
+                            <span class="file-remove" onclick="chatManager.removeFile()">✕</span>
+                        </div>
+                    `;
+                    filePreview.classList.add('active');
+                }
+            }
+
+            removeFile() {
+                const fileInput = document.getElementById('fileInput');
+                const filePreview = document.getElementById('filePreview');
+                
+                fileInput.value = '';
+                filePreview.innerHTML = '';
+                filePreview.classList.remove('active');
+            }
+        }
+
+        // Initialize when the page loads
+        let chatManager;
+        document.addEventListener('DOMContentLoaded', () => {
+            chatManager = new ChatManager();
+        });
             // Modify your existing sendMessage function
             async function sendMessage() {
                 const message = userInput.value.trim();
