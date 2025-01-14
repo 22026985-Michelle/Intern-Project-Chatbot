@@ -132,16 +132,15 @@ def create_new_chat(user_id):
         count_result = cursor.fetchone()
         
         if count_result and count_result['chat_count'] >= 5:
-            # Keep only the 4 most recent chats before adding new one
             cleanup_old_chats(user_id, keep_count=4)
         
         # Insert new chat
         insert_query = """
-        INSERT INTO chats (user_id, created_at, updated_at, section)
-        VALUES (%s, NOW(), NOW(), 'Now')
+        INSERT INTO chats (user_id, title, section, created_at, updated_at)
+        VALUES (%s, %s, %s, NOW(), NOW())
         """
-        cursor.execute(insert_query, (user_id,))
-        chat_id = cursor.lastrowid  # Get the ID of the newly inserted chat
+        cursor.execute(insert_query, (user_id, 'New Chat', 'Now'))
+        chat_id = cursor.lastrowid
         
         connection.commit()
         return chat_id
@@ -209,8 +208,13 @@ def get_recent_chats(user_id, limit=5):
             ORDER BY created_at DESC 
             LIMIT 1) as last_message
     FROM chats c
-    WHERE c.user_id = %s
-    ORDER BY c.updated_at DESC
+    WHERE c.user_id = %s AND c.section IN ('Now', 'Recents')
+    ORDER BY 
+        CASE c.section 
+            WHEN 'Now' THEN 0 
+            WHEN 'Recents' THEN 1 
+        END,
+        c.updated_at DESC
     LIMIT %s
     """
     return execute_query(query, (user_id, limit))
@@ -280,3 +284,25 @@ def get_user_by_email(email):
     result = execute_query(query, (email,))
     logger.info(f"User lookup result: {result}")
     return result[0] if result else None
+
+def update_chat_title(chat_id, title):
+    """Update chat title in database"""
+    try:
+        query = "UPDATE chats SET title = %s WHERE chat_id = %s"
+        return execute_query(query, (title, chat_id))
+    except Exception as e:
+        logger.error(f"Error updating chat title: {str(e)}")
+        return None
+    
+def update_chat_section(chat_id, section):
+    """Update chat section in database"""
+    try:
+        query = """
+        UPDATE chats 
+        SET section = %s, updated_at = NOW() 
+        WHERE chat_id = %s
+        """
+        return execute_query(query, (section, chat_id))
+    except Exception as e:
+        logger.error(f"Error updating chat section: {str(e)}")
+        return None

@@ -151,43 +151,49 @@ def chat():
             return jsonify({"error": "No data provided"}), 400
             
         message = data.get('message')
-        if not message:
-            return jsonify({"error": "No message provided"}), 400
-            
         chat_id = data.get('chat_id')
-        if not chat_id:
-            return jsonify({"error": "No chat_id provided"}), 400
+        
+        if not message or not chat_id:
+            return jsonify({"error": "Message and chat_id are required"}), 400
 
-        # Add user message
+        app.logger.info(f"Processing message for chat {chat_id}")
+
+        # Add user message to database
         success = add_message(chat_id, message, is_user=True)
         if not success:
             return jsonify({"error": "Failed to save user message"}), 500
 
         # Get bot response
-        response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=1000,
-            temperature=0,
-            system="You are the Intern Assistant Chatbot, a helpful AI designed to assist interns and junior employees with their tasks. Be friendly and professional.",
-            messages=[{
-                "role": "user",
-                "content": message
-            }]
-        )
+        try:
+            response = client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=1000,
+                temperature=0,
+                system="You are the Intern Assistant Chatbot, a helpful AI designed to assist interns and junior employees with their tasks. Be friendly and professional.",
+                messages=[{
+                    "role": "user",
+                    "content": message
+                }]
+            )
+            bot_response = response.content[0].text
+        except Exception as e:
+            app.logger.error(f"Error getting bot response: {str(e)}")
+            return jsonify({"error": "Failed to get bot response"}), 500
 
-        bot_response = response.content[0].text
-        
-        # Store bot response
+        # Store bot response in database
         success = add_message(chat_id, bot_response, is_user=False)
         if not success:
             return jsonify({"error": "Failed to save bot response"}), 500
+
+        # Update chat timestamp
+        update_query = "UPDATE chats SET updated_at = NOW() WHERE chat_id = %s"
+        execute_query(update_query, (chat_id,))
 
         return jsonify({"response": bot_response})
 
     except Exception as e:
         app.logger.error(f"Error in chat endpoint: {str(e)}")
         return jsonify({"error": str(e)}), 500
-    
     
 @app.route('/api/get-profile')
 @login_required
