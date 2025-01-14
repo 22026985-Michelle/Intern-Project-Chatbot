@@ -960,37 +960,29 @@ HTML_TEMPLATE = '''
             }
 
     
-            async handleNewChat() {
+            handleNewChat() {
                 try {
-                    // Move the current chat to "Recents" if it exists
-                    if (this.currentChatId) {
-                        await this.moveToRecents(this.currentChatId);
-                    }
-                    
-                    // Clear the messages list
-                    const messagesList = document.getElementById('messagesList');
-                    if (messagesList) {
-                        messagesList.innerHTML = '';
-                    }
+                    // Don't clear messages immediately
+                    // Only clear when actually starting a new chat (i.e., sending first message)
+                    this.currentChatId = null;
 
-                    // Show the greeting
+                    // Show the greeting without clearing existing messages
                     const greeting = document.querySelector('.greeting');
                     if (greeting) {
                         greeting.style.display = 'block';
                     }
 
-                    // Reset current chat ID (new chat will be created on first message)
-                    this.currentChatId = null;
-                    
                     // Clear input
                     const userInput = document.getElementById('userInput');
                     if (userInput) {
                         userInput.value = '';
                     }
 
-                    // Update chat sections
-                    await this.loadRecentChats();
-                    console.log('New chat initialized');
+                    // Remove active state from all chat items
+                    const chatItems = document.querySelectorAll('.chat-item');
+                    chatItems.forEach(item => item.classList.remove('active'));
+
+                    console.log('New chat initialized without clearing history');
                 } catch (error) {
                     console.error('Error handling new chat:', error);
                 }
@@ -1203,7 +1195,7 @@ HTML_TEMPLATE = '''
             async loadChat(chatId) {
                 try {
                     console.log('Loading chat:', chatId);
-                    this.currentChatId = chatId; // Set current chat ID first
+                    this.currentChatId = chatId;
                     
                     const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`, {
                         method: 'GET',
@@ -1234,6 +1226,8 @@ HTML_TEMPLATE = '''
                         data.messages.forEach(message => {
                             const messageDiv = document.createElement('div');
                             messageDiv.className = 'message';
+                            messageDiv.style.opacity = '1'; // Make sure messages are visible
+                            messageDiv.style.transform = 'translateY(0)'; // Reset transform
                             messageDiv.innerHTML = `
                                 <div class="avatar">${message.is_user ? 'U' : 'A'}</div>
                                 <div class="message-content">${this.escapeHtml(message.content)}</div>
