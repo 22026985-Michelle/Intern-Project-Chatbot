@@ -427,7 +427,7 @@ HTML_TEMPLATE = '''
                 transform: translateY(0);
             }
         }
-        
+
         .avatar {
             width: 40px;
             height: 40px;
@@ -1029,6 +1029,7 @@ HTML_TEMPLATE = '''
                         const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
                             method: 'POST',
                             credentials: 'include',
+                            headers: { 'Content-Type': 'application/json' }
                         });
                         
                         if (!createResponse.ok) throw new Error('Failed to create chat');
@@ -1070,16 +1071,25 @@ HTML_TEMPLATE = '''
                     if (!response.ok) throw new Error('Failed to send message');
                     const data = await response.json();
 
-                    this.addMessageToUI(message, true);
-                    this.addMessageToUI(data.response, false);
+                    // Clear input before adding messages to UI
                     input.value = '';
 
+                    // Add messages to UI
+                    this.addMessageToUI(message, true);
+                    this.addMessageToUI(data.response, false);
+
+                    // Scroll to bottom
+                    const messagesList = document.getElementById('messagesList');
+                    if (messagesList) {
+                        messagesList.scrollTop = messagesList.scrollHeight;
+                    }
+
+                    // Refresh chat list only after successful message send
                     await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error sending message:', error);
                 }
             }
-
 
             addMessageToUI(content, isUser) {
                 const messagesList = document.getElementById('messagesList');
@@ -1087,12 +1097,32 @@ HTML_TEMPLATE = '''
 
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
+                
+                // Create message content with proper escaping for HTML
+                const escapedContent = this.escapeHtml(content);
+                
                 messageDiv.innerHTML = `
                     <div class="avatar">${isUser ? 'U' : 'A'}</div>
-                    <div class="message-content">${content}</div>
+                    <div class="message-content">${escapedContent}</div>
                 `;
+                
                 messagesList.appendChild(messageDiv);
-                messagesList.scrollTop = messagesList.scrollHeight;
+                messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            }
+            escapeHtml(unsafe) {
+                if (!unsafe) return '';
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+            clearMessages() {
+                const messagesList = document.getElementById('messagesList');
+                if (messagesList) {
+                    messagesList.innerHTML = '';
+                }
             }
 
             async updateChatSection(chatId, section) {
