@@ -798,22 +798,26 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             async createNewChat() {
                 try {
-                    const response = await fetch(${this.BASE_URL}/api/create-chat, {
-                        method: 'POST'
+                    const response = await fetch(`${this.BASE_URL}/api/create-chat`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' }
                     });
 
-                    if (!response.ok) throw new Error('Failed to create chat');
+                    if (!response.ok) throw new Error('Failed to create new chat');
                     const data = await response.json();
-                    
+
                     this.currentChatId = data.chat_id;
                     document.getElementById('messagesList').innerHTML = '';
                     document.getElementById('userInput').value = '';
-                    
+
+                    // Refresh recent chats
                     await this.loadRecentChats();
                 } catch (error) {
-                    console.error('Error creating chat:', error);
+                    console.error('Error creating new chat:', error);
                 }
             }
+
 
             async loadRecentChats() {
                 try {
@@ -823,24 +827,19 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         headers: { 'Content-Type': 'application/json' }
                     });
 
+                    if (!response.ok) throw new Error('Failed to fetch chat history');
                     const data = await response.json();
-                    console.log('Chat history response:', data);
 
-                    if (response.ok) {
-                        // Update "Now" and "Recents" sections
-                        this.updateNowChats(data.chats.filter(chat => chat.section === 'Now'));
-                        this.updateRecentChats(data.chats.filter(chat => chat.section === 'Recents'));
-                    } else {
-                        console.error('Error loading chats:', data.error);
-                        this.updateNowChats([]);
-                        this.updateRecentChats([]);
-                    }
+                    // Update "Now" and "Recents" sections
+                    this.updateNowChats(data.chats.filter(chat => chat.section === 'Now'));
+                    this.updateRecentChats(data.chats.filter(chat => chat.section === 'Recents'));
                 } catch (error) {
                     console.error('Error loading chats:', error);
                     this.updateNowChats([]);
                     this.updateRecentChats([]);
                 }
             }
+
 
 
 
@@ -996,32 +995,12 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 if (!message) return;
 
                 try {
-                    // Create a new chat if this is the first message
                     if (!this.currentChatId) {
-                        const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
-                            method: 'POST',
-                            credentials: 'include',
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-
-                        const creationData = await createResponse.json();
-                        if (!createResponse.ok) throw new Error(creationData.error);
-
-                        this.currentChatId = creationData.chat_id;
-
-                        // Generate a dynamic title for the chat
-                        const title = await this.generateChatTitle(message);
-                        await this.updateChatTitle(this.currentChatId, title);
-
-                        // Assign the chat to the "Now" section
-                        await this.updateChatSection(this.currentChatId, 'Now');
+                        // Create new chat if not exists
+                        await this.createNewChat();
                     }
 
-                    // Add user message to the UI
-                    this.addMessageToUI(message, true);
-                    input.value = '';
-
-                    // Send the message to the backend
+                    // Send message to the backend
                     const response = await fetch(`${this.BASE_URL}/api/chat`, {
                         method: 'POST',
                         credentials: 'include',
@@ -1029,20 +1008,20 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         body: JSON.stringify({ chat_id: this.currentChatId, message })
                     });
 
+                    if (!response.ok) throw new Error('Failed to send message');
                     const data = await response.json();
-                    if (!response.ok) throw new Error(data.error);
 
-                    // Add bot response to the UI
-                    this.addMessageToUI(data.response, false);
+                    // Add messages to the UI
+                    this.addMessageToUI(message, true); // User message
+                    this.addMessageToUI(data.response, false); // Bot response
+                    input.value = '';
 
-                    // Refresh the sidebar
+                    // Refresh recent chats
                     await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error sending message:', error);
-                    this.addMessageToUI(`Error: ${error.message}`, false);
                 }
             }
-
 
 
             addMessageToUI(content, isUser) {

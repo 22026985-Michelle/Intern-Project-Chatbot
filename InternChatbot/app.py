@@ -298,19 +298,22 @@ def get_chat_history():
         user_id = user_result[0]['user_id']
 
         chats_query = """
-        SELECT c.chat_id, COALESCE(c.title, 'New Chat') AS title, c.section, c.created_at, c.updated_at,
-               COALESCE(m.content, '') AS last_message
+        SELECT c.chat_id, 
+            COALESCE(c.title, 'New Chat') AS title, 
+            c.section, 
+            c.created_at, 
+            c.updated_at, 
+            (SELECT content 
+                FROM messages 
+                WHERE chat_id = c.chat_id 
+                ORDER BY created_at DESC 
+                LIMIT 1) AS last_message
         FROM chats c
-        LEFT JOIN (
-            SELECT chat_id, content
-            FROM messages
-            WHERE chat_id IN (SELECT chat_id FROM chats)
-            ORDER BY created_at DESC LIMIT 1
-        ) m ON c.chat_id = m.chat_id
         WHERE c.user_id = %s
         ORDER BY c.updated_at DESC
         LIMIT 5
         """
+
         app.logger.info(f"Executing chat history query for user_id: {user_id}")
         chats = execute_query(chats_query, (user_id,))
 
