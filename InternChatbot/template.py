@@ -840,27 +840,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 }
             }
 
-
-
-
-            updateStarredChats(chats) {
-                const starredSection = document.getElementById('starredChats');
-                starredSection.innerHTML = '';
-                
-                if (chats.length === 0) {
-                    starredSection.innerHTML = 
-                        <div class="chat-item placeholder-text">
-                            Star projects and chats you use often
-                        </div>
-                    ;
-                    return;
-                }
-
-                chats.forEach(chat => {
-                    starredSection.appendChild(this.createChatElement(chat));
-                });
-            }
-
             updateRecentChats(chats) {
                 const recentSection = document.getElementById('recentChats');
                 if (!recentSection) return;
@@ -1066,26 +1045,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error updating chat title:', error);
-                }
-            }
-
-            async toggleStarChat(chatId, starred) {
-                try {
-                    const response = await fetch(${this.BASE_URL}/api/chat/${chatId}/star, {
-                        method: 'PUT',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        credentials: 'include',
-                        body: JSON.stringify({ is_starred: starred })
-                    });
-
-                    if (!response.ok) throw new Error('Failed to update star status');
-
-                    // Reload chat list to reflect changes
-                    await this.loadRecentChats();
-                } catch (error) {
-                    console.error('Error starring chat:', error);
                 }
             }
 

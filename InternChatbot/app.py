@@ -406,8 +406,7 @@ def get_recent_chats(user_id, limit=5):
            c.title,
            m.content as last_message,
            c.created_at,
-           c.updated_at,
-           c.is_starred
+           c.updated_at
     FROM chats c
     LEFT JOIN (
         SELECT chat_id, content, created_at,
@@ -415,27 +414,10 @@ def get_recent_chats(user_id, limit=5):
         FROM messages
     ) m ON c.chat_id = m.chat_id AND m.rn = 1
     WHERE c.user_id = %s
-    ORDER BY c.is_starred DESC, c.updated_at DESC
+    ORDER BY c.updated_at DESC
     LIMIT %s
     """
     return execute_query(query, (user_id, limit))
-
-@app.route('/api/chat/<int:chat_id>/star', methods=['PUT'])
-@login_required
-def toggle_star_chat(chat_id):
-    try:
-        data = request.get_json()
-        is_starred = data.get('is_starred', False)
-        
-        # Update star status in database
-        query = "UPDATE chats SET is_starred = %s WHERE chat_id = %s"
-        execute_query(query, (is_starred, chat_id))
-        
-        return jsonify({"status": "success"})
-        
-    except Exception as e:
-        app.logger.error(f"Error starring chat: {str(e)}")
-        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/chat/<int:chat_id>', methods=['DELETE'])
 @login_required

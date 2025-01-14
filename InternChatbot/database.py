@@ -180,7 +180,6 @@ def get_recent_chats(user_id, limit=5):
         query = """
         SELECT c.chat_id, 
                c.title,
-               c.is_starred,
                c.created_at,
                c.updated_at,
                (SELECT content 
@@ -190,7 +189,7 @@ def get_recent_chats(user_id, limit=5):
                 LIMIT 1) as last_message
         FROM chats c
         WHERE c.user_id = %s
-        ORDER BY c.is_starred DESC, c.updated_at DESC
+        ORDER BY c.updated_at DESC
         LIMIT %s
         """
         
