@@ -962,11 +962,15 @@ HTML_TEMPLATE = '''
     
             handleNewChat() {
                 try {
-                    // Don't clear messages immediately
-                    // Only clear when actually starting a new chat (i.e., sending first message)
+                    // Clear the messages list when explicitly starting a new chat
+                    const messagesList = document.getElementById('messagesList');
+                    if (messagesList) {
+                        messagesList.innerHTML = '';
+                    }
+
                     this.currentChatId = null;
 
-                    // Show the greeting without clearing existing messages
+                    // Show the greeting
                     const greeting = document.querySelector('.greeting');
                     if (greeting) {
                         greeting.style.display = 'block';
@@ -982,7 +986,7 @@ HTML_TEMPLATE = '''
                     const chatItems = document.querySelectorAll('.chat-item');
                     chatItems.forEach(item => item.classList.remove('active'));
 
-                    console.log('New chat initialized without clearing history');
+                    console.log('New chat initialized with cleared interface');
                 } catch (error) {
                     console.error('Error handling new chat:', error);
                 }
