@@ -884,12 +884,12 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 const div = document.createElement('div');
                 div.className = 'chat-item';
 
-                div.innerHTML = 
-                    <span class="chat-title">{}</span>
+                div.innerHTML = `
+                    <span class="chat-title">${escapeHtml(chat.title || 'New Chat')}</span>
                     <div class="chat-actions">
                         <button class="chat-action-button delete-button" title="Delete chat">🗑</button>
                     </div>
-                ;
+                `;
 
                 // Handle click to load the chat
                 div.querySelector('.chat-title').addEventListener('click', () => {
@@ -1156,6 +1156,16 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             // Initialize chat manager
             window.chatManager = new ChatManager();
+
+
+            function escapeHtml(unsafe) {
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
 
             // Sidebar Control Functions
             function showSidebar() {
