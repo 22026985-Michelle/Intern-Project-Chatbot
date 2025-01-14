@@ -299,23 +299,29 @@ def get_chat_history():
     try:
         user_email = session.get('user_email')
         if not user_email:
+            app.logger.error("User email not found in session")
             return jsonify({"error": "User not authenticated"}), 401
 
         user_query = "SELECT user_id FROM users WHERE email = %s"
         user_result = execute_query(user_query, (user_email,))
         if not user_result:
+            app.logger.error(f"No user found for email: {user_email}")
             return jsonify({"error": "User not found"}), 404
 
         user_id = user_result[0]['user_id']
+        app.logger.info(f"Fetching chat history for user_id: {user_id}")
 
-        # Get recent chats (limited to 5)
         chats = get_recent_chats(user_id, 5)
-        return jsonify({"chats": chats}), 200
+        app.logger.info(f"Retrieved chats: {chats}")
+
+        return jsonify({
+            "status": "success",
+            "chats": chats or []
+        }), 200
 
     except Exception as e:
         app.logger.error(f"Error in get_chat_history: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
 
 
 @app.route('/api/chat/<int:chat_id>/messages', methods=['GET'])

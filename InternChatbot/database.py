@@ -202,13 +202,13 @@ def get_recent_chats(user_id, limit=5):
            c.section,
            c.created_at,
            c.updated_at,
-           (SELECT content 
+           (SELECT m.content 
             FROM messages m 
             WHERE m.chat_id = c.chat_id 
-            ORDER BY created_at DESC 
+            ORDER BY m.created_at DESC 
             LIMIT 1) as last_message
     FROM chats c
-    WHERE c.user_id = %s AND c.section IN ('Now', 'Recents')
+    WHERE c.user_id = %s
     ORDER BY 
         CASE c.section 
             WHEN 'Now' THEN 0 
@@ -217,7 +217,13 @@ def get_recent_chats(user_id, limit=5):
         c.updated_at DESC
     LIMIT %s
     """
-    return execute_query(query, (user_id, limit))
+    try:
+        result = execute_query(query, (user_id, limit))
+        logger.info(f"Recent chats query result: {result}")
+        return result
+    except Exception as e:
+        logger.error(f"Error in get_recent_chats: {str(e)}")
+        return []
 
 def get_chat_messages(chat_id):
     """Get all messages for a specific chat"""

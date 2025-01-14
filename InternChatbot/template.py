@@ -824,14 +824,23 @@ HTML_TEMPLATE = '''
 
             async loadRecentChats() {
                 try {
+                    console.log('Fetching recent chats...'); // Debug log
                     const response = await fetch(`${this.BASE_URL}/api/chat-history`, {
                         method: 'GET',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' }
                     });
+
                     if (!response.ok) throw new Error('Failed to fetch chat history');
+                    
                     const data = await response.json();
-                    this.updateSidebarChats(data.chats || []);
+                    console.log('Received chat data:', data); // Debug log
+                    
+                    if (data.status === 'success') {
+                        this.updateSidebarChats(data.chats || []);
+                    } else {
+                        console.error('Error in chat data:', data.error);
+                    }
                 } catch (error) {
                     console.error('Error loading recent chats:', error);
                 }
@@ -860,27 +869,35 @@ HTML_TEMPLATE = '''
             updateSidebarChats(chats) {
                 const nowSection = document.getElementById('nowChats');
                 const recentSection = document.getElementById('recentChats');
+                
+                console.log('Updating sidebar with chats:', chats); // Debug log
 
+                // Handle Now section
                 if (nowSection) {
                     nowSection.innerHTML = '';
                     const nowChats = chats.filter(chat => chat.section === 'Now');
+                    
                     if (nowChats.length === 0) {
                         nowSection.innerHTML = '<div class="chat-item placeholder-text">No active chats</div>';
                     } else {
                         nowChats.forEach(chat => {
-                            nowSection.appendChild(this.createChatElement(chat));
+                            const chatElement = this.createChatElement(chat);
+                            nowSection.appendChild(chatElement);
                         });
                     }
                 }
 
+                // Handle Recents section
                 if (recentSection) {
                     recentSection.innerHTML = '';
-                    const recentChats = chats.filter(chat => chat.section === 'Recents').slice(0, 5);
+                    const recentChats = chats.filter(chat => chat.section === 'Recents');
+                    
                     if (recentChats.length === 0) {
                         recentSection.innerHTML = '<div class="chat-item placeholder-text">No recent chats</div>';
                     } else {
                         recentChats.forEach(chat => {
-                            recentSection.appendChild(this.createChatElement(chat));
+                            const chatElement = this.createChatElement(chat);
+                            recentSection.appendChild(chatElement);
                         });
                     }
                 }
@@ -893,14 +910,23 @@ HTML_TEMPLATE = '''
                     div.classList.add('active');
                 }
 
+                // Make sure title exists
+                const title = chat.title || 'New Chat';
+                const truncatedTitle = title.length > 25 ? title.substring(0, 25) + '...' : title;
+
                 div.innerHTML = `
-                    <span class="chat-title">${chat.title || 'New Chat'}</span>
+                    <span class="chat-title" title="${title}">${truncatedTitle}</span>
                     <div class="chat-actions">
                         <button class="chat-action-button delete-button" title="Delete chat">🗑</button>
                     </div>
                 `;
 
-                div.querySelector('.chat-title').addEventListener('click', () => this.loadChat(chat.chat_id));
+                // Add click handlers
+                div.querySelector('.chat-title').addEventListener('click', () => {
+                    console.log('Loading chat:', chat.chat_id); // Debug log
+                    this.loadChat(chat.chat_id);
+                });
+
                 div.querySelector('.delete-button').addEventListener('click', (e) => {
                     e.stopPropagation();
                     this.deleteChat(chat.chat_id);
