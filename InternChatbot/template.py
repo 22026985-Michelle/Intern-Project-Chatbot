@@ -826,11 +826,10 @@ HTML_TEMPLATE = '''
                 try {
                     const response = await fetch(`${this.BASE_URL}/api/chat-history`, {
                         method: 'GET',
-                        credentials: 'include'
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' }
                     });
-
                     if (!response.ok) throw new Error('Failed to fetch chat history');
-                    
                     const data = await response.json();
                     this.updateSidebarChats(data.chats || []);
                 } catch (error) {
@@ -915,29 +914,15 @@ HTML_TEMPLATE = '''
                 try {
                     // Move the current chat to "Recents" if it exists
                     if (this.currentChatId) {
-                        await fetch(`${this.BASE_URL}/api/chat/${this.currentChatId}/section`, {
-                            method: 'PUT',
-                            headers: { 'Content-Type': 'application/json' },
-                            credentials: 'include',
-                            body: JSON.stringify({ section: 'Recents' })
-                        });
+                        await this.moveToRecents(this.currentChatId);
                     }
-
                     // Reset UI for the new chat
-                    const messagesList = document.getElementById('messagesList');
-                    const userInput = document.getElementById('userInput');
-                    const greeting = document.querySelector('.greeting');
-
-                    if (messagesList) messagesList.innerHTML = '';
-                    if (userInput) userInput.value = '';
-                    if (greeting) greeting.style.display = 'block';
-
-                    // Reset current chat ID
+                    document.getElementById('messagesList').innerHTML = '';
+                    document.getElementById('userInput').value = '';
+                    // Reset current chat ID (new chat will be created on first message)
                     this.currentChatId = null;
-
                     // Update chat sections
                     await this.loadRecentChats();
-
                     console.log('New chat initialized');
                 } catch (error) {
                     console.error('Error handling new chat:', error);
@@ -946,7 +931,7 @@ HTML_TEMPLATE = '''
 
             async getChatMessages(chatId) {
                 try {
-                    const response = await fetch(${this.BASE_URL}/api/chat/${chatId}/messages);
+                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`);  
                     if (!response.ok) throw new Error('Failed to get chat messages');
                     const data = await response.json();
                     return data.messages;
@@ -961,6 +946,7 @@ HTML_TEMPLATE = '''
                     const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/section`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
                         body: JSON.stringify({ section: 'Recents' })
                     });
                     if (!response.ok) throw new Error('Failed to move chat to recents');
@@ -1061,7 +1047,7 @@ HTML_TEMPLATE = '''
 
             async updateChatSection(chatId, section) {
                 try {
-                    const response = await fetch(${this.BASE_URL}/api/chat/${chatId}/section, {
+                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/section`, {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json'
@@ -1077,7 +1063,7 @@ HTML_TEMPLATE = '''
 
             async updateChatTitle(chatId, title) {
                 try {
-                    const response = await fetch(${this.BASE_URL}/api/chat/${chatId}/title, {
+                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/title`, {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json'
@@ -1201,9 +1187,6 @@ HTML_TEMPLATE = '''
             let isOverSidebar = false;
             let sidebarTimeout = null;
 
-            // Initialize chat manager
-            window.chatManager = new ChatManager();
-
 
             function escapeHtml(unsafe) {
                 return unsafe
@@ -1318,6 +1301,9 @@ HTML_TEMPLATE = '''
             
             setGreeting();
             setInterval(setGreeting, 60000);
+
+            // Initialize chat manager
+            window.chatManager = new ChatManager();
         });
     </script>
 </body>
