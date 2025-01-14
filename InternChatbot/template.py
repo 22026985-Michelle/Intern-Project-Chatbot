@@ -1,6 +1,7 @@
 # template.py
 
-HTML_TEMPLATE = '''<!DOCTYPE html>
+HTML_TEMPLATE = '''
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -826,17 +827,12 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' }
                     });
-
                     if (!response.ok) throw new Error('Failed to fetch chat history');
                     const data = await response.json();
-
-                    // Update "Now" and "Recents" sections
-                    this.updateNowChats(data.chats.filter(chat => chat.section === 'Now'));
-                    this.updateRecentChats(data.chats.filter(chat => chat.section === 'Recents'));
+                    // Process chat data
+                    this.updateSidebarChats(data.chats || []);
                 } catch (error) {
-                    console.error('Error loading chats:', error);
-                    this.updateNowChats([]);
-                    this.updateRecentChats([]);
+                    console.error('Error loading recent chats:', error);
                 }
             }
 
@@ -905,7 +901,6 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 return div;
             }
 
-
             async handleNewChat() {
                 try {
                     // Move the current chat to "Recents" if it exists
@@ -943,13 +938,11 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             async moveToRecents(chatId) {
                 try {
-                    // Update chat section to "Recents"
                     const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/section`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ section: 'Recents' })
                     });
-
                     if (!response.ok) throw new Error('Failed to move chat to recents');
                 } catch (error) {
                     console.error('Error moving chat to recents:', error);
