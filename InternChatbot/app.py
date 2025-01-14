@@ -330,10 +330,16 @@ def get_chat_messages(chat_id):
     try:
         # Verify the chat belongs to the current user
         user_email = session.get('user_email')
+        if not user_email:
+            app.logger.error("User not authenticated")
+            return jsonify({"error": "User not authenticated"}), 401
+
+        # Get user ID
         user_query = "SELECT user_id FROM users WHERE email = %s"
         user_result = execute_query(user_query, (user_email,))
         
         if not user_result:
+            app.logger.error("User not found")
             return jsonify({"error": "User not found"}), 404
             
         user_id = user_result[0]['user_id']
@@ -343,14 +349,29 @@ def get_chat_messages(chat_id):
         chat_result = execute_query(chat_query, (chat_id,))
         
         if not chat_result or chat_result[0]['user_id'] != user_id:
+            app.logger.error("Chat not found or unauthorized")
             return jsonify({"error": "Chat not found"}), 404
         
+        # Get messages with proper formatting
         messages = get_chat_messages(chat_id)
-        return jsonify({"messages": messages})
+        if messages is None:
+            messages = []
+
+        # Convert datetime objects to strings
+        formatted_messages = []
+        for message in messages:
+            formatted_message = {
+                'content': message['content'],
+                'is_user': message['is_user'],
+                'created_at': message['created_at'].strftime('%Y-%m-%d %H:%M:%S') if message['created_at'] else None
+            }
+            formatted_messages.append(formatted_message)
+
+        return jsonify({"messages": formatted_messages})
         
     except Exception as e:
         app.logger.error(f"Error getting chat messages: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
     
 @app.route('/api/generate-title', methods=['POST'])
 @login_required

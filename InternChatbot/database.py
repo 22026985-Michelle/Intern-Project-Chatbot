@@ -222,7 +222,9 @@ def get_recent_chats(user_id, limit=5):
 def get_chat_messages(chat_id):
     """Get all messages for a specific chat"""
     query = """
-    SELECT content, is_user, created_at
+    SELECT content, 
+           is_user, 
+           created_at
     FROM messages
     WHERE chat_id = %s
     ORDER BY created_at ASC
@@ -230,7 +232,16 @@ def get_chat_messages(chat_id):
     try:
         result = execute_query(query, (chat_id,))
         logger.info(f"Retrieved {len(result) if result else 0} messages for chat {chat_id}")
-        return result if result else []
+        
+        if not result:
+            return []
+            
+        # Ensure all fields are serializable
+        for message in result:
+            if 'created_at' in message and message['created_at']:
+                message['created_at'] = message['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+        
+        return result
     except Exception as e:
         logger.error(f"Error getting chat messages: {str(e)}")
         return []
