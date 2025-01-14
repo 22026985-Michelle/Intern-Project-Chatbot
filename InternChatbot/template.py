@@ -778,7 +778,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             async generateChatTitle(message) {
                 try {
-                    const response = await fetch(${this.BASE_URL}/api/generate-title, {
+                    const response = await fetch(`${this.BASE_URL}/api/generate-title`, { 
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -794,6 +794,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     return 'New Chat';
                 }
             }
+
 
             async createNewChat() {
                 try {
