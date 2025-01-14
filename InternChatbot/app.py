@@ -266,14 +266,10 @@ def create_chat():
 
         user_id = user_result[0]['user_id']
 
-        # Create a new chat and assign it to "Today"
+        # Create new chat with 'Now' section
         chat_id = create_new_chat(user_id)
         if not chat_id:
             return jsonify({"error": "Failed to create chat"}), 500
-
-        # Assign the new chat to "Today"
-        update_section_query = "UPDATE chats SET section = 'Now' WHERE chat_id = %s"
-        execute_query(update_section_query, (chat_id,))
 
         return jsonify({"status": "success", "chat_id": chat_id})
     except Exception as e:
@@ -286,42 +282,22 @@ def get_chat_history():
     try:
         user_email = session.get('user_email')
         if not user_email:
-            app.logger.error("User email not found in session")
             return jsonify({"error": "User not authenticated"}), 401
 
         user_query = "SELECT user_id FROM users WHERE email = %s"
         user_result = execute_query(user_query, (user_email,))
         if not user_result:
-            app.logger.error(f"No user found for email: {user_email}")
             return jsonify({"error": "User not found"}), 404
 
         user_id = user_result[0]['user_id']
 
-        chats_query = """
-        SELECT c.chat_id, 
-            COALESCE(c.title, 'New Chat') AS title, 
-            c.section, 
-            c.created_at, 
-            c.updated_at, 
-            (SELECT content 
-                FROM messages 
-                WHERE chat_id = c.chat_id 
-                ORDER BY created_at DESC 
-                LIMIT 1) AS last_message
-        FROM chats c
-        WHERE c.user_id = %s
-        ORDER BY c.updated_at DESC
-        LIMIT 5
-        """
+        # Get recent chats (limited to 5)
+        chats = get_recent_chats(user_id, 5)
+        return jsonify({"chats": chats}), 200
 
-        app.logger.info(f"Executing chat history query for user_id: {user_id}")
-        chats = execute_query(chats_query, (user_id,))
-
-        app.logger.info(f"Chat history retrieved: {chats}")
-        return jsonify({"chats": chats or []}), 200
     except Exception as e:
-        app.logger.error(f"Error in /api/chat-history: {str(e)}")
-        return jsonify({"chats": [], "error": "Internal Server Error"}), 500
+        app.logger.error(f"Error in get_chat_history: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 
 
@@ -365,10 +341,10 @@ def generate_chat_title():
             model="claude-3-5-sonnet-20241022",
             max_tokens=50,
             temperature=0,
-            system="Generate a short, concise title (max 6 words) for a chat based on the first message.",
+            system="Generate a very short, concise title (3-6 words) for a chat based on the first message. Make it descriptive but brief.",
             messages=[{
                 "role": "user",
-                "content": message
+                "content": f"Create a brief title for a chat that starts with this message: {message}"
             }]
         )
         

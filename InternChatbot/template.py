@@ -114,16 +114,15 @@ HTML_TEMPLATE = '''
         .section-title {
             color: #888;
             font-size: 0.9rem;
-            margin: 1.5rem 0 0.5rem;
-            white-space: nowrap;
+            margin-top: 1rem;
             padding-bottom: 0.5rem;
             border-bottom: 1px solid var(--border-color);
         }
 
         .chat-list {
-            width: 100%;
-            overflow-y: auto;
-            min-height: 0; 
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
         }
 
         .chat-item {
@@ -244,6 +243,9 @@ HTML_TEMPLATE = '''
             flex: 1;
             overflow-y: auto;
             padding: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
         }
 
         .sidebar:hover,
@@ -471,7 +473,8 @@ HTML_TEMPLATE = '''
             cursor: pointer;
             transition: background-color 0.2s ease;
             border-radius: 0.5rem;
-            color: var(--text-color); 
+            color: var(--text-color);
+            z-index: 1015;  
         }
 
         .profile-button:hover {
@@ -482,13 +485,13 @@ HTML_TEMPLATE = '''
             position: absolute;
             bottom: 100%;
             left: 1rem;
-            width: 200px;
+            right: 1rem;
             background-color: var(--bg-color);
             border: 1px solid var(--border-color);
             border-radius: 8px;
             box-shadow: 0 2px 10px var(--box-shadow);
             margin-bottom: 0.5rem;
-            z-index: 1012;
+            z-index: 1020;  /* Higher than profile button */
             opacity: 0;
             pointer-events: none;
             transform: translateY(10px);
@@ -905,21 +908,32 @@ HTML_TEMPLATE = '''
 
             async handleNewChat() {
                 try {
-                    // Move the current chat to "Recents" if it exists
-                    if (this.currentChatId) {
-                        await this.moveToRecents(this.currentChatId);
-                    }
-
-                    // Reset UI for the new chat
+                    // Clear the current chat interface
                     document.getElementById('messagesList').innerHTML = '';
                     document.getElementById('userInput').value = '';
-
+                    
+                    // Reset the greeting
+                    const greetingDiv = document.querySelector('.greeting');
+                    if (greetingDiv) {
+                        greetingDiv.style.display = 'block';
+                    }
+                    
+                    // If there's a current chat, move it to recents before creating new chat
+                    if (this.currentChatId) {
+                        await fetch(`${this.BASE_URL}/api/chat/${this.currentChatId}/section`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
+                            body: JSON.stringify({ section: 'Recents' })
+                        });
+                    }
+                    
                     // Reset current chat ID (new chat will be created on first message)
                     this.currentChatId = null;
-
+                    
                     // Update chat sections
                     await this.loadRecentChats();
-
+                    
                     console.log('New chat initialized');
                 } catch (error) {
                     console.error('Error handling new chat:', error);
@@ -969,28 +983,63 @@ HTML_TEMPLATE = '''
                 if (!message) return;
 
                 try {
-                    if (!this.currentChatId) {
-                        // Create new chat if not exists
-                        await this.createNewChat();
+                    const isFirstMessage = !this.currentChatId;
+                    
+                    if (isFirstMessage) {
+                        // Create new chat
+                        const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
+                            method: 'POST',
+                            credentials: 'include',
+                            headers: { 'Content-Type': 'application/json' }
+                        });
+                        
+                        if (!createResponse.ok) throw new Error('Failed to create chat');
+                        const chatData = await createResponse.json();
+                        this.currentChatId = chatData.chat_id;
+
+                        // Generate title from first message
+                        const titleResponse = await fetch(`${this.BASE_URL}/api/generate-title`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ message })
+                        });
+                        
+                        if (titleResponse.ok) {
+                            const titleData = await titleResponse.json();
+                            await fetch(`${this.BASE_URL}/api/chat/${this.currentChatId}/title`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ title: titleData.title })
+                            });
+                        }
+
+                        // Hide greeting on first message
+                        const greetingDiv = document.querySelector('.greeting');
+                        if (greetingDiv) {
+                            greetingDiv.style.display = 'none';
+                        }
                     }
 
-                    // Send message to the backend
+                    // Send message to backend
                     const response = await fetch(`${this.BASE_URL}/api/chat`, {
                         method: 'POST',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ chat_id: this.currentChatId, message })
+                        body: JSON.stringify({
+                            chat_id: this.currentChatId,
+                            message: message
+                        })
                     });
 
                     if (!response.ok) throw new Error('Failed to send message');
                     const data = await response.json();
 
-                    // Add messages to the UI
-                    this.addMessageToUI(message, true); // User message
-                    this.addMessageToUI(data.response, false); // Bot response
+                    // Add messages to UI
+                    this.addMessageToUI(message, true);
+                    this.addMessageToUI(data.response, false);
                     input.value = '';
 
-                    // Refresh recent chats
+                    // Refresh chat sections
                     await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error sending message:', error);

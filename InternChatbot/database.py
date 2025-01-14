@@ -98,29 +98,25 @@ def create_user(email, password, username):  # Add username parameter
     
 def create_new_chat(user_id):
     """Create a new chat session for a user"""
-    logger.info(f"Creating new chat for user_id: {user_id}")
-    
     try:
-        # First, check how many chats the user has
+        # Check and cleanup old chats if needed
         count_query = "SELECT COUNT(*) as chat_count FROM chats WHERE user_id = %s"
         count_result = execute_query(count_query, (user_id,))
         
-        if count_result and count_result[0]['chat_count'] >= 100:
-            # If user has too many chats, delete the oldest ones
-            cleanup_old_chats(user_id, keep_count=95)
+        if count_result and count_result[0]['chat_count'] >= 5:
+            # Keep only the 4 most recent chats before adding new one
+            cleanup_old_chats(user_id, keep_count=4)
         
-        # Insert new chat and get ID directly
+        # Insert new chat with 'Now' section
         insert_query = """
         INSERT INTO chats (user_id, created_at, updated_at, section)
-        VALUES (%s, NOW(), NOW(), 'Today')
+        VALUES (%s, NOW(), NOW(), 'Now')
+        RETURNING chat_id
         """
-        chat_id = execute_query(insert_query, (user_id,))
+        result = execute_query(insert_query, (user_id,))
         
-        if chat_id:
-            logger.info(f"Created new chat with ID: {chat_id}")
-            return chat_id
-            
-        logger.error("Failed to create chat - no ID returned")
+        if result:
+            return result[0]['chat_id']
         return None
         
     except Exception as e:
@@ -168,43 +164,23 @@ def add_message(chat_id, content, is_user=True):
     
 def get_recent_chats(user_id, limit=5):
     """Get recent chats for a user"""
-    connection = None
-    cursor = None
-    try:
-        connection = get_db_connection()
-        if not connection:
-            return []
-
-        cursor = connection.cursor(dictionary=True)
-        
-        query = """
-        SELECT c.chat_id, 
-               c.title,
-               c.created_at,
-               c.updated_at,
-               (SELECT content 
-                FROM messages m 
-                WHERE m.chat_id = c.chat_id 
-                ORDER BY created_at DESC 
-                LIMIT 1) as last_message
-        FROM chats c
-        WHERE c.user_id = %s
-        ORDER BY c.updated_at DESC
-        LIMIT %s
-        """
-        
-        cursor.execute(query, (user_id, limit))
-        result = cursor.fetchall()
-        return result or []
-
-    except Error as e:
-        logger.error(f"Error in get_recent_chats: {str(e)}")
-        return []
-    finally:
-        if cursor:
-            cursor.close()
-        if connection and connection.is_connected():
-            connection.close() 
+    query = """
+    SELECT c.chat_id, 
+           COALESCE(c.title, 'New Chat') as title,
+           c.section,
+           c.created_at,
+           c.updated_at,
+           (SELECT content 
+            FROM messages m 
+            WHERE m.chat_id = c.chat_id 
+            ORDER BY created_at DESC 
+            LIMIT 1) as last_message
+    FROM chats c
+    WHERE c.user_id = %s
+    ORDER BY c.updated_at DESC
+    LIMIT %s
+    """
+    return execute_query(query, (user_id, limit))
 
 def get_chat_messages(chat_id):
     """Get all messages for a specific chat"""
@@ -216,18 +192,25 @@ def get_chat_messages(chat_id):
     """
     return execute_query(query, (chat_id,))
 
-def cleanup_old_chats(user_id, keep_count=5):
-    query = """
-    DELETE FROM chats 
-    WHERE chat_id NOT IN (
-        SELECT chat_id 
-        FROM chats 
-        WHERE user_id = %s 
-        ORDER BY updated_at DESC 
-        LIMIT %s
-    )
-    """
-    execute_query(query, (user_id, keep_count))
+def cleanup_old_chats(user_id, keep_count=4):
+    """Delete old chats, keeping only the specified number of most recent ones"""
+    try:
+        delete_query = """
+        DELETE FROM chats 
+        WHERE chat_id IN (
+            SELECT chat_id 
+            FROM (
+                SELECT chat_id,
+                       ROW_NUMBER() OVER (ORDER BY updated_at DESC) as rn
+                FROM chats 
+                WHERE user_id = %s
+            ) ranked 
+            WHERE rn > %s
+        )
+        """
+        execute_query(delete_query, (user_id, keep_count))
+    except Exception as e:
+        logger.error(f"Error in cleanup_old_chats: {str(e)}")
 
 
 def get_user_by_email(email):
