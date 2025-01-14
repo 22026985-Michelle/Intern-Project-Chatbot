@@ -136,10 +136,10 @@ def create_new_chat(user_id):
         
         # Insert new chat
         insert_query = """
-        INSERT INTO chats (user_id, title, section, created_at, updated_at)
-        VALUES (%s, %s, %s, NOW(), NOW())
+        INSERT INTO chats (user_id, title, created_at, updated_at)
+        VALUES (%s, %s, NOW(), NOW())
         """
-        cursor.execute(insert_query, (user_id, 'New Chat', 'Now'))
+        cursor.execute(insert_query, (user_id, 'New Chat'))
         chat_id = cursor.lastrowid
         
         connection.commit()
@@ -199,7 +199,6 @@ def get_recent_chats(user_id, limit=5):
     query = """
     SELECT c.chat_id, 
            COALESCE(c.title, 'New Chat') as title,
-           c.section,
            c.created_at,
            c.updated_at,
            (SELECT m.content 
@@ -209,12 +208,7 @@ def get_recent_chats(user_id, limit=5):
             LIMIT 1) as last_message
     FROM chats c
     WHERE c.user_id = %s
-    ORDER BY 
-        CASE c.section 
-            WHEN 'Now' THEN 0 
-            WHEN 'Recents' THEN 1 
-        END,
-        c.updated_at DESC
+    ORDER BY c.updated_at DESC
     LIMIT %s
     """
     try:

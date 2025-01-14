@@ -588,10 +588,6 @@ HTML_TEMPLATE = '''
             </div>
             <div class="chat-sections">
                 <div class="section">
-                    <div class="section-title">Now</div>
-                    <div class="chat-list" id="nowChats"></div>
-                </div>
-                <div class="section">
                     <div class="section-title">Recents</div>
                     <div class="chat-list" id="recentChats"></div>
                 </div>
@@ -883,58 +879,28 @@ HTML_TEMPLATE = '''
             }
 
 
-            updateSidebarChats(chats) {
+            async updateSidebarChats(chats) {
                 console.log('Updating sidebar with chats:', chats);
-                
-                const nowSection = document.getElementById('nowChats');
                 const recentSection = document.getElementById('recentChats');
                 
-                if (!nowSection || !recentSection) {
-                    console.error('Could not find chat sections');
+                if (!recentSection) {
+                    console.error('Could not find recent chats section');
                     return;
                 }
 
                 // Clear existing content
-                nowSection.innerHTML = '';
                 recentSection.innerHTML = '';
 
                 if (!Array.isArray(chats) || chats.length === 0) {
-                    nowSection.innerHTML = '<div class="chat-item placeholder-text">No active chats</div>';
-                    recentSection.innerHTML = '<div class="chat-item placeholder-text">No recent chats</div>';
+                    recentSection.innerHTML = '<div class="chat-item placeholder-text">No chats yet</div>';
                     return;
                 }
 
-                // Separate chats by section
-                let nowChats = [];
-                let recentChats = [];
-
+                // Add all chats to recents
                 chats.forEach(chat => {
-                    if (chat.section?.toLowerCase() === 'now') {
-                        nowChats.push(chat);
-                    } else {
-                        recentChats.push(chat);
-                    }
+                    const chatElement = this.createChatElement(chat);
+                    recentSection.appendChild(chatElement);
                 });
-
-                // Update Now section
-                if (nowChats.length > 0) {
-                    nowChats.forEach(chat => {
-                        const chatElement = this.createChatElement(chat);
-                        nowSection.appendChild(chatElement);
-                    });
-                } else {
-                    nowSection.innerHTML = '<div class="chat-item placeholder-text">No active chats</div>';
-                }
-
-                // Update Recents section
-                if (recentChats.length > 0) {
-                    recentChats.forEach(chat => {
-                        const chatElement = this.createChatElement(chat);
-                        recentSection.appendChild(chatElement);
-                    });
-                } else {
-                    recentSection.innerHTML = '<div class="chat-item placeholder-text">No recent chats</div>';
-                }
             }
 
             createChatElement(chat) {
