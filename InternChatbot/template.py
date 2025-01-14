@@ -138,12 +138,13 @@ HTML_TEMPLATE = '''
         }
 
         .chat-item {
-            padding: 0.5rem;
+            padding: 0.75rem;
             cursor: pointer;
-            border-radius: 0.3rem;
+            border-radius: 0.5rem;
             font-size: 0.9rem;
             display: flex;
             align-items: center;
+            justify-content: space-between;
             gap: 0.5rem;
             color: var(--text-color);
             white-space: nowrap;
@@ -151,6 +152,8 @@ HTML_TEMPLATE = '''
             text-overflow: ellipsis;
             max-width: 230px;
             border: 1px solid transparent;
+            background-color: var(--bg-color);
+            transition: all 0.2s ease;
         }
 
         .chat-item:hover {
@@ -195,6 +198,14 @@ HTML_TEMPLATE = '''
         }
 
         .chat-title {
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            margin-right: 0.5rem;
+        }
+
+        .chat-item .chat-title {
             flex-grow: 1;
             white-space: nowrap;
             overflow: hidden;
@@ -398,6 +409,8 @@ HTML_TEMPLATE = '''
 
         /* Message Styles */
         .message {
+            opacity: 0;
+            transform: translateY(10px);
             display: flex;
             gap: 1rem;
             margin-bottom: 1rem;
@@ -408,6 +421,13 @@ HTML_TEMPLATE = '''
             border: 1px solid var(--border-color);
         }
 
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
         .avatar {
             width: 40px;
             height: 40px;
@@ -907,6 +927,7 @@ HTML_TEMPLATE = '''
                 console.log('Creating chat element for:', chat);
                 const div = document.createElement('div');
                 div.className = 'chat-item';
+                div.setAttribute('data-chat-id', chat.chat_id);
                 
                 if (chat.chat_id === this.currentChatId) {
                     div.classList.add('active');
@@ -923,12 +944,13 @@ HTML_TEMPLATE = '''
                     </div>
                 `;
 
-                // Add click handlers
+                // Add click handler for the entire chat item
                 div.addEventListener('click', () => {
                     console.log('Loading chat:', chat.chat_id);
                     this.loadChat(chat.chat_id);
                 });
 
+                // Add separate click handler for delete button
                 div.querySelector('.delete-button').addEventListener('click', (e) => {
                     e.stopPropagation();
                     this.deleteChat(chat.chat_id);
@@ -1130,18 +1152,41 @@ HTML_TEMPLATE = '''
 
             async loadChat(chatId) {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`);
+                    console.log('Loading chat:', chatId);
+                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`, {
+                        method: 'GET',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' }
+                    });
+
                     if (!response.ok) throw new Error('Failed to load chat messages');
                     
                     const data = await response.json();
                     this.currentChatId = chatId;
                     
-                    const messagesList = document.getElementById('messagesList');
-                    messagesList.innerHTML = ''; // Clear previous messages
+                    // Hide greeting if visible
+                    const greeting = document.querySelector('.greeting');
+                    if (greeting) {
+                        greeting.style.display = 'none';
+                    }
                     
-                    data.messages.forEach(message => {
-                        this.addMessageToUI(message.content, message.is_user);
-                    });
+                    // Clear and reload messages
+                    const messagesList = document.getElementById('messagesList');
+                    messagesList.innerHTML = '';
+                    
+                    if (data.messages && data.messages.length > 0) {
+                        data.messages.forEach(message => {
+                            this.addMessageToUI(message.content, message.is_user === 1);
+                        });
+                    }
+
+                    // Update UI to show active chat
+                    const allChatItems = document.querySelectorAll('.chat-item');
+                    allChatItems.forEach(item => item.classList.remove('active'));
+                    const activeChatItem = document.querySelector(`[data-chat-id="${chatId}"]`);
+                    if (activeChatItem) {
+                        activeChatItem.classList.add('active');
+                    }
                 } catch (error) {
                     console.error('Error loading chat:', error);
                 }

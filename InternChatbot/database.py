@@ -227,7 +227,13 @@ def get_chat_messages(chat_id):
     WHERE chat_id = %s
     ORDER BY created_at ASC
     """
-    return execute_query(query, (chat_id,))
+    try:
+        result = execute_query(query, (chat_id,))
+        logger.info(f"Retrieved {len(result) if result else 0} messages for chat {chat_id}")
+        return result if result else []
+    except Exception as e:
+        logger.error(f"Error getting chat messages: {str(e)}")
+        return []
 
 def cleanup_old_chats(user_id, keep_count=4):
     """Delete old chats, keeping only the specified number of most recent ones"""
