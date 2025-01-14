@@ -966,11 +966,28 @@ HTML_TEMPLATE = '''
                     if (this.currentChatId) {
                         await this.moveToRecents(this.currentChatId);
                     }
-                    // Reset UI for the new chat
-                    document.getElementById('messagesList').innerHTML = '';
-                    document.getElementById('userInput').value = '';
+                    
+                    // Clear the messages list
+                    const messagesList = document.getElementById('messagesList');
+                    if (messagesList) {
+                        messagesList.innerHTML = '';
+                    }
+
+                    // Show the greeting
+                    const greeting = document.querySelector('.greeting');
+                    if (greeting) {
+                        greeting.style.display = 'block';
+                    }
+
                     // Reset current chat ID (new chat will be created on first message)
                     this.currentChatId = null;
+                    
+                    // Clear input
+                    const userInput = document.getElementById('userInput');
+                    if (userInput) {
+                        userInput.value = '';
+                    }
+
                     // Update chat sections
                     await this.loadRecentChats();
                     console.log('New chat initialized');
@@ -1026,6 +1043,7 @@ HTML_TEMPLATE = '''
                     const isFirstMessage = !this.currentChatId;
                     
                     if (isFirstMessage) {
+                        // Create new chat for first message
                         const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
                             method: 'POST',
                             credentials: 'include',
@@ -1036,7 +1054,7 @@ HTML_TEMPLATE = '''
                         const chatData = await createResponse.json();
                         this.currentChatId = chatData.chat_id;
 
-                        // Generate title from first message
+                        // Generate and set chat title
                         const titleResponse = await fetch(`${this.BASE_URL}/api/generate-title`, {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
@@ -1052,7 +1070,7 @@ HTML_TEMPLATE = '''
                             });
                         }
 
-                        // Hide greeting
+                        // Hide greeting for new chat
                         const greeting = document.querySelector('.greeting');
                         if (greeting) greeting.style.display = 'none';
                     }
@@ -1071,12 +1089,12 @@ HTML_TEMPLATE = '''
                     if (!response.ok) throw new Error('Failed to send message');
                     const data = await response.json();
 
-                    // Clear input before adding messages to UI
-                    input.value = '';
-
                     // Add messages to UI
                     this.addMessageToUI(message, true);
                     this.addMessageToUI(data.response, false);
+
+                    // Clear input after successful send
+                    input.value = '';
 
                     // Scroll to bottom
                     const messagesList = document.getElementById('messagesList');
@@ -1084,10 +1102,12 @@ HTML_TEMPLATE = '''
                         messagesList.scrollTop = messagesList.scrollHeight;
                     }
 
-                    // Refresh chat list only after successful message send
+                    // Update recent chats list
                     await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error sending message:', error);
+                    // Optionally show error to user
+                    alert('Failed to send message. Please try again.');
                 }
             }
 
@@ -1183,18 +1203,22 @@ HTML_TEMPLATE = '''
             async loadChat(chatId) {
                 try {
                     console.log('Loading chat:', chatId);
+                    this.currentChatId = chatId; // Set current chat ID first
+                    
                     const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`, {
                         method: 'GET',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' }
                     });
 
-                    if (!response.ok) throw new Error('Failed to load chat messages');
+                    if (!response.ok) {
+                        throw new Error('Failed to load chat messages');
+                    }
                     
                     const data = await response.json();
-                    this.currentChatId = chatId;
-                    
-                    // Hide greeting if visible
+                    console.log('Received messages:', data);
+
+                    // Hide greeting
                     const greeting = document.querySelector('.greeting');
                     if (greeting) {
                         greeting.style.display = 'none';
@@ -1202,26 +1226,38 @@ HTML_TEMPLATE = '''
                     
                     // Clear and reload messages
                     const messagesList = document.getElementById('messagesList');
+                    if (!messagesList) return;
+                    
                     messagesList.innerHTML = '';
                     
-                    if (data.messages && data.messages.length > 0) {
+                    if (data.messages && Array.isArray(data.messages)) {
                         data.messages.forEach(message => {
-                            this.addMessageToUI(message.content, message.is_user === 1);
+                            const messageDiv = document.createElement('div');
+                            messageDiv.className = 'message';
+                            messageDiv.innerHTML = `
+                                <div class="avatar">${message.is_user ? 'U' : 'A'}</div>
+                                <div class="message-content">${this.escapeHtml(message.content)}</div>
+                            `;
+                            messagesList.appendChild(messageDiv);
                         });
+                        
+                        // Scroll to bottom after loading all messages
+                        messagesList.scrollTop = messagesList.scrollHeight;
                     }
 
-                    // Update UI to show active chat
+                    // Update active state in sidebar
                     const allChatItems = document.querySelectorAll('.chat-item');
-                    allChatItems.forEach(item => item.classList.remove('active'));
-                    const activeChatItem = document.querySelector(`[data-chat-id="${chatId}"]`);
-                    if (activeChatItem) {
-                        activeChatItem.classList.add('active');
-                    }
+                    allChatItems.forEach(item => {
+                        item.classList.remove('active');
+                        if (item.getAttribute('data-chat-id') === chatId.toString()) {
+                            item.classList.add('active');
+                        }
+                    });
+
                 } catch (error) {
                     console.error('Error loading chat:', error);
                 }
             }
-
 
             updateNowChats(chats) {
                 const nowSection = document.getElementById('nowChats');
