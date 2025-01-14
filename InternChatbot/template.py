@@ -880,8 +880,9 @@ HTML_TEMPLATE = '''
                 const div = document.createElement('div');
                 div.className = 'chat-item';
 
+                // Use backticks for string templates
                 div.innerHTML = `
-                    <span class="chat-title">${escapeHtml(chat.title || 'New Chat')}</span>
+                    <span class="chat-title">${chat.title || 'New Chat'}</span>
                     <div class="chat-actions">
                         <button class="chat-action-button delete-button" title="Delete chat">🗑</button>
                     </div>
@@ -900,6 +901,7 @@ HTML_TEMPLATE = '''
 
                 return div;
             }
+
 
             async handleNewChat() {
                 try {
