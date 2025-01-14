@@ -257,21 +257,32 @@ def create_chat():
     try:
         user_email = session.get('user_email')
         if not user_email:
+            app.logger.error("User email not found in session")
             return jsonify({"error": "User not authenticated"}), 401
 
+        # Get user ID
         user_query = "SELECT user_id FROM users WHERE email = %s"
         user_result = execute_query(user_query, (user_email,))
+        
         if not user_result:
+            app.logger.error(f"No user found for email: {user_email}")
             return jsonify({"error": "User not found"}), 404
 
         user_id = user_result[0]['user_id']
+        app.logger.info(f"Creating chat for user_id: {user_id}")
 
-        # Create new chat with 'Now' section
+        # Create new chat
         chat_id = create_new_chat(user_id)
         if not chat_id:
+            app.logger.error("Failed to create chat")
             return jsonify({"error": "Failed to create chat"}), 500
 
-        return jsonify({"status": "success", "chat_id": chat_id})
+        app.logger.info(f"Successfully created chat with ID: {chat_id}")
+        return jsonify({
+            "status": "success",
+            "chat_id": chat_id
+        })
+
     except Exception as e:
         app.logger.error(f"Error creating chat: {str(e)}")
         return jsonify({"error": str(e)}), 500
@@ -442,3 +453,18 @@ def move_chat_to_recents(chat_id):
         return jsonify({"status": "success"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route('/api/test-db')
+def test_db():
+    try:
+        connection = get_db_connection()
+        if connection and connection.is_connected():
+            cursor = connection.cursor(dictionary=True)
+            cursor.execute("SELECT 1")
+            result = cursor.fetchone()
+            cursor.close()
+            connection.close()
+            return jsonify({"status": "success", "message": "Database connection successful"})
+    except Exception as e:
+        app.logger.error(f"Database test failed: {str(e)}")
+        return jsonify({"status": "error", "message": str(e)}), 500

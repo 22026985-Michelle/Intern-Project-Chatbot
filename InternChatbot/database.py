@@ -10,57 +10,76 @@ logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 def get_db_connection():
-    config = {
-        'host': '34.142.254.175',
-        'user': 'root',
-        'password': 'ILOVESUSHI123!',
-        'database': 'internchatbot',
-        'port': 3306,
-        'connect_timeout': 30,
-        'use_pure': True,
-        'allow_local_infile': True,
-        'auth_plugin': 'mysql_native_password'
-    }
+    """Get database connection with retry mechanism"""
+    max_retries = 3
+    retry_count = 0
     
-    try:
-        logger.info(f"Attempting to connect to MySQL at {config['host']}:{config['port']}")
-        connection = mysql.connector.connect(**config)
-        
-        if connection.is_connected():
-            db_info = connection.get_server_info()
-            logger.info(f"Successfully connected to MySQL. Server version: {db_info}")
-            return connection
-        
-    except Error as e:
-        logger.error(f"Error connecting to MySQL: {str(e)}")
-        return None
+    while retry_count < max_retries:
+        try:
+            config = {
+                'host': '34.142.254.175',
+                'user': 'root',
+                'password': 'ILOVESUSHI123!',
+                'database': 'internchatbot',
+                'port': 3306,
+                'connect_timeout': 30,
+                'use_pure': True,
+                'allow_local_infile': True,
+                'auth_plugin': 'mysql_native_password',
+                'pool_name': 'mypool',
+                'pool_size': 5,
+                'buffered': True
+            }
+            
+            logger.info(f"Attempting to connect to MySQL (Attempt {retry_count + 1})")
+            connection = mysql.connector.connect(**config)
+            
+            if connection.is_connected():
+                db_info = connection.get_server_info()
+                logger.info(f"Successfully connected to MySQL. Server version: {db_info}")
+                return connection
+                
+        except Error as e:
+            logger.error(f"Error connecting to MySQL (Attempt {retry_count + 1}): {str(e)}")
+            retry_count += 1
+            if retry_count < max_retries:
+                time.sleep(1)  # Wait 1 second before retrying
+    
+    logger.error("Failed to connect to database after maximum retries")
+    return None
 
 def execute_query(query, params=None):
-    connection = get_db_connection()
-    if not connection:
-        logger.error("Failed to connect to the database")
-        return None
-
+    """Execute database query with proper error handling"""
+    connection = None
+    cursor = None
     try:
-        cursor = connection.cursor(dictionary=True)
+        connection = get_db_connection()
+        if not connection:
+            logger.error("Failed to connect to the database")
+            return None
+
+        cursor = connection.cursor(dictionary=True, buffered=True)
         cursor.execute(query, params)
+        
         if query.strip().lower().startswith('select'):
             result = cursor.fetchall()
             return result
         else:
             connection.commit()
+            if cursor.lastrowid:
+                return cursor.lastrowid
             return cursor.rowcount
+
     except Error as e:
-        logger.error(f"Database query error: {e}")
-        raise  # Re-raise the error for debugging
+        logger.error(f"Database query error: {str(e)}")
+        if connection:
+            connection.rollback()
+        raise
     finally:
         if cursor:
             cursor.close()
-        if connection.is_connected():
+        if connection and connection.is_connected():
             connection.close()
-
-
-
 
 def create_user(email, password, username):  # Add username parameter
     logger.info(f"Attempting to create user with email: {email}")
@@ -98,30 +117,47 @@ def create_user(email, password, username):  # Add username parameter
     
 def create_new_chat(user_id):
     """Create a new chat session for a user"""
+    logger.info(f"Creating new chat for user_id: {user_id}")
+    
     try:
-        # Check and cleanup old chats if needed
-        count_query = "SELECT COUNT(*) as chat_count FROM chats WHERE user_id = %s"
-        count_result = execute_query(count_query, (user_id,))
+        connection = get_db_connection()
+        if not connection:
+            logger.error("Failed to establish database connection")
+            return None
+
+        cursor = connection.cursor(dictionary=True)
         
-        if count_result and count_result[0]['chat_count'] >= 5:
-            # Keep only the 4 most recent chats before adding new one
+        # Check chat count
+        count_query = "SELECT COUNT(*) as chat_count FROM chats WHERE user_id = %s"
+        cursor.execute(count_query, (user_id,))
+        count_result = cursor.fetchone()
+        
+        if count_result and count_result['chat_count'] >= 5:
+            # Keep only the 4 most recent chats
             cleanup_old_chats(user_id, keep_count=4)
         
-        # Insert new chat with 'Now' section
+        # Insert new chat
         insert_query = """
-        INSERT INTO chats (user_id, created_at, updated_at, section)
-        VALUES (%s, NOW(), NOW(), 'Now')
-        RETURNING chat_id
+        INSERT INTO chats (user_id, created_at, updated_at, section, title)
+        VALUES (%s, NOW(), NOW(), 'Now', 'New Chat')
         """
-        result = execute_query(insert_query, (user_id,))
+        cursor.execute(insert_query, (user_id,))
+        chat_id = cursor.lastrowid
         
-        if result:
-            return result[0]['chat_id']
-        return None
+        connection.commit()
+        logger.info(f"Successfully created chat with ID: {chat_id}")
+        return chat_id
         
     except Exception as e:
         logger.error(f"Error in create_new_chat: {str(e)}")
+        if connection:
+            connection.rollback()
         return None
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close()
 
 def add_message(chat_id, content, is_user=True):
     """Add a message to a chat session"""
@@ -193,19 +229,18 @@ def get_chat_messages(chat_id):
     return execute_query(query, (chat_id,))
 
 def cleanup_old_chats(user_id, keep_count=4):
-    """Delete old chats, keeping only the specified number of most recent ones"""
+    """Delete old chats while keeping the specified number of most recent ones"""
     try:
         delete_query = """
         DELETE FROM chats 
         WHERE chat_id IN (
-            SELECT chat_id 
-            FROM (
-                SELECT chat_id,
-                       ROW_NUMBER() OVER (ORDER BY updated_at DESC) as rn
+            SELECT chat_id FROM (
+                SELECT chat_id
                 FROM chats 
-                WHERE user_id = %s
-            ) ranked 
-            WHERE rn > %s
+                WHERE user_id = %s 
+                ORDER BY updated_at DESC 
+                LIMIT 100 OFFSET %s
+            ) tmp
         )
         """
         execute_query(delete_query, (user_id, keep_count))
