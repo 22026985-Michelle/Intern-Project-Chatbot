@@ -567,15 +567,11 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     Start new chat
                 </button>
             </div>
-            <div class="section-title">Now</div>
-            <div class="chat-list" id="nowChats">
-                <div class="chat-item placeholder-text">No active chats yet</div>
-            </div>
+
             <div class="section-title">Recents</div>
             <div class="chat-list" id="recentChats">
                 <div class="chat-item placeholder-text">No recent chats yet</div>
             </div>
-            
         </div>
         
         <div class="user-profile" id="userProfile">
@@ -779,7 +775,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             async generateChatTitle(message) {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/generate-title`, {
+                    const response = await fetch(${this.BASE_URL}/api/generate-title, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json'
@@ -798,7 +794,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             async createNewChat() {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/create-chat`, {
+                    const response = await fetch(${this.BASE_URL}/api/create-chat, {
                         method: 'POST'
                     });
 
@@ -817,127 +813,107 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             async loadRecentChats() {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/chat-history`, {
+                    const response = await fetch(${this.BASE_URL}/api/chat-history, {
                         method: 'GET',
                         credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' }
                     });
 
-                    if (!response.ok) {
-                        throw new Error('Failed to load chats');
-                    }
-
                     const data = await response.json();
-                    if (data.error) {
-                        console.error('Backend error:', data.error);
-                        return;
+                    console.log('Chat history response:', data);
+
+                    if (response.ok) {
+                        // Update "Recents" and "Today" sections
+                        this.updateRecentChats(data.chats.filter(chat => chat.section === 'Recents'));
+                        this.updateTodayChat(data.chats.filter(chat => chat.section === 'Today'));
+                    } else {
+                        console.error('Error loading chats:', data.error);
+                        this.updateRecentChats([]);
+                        this.updateTodayChat([]);
                     }
-
-<<<<<<< HEAD
-                    this.updateSidebarChats(data.chats || []);
-=======
-                    // Separate chats into "Now" and "Recents"
-                    const nowChats = data.chats.filter(chat => chat.section === 'Now');
-                    const recentChats = data.chats.filter(chat => chat.section === 'Recents');
-
-                    this.updateNowChat(nowChats);
-                    this.updateRecentChats(recentChats);
->>>>>>> da6c849 (dddd)
                 } catch (error) {
-                    console.error('Error loading recent chats:', error);
+                    console.error('Error loading chats:', error);
+                    this.updateRecentChats([]);
+                    this.updateTodayChat([]);
                 }
             }
 
-<<<<<<< HEAD
 
-
-=======
->>>>>>> da6c849 (dddd)
-            updateNowChat(chats) {
-                const nowSection = document.getElementById('nowChats');
-                nowSection.innerHTML = '';
-
+            updateStarredChats(chats) {
+                const starredSection = document.getElementById('starredChats');
+                starredSection.innerHTML = '';
+                
                 if (chats.length === 0) {
-                    nowSection.innerHTML = `<div class="chat-item placeholder-text">No active chats yet</div>`;
+                    starredSection.innerHTML = 
+                        <div class="chat-item placeholder-text">
+                            Star projects and chats you use often
+                        </div>
+                    ;
                     return;
                 }
 
                 chats.forEach(chat => {
-                    nowSection.appendChild(this.createChatElement(chat));
+                    starredSection.appendChild(this.createChatElement(chat));
                 });
             }
 
             updateRecentChats(chats) {
                 const recentSection = document.getElementById('recentChats');
-                if (!recentSection) return; // Ensure the section exists in the DOM
+                if (!recentSection) return;
+
+                console.log('Updating Recent Chats:', chats); // Debugging
+
+                recentSection.innerHTML = ''; // Clear existing chats
 
                 if (chats.length === 0) {
-                    // Add placeholder if no recent chats exist
                     recentSection.innerHTML = `<div class="chat-item placeholder-text">No recent chats yet</div>`;
                     return;
                 }
 
-                // Clear the section and add new chat items
-                recentSection.innerHTML = '';
                 chats.forEach(chat => {
-                    recentSection.appendChild(this.createChatElement(chat));
+                    const chatElement = this.createChatElement(chat);
+                    recentSection.appendChild(chatElement);
                 });
             }
+
+
 
             updateSidebarChats(chats) {
                 if (!Array.isArray(chats)) {
                     console.error("Expected chats to be an array", chats);
+                    chats = [];
+                }
+                
+                const recentChats = document.getElementById('recentChats');
+                if (!recentChats) {
+                    console.error("Could not find recentChats element");
                     return;
                 }
-
-                // Separate chats by section
-                const nowChats = chats.filter(chat => chat.section === 'Now');
-                const recentChats = chats.filter(chat => chat.section === 'Recents');
-
-                // Update Now section
-                const nowSection = document.getElementById('nowChats');
-                if (nowSection) {
-                    nowSection.innerHTML = '';
-                    if (nowChats.length === 0) {
-                        nowSection.innerHTML = '<div class="chat-item placeholder-text">No active chats yet</div>';
-                    } else {
-                        nowChats.forEach(chat => {
-                            nowSection.appendChild(this.createChatElement(chat));
-                        });
-                    }
-                }
-
-                // Update Recents section
-                const recentSection = document.getElementById('recentChats');
-                if (recentSection) {
-                    recentSection.innerHTML = '';
-                    if (recentChats.length === 0) {
-                        recentSection.innerHTML = '<div class="chat-item placeholder-text">No recent chats yet</div>';
-                    } else {
-                        recentChats.forEach(chat => {
-                            recentSection.appendChild(this.createChatElement(chat));
-                        });
-                    }
-                }
+                
+                recentChats.innerHTML = '';
+                chats.forEach(chat => {
+                    const chatElement = this.createChatElement(chat);
+                    recentChats.appendChild(chatElement);
+                });
             }
 
             createChatElement(chat) {
                 const div = document.createElement('div');
-                div.className = `chat-item${chat.chat_id === this.currentChatId ? ' active' : ''}`;
-                
-                div.innerHTML = `
-                    <span class="chat-icon">💭</span>
+                div.className = 'chat-item';
+
+                div.innerHTML = 
                     <span class="chat-title">${chat.title || 'New Chat'}</span>
                     <div class="chat-actions">
                         <button class="chat-action-button delete-button" title="Delete chat">🗑</button>
                     </div>
-                `;
+                ;
 
-                // Add click handler for loading chat
+                // Handle click to load the chat
                 div.querySelector('.chat-title').addEventListener('click', () => {
                     this.loadChat(chat.chat_id);
                 });
 
-                // Add click handler for delete button
+                // Handle delete button
                 div.querySelector('.delete-button').addEventListener('click', async (e) => {
                     e.stopPropagation();
                     await this.deleteChat(chat.chat_id);
@@ -946,35 +922,33 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 return div;
             }
 
+
             async handleNewChat() {
                 try {
-                    // Create new chat
-                    const response = await fetch(`${this.BASE_URL}/api/create-chat`, {
-                        method: 'POST',
-                        credentials: 'include'
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Failed to create new chat');
+                    // Move the current chat to "Recents" if it exists
+                    if (this.currentChatId) {
+                        await this.moveToRecents(this.currentChatId);
                     }
 
-                    const data = await response.json();
-                    this.currentChatId = data.chat_id;
-
-                    // Clear current chat
+                    // Reset UI for the new chat
                     document.getElementById('messagesList').innerHTML = '';
                     document.getElementById('userInput').value = '';
 
-                    // Refresh chat list
+                    // Reset current chat ID (new chat will be created on first message)
+                    this.currentChatId = null;
+
+                    // Update chat sections
                     await this.loadRecentChats();
+
+                    console.log('New chat initialized');
                 } catch (error) {
-                    console.error('Error creating new chat:', error);
+                    console.error('Error handling new chat:', error);
                 }
             }
 
             async getChatMessages(chatId) {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`);
+                    const response = await fetch(${this.BASE_URL}/api/chat/${chatId}/messages);
                     if (!response.ok) throw new Error('Failed to get chat messages');
                     const data = await response.json();
                     return data.messages;
@@ -987,7 +961,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             async moveToRecents(chatId) {
                 try {
                     // Update chat section to "Recents"
-                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/section`, {
+                    const response = await fetch(${this.BASE_URL}/api/chat/${chatId}/section, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ section: 'Recents' })
@@ -1001,7 +975,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             async getRecentChats() {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/chat-history`);
+                    const response = await fetch(${this.BASE_URL}/api/chat-history);
                     if (!response.ok) throw new Error('Failed to fetch chats');
                     const data = await response.json();
                     return data.chats || [];
@@ -1015,94 +989,71 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 const input = document.getElementById('userInput');
                 const message = input.value.trim();
                 if (!message) return;
-                
-                try {
-<<<<<<< HEAD
-=======
-                    // Move the current chat to "Recents" if it exists
-                    if (this.currentChatId) {
-                        await this.moveToRecents(this.currentChatId);
-                    }
 
-                    // Create a new chat if there isn't one
->>>>>>> da6c849 (dddd)
+                try {
+                    // Create a new chat if this is the first message
                     if (!this.currentChatId) {
-                        // Create new chat if none exists
-                        const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
+                        const createResponse = await fetch(${this.BASE_URL}/api/create-chat, {
                             method: 'POST',
                             credentials: 'include',
                             headers: { 'Content-Type': 'application/json' }
                         });
-<<<<<<< HEAD
-                        
-                        const createData = await createResponse.json();
-                        if (!createResponse.ok) throw new Error(createData.error);
-                        
-                        this.currentChatId = createData.chat_id;
-=======
 
                         const creationData = await createResponse.json();
                         if (!createResponse.ok) throw new Error(creationData.error);
 
                         this.currentChatId = creationData.chat_id;
 
-                        // Assign the chat to "Now"
-                        await this.updateChatSection(this.currentChatId, 'Now');
->>>>>>> da6c849 (dddd)
+                        // Generate a dynamic title for the chat
+                        const title = await this.generateChatTitle(message);
+                        await this.updateChatTitle(this.currentChatId, title);
+
+                        // Assign the chat to the "Today" section
+                        await this.updateChatSection(this.currentChatId, 'Today');
                     }
-                    
-                    // Add user message to UI
+
+                    // Add user message to the UI
                     this.addMessageToUI(message, true);
                     input.value = '';
-                    
-                    // Send message to backend
-                    const response = await fetch(`${this.BASE_URL}/api/chat`, {
+
+                    // Send the message to the backend
+                    const response = await fetch(${this.BASE_URL}/api/chat, {
                         method: 'POST',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            chat_id: this.currentChatId,
-                            message: message
-                        })
+                        body: JSON.stringify({ chat_id: this.currentChatId, message })
                     });
-                    
+
                     const data = await response.json();
                     if (!response.ok) throw new Error(data.error);
-                    
-                    // Add bot response to UI
+
+                    // Add bot response to the UI
                     this.addMessageToUI(data.response, false);
-<<<<<<< HEAD
-                    
-                    // Refresh chat list
-=======
 
                     // Refresh the sidebar
->>>>>>> da6c849 (dddd)
                     await this.loadRecentChats();
-                    
                 } catch (error) {
                     console.error('Error sending message:', error);
-                    this.addMessageToUI(`Error: ${error.message}`, false);
+                    this.addMessageToUI(Error: ${error.message}, false);
                 }
             }
-
 
 
             addMessageToUI(content, isUser) {
                 const messagesList = document.getElementById('messagesList');
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
-                messageDiv.innerHTML = `
+                messageDiv.innerHTML = 
                     <div class="avatar">${isUser ? 'U' : 'C'}</div>
                     <div class="message-content">${content}</div>
-                `;
+                ;
                 messagesList.appendChild(messageDiv);
                 messagesList.scrollTop = messagesList.scrollHeight;
             }
 
             async updateChatSection(chatId, section) {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/section`, {
+                    const response = await fetch(${this.BASE_URL}/api/chat/${chatId}/section, {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json'
@@ -1118,7 +1069,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             async updateChatTitle(chatId, title) {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/title`, {
+                    const response = await fetch(${this.BASE_URL}/api/chat/${chatId}/title, {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json'
@@ -1135,7 +1086,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             async toggleStarChat(chatId, starred) {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/star`, {
+                    const response = await fetch(${this.BASE_URL}/api/chat/${chatId}/star, {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json'
@@ -1157,7 +1108,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 if (!confirm('Are you sure you want to delete this chat?')) return;
 
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}`, {
+                    const response = await fetch(${this.BASE_URL}/api/chat/${chatId}, {
                         method: 'DELETE',
                         credentials: 'include'
                     });
@@ -1174,6 +1125,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                     console.error('Error deleting chat:', error);
                 }
             }
+
             async loadChat(chatId) {
                 try {
                     const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`);
@@ -1193,17 +1145,35 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 }
             }
 
+
+            updateTodayChat(chats) {
+                const todaySection = document.getElementById('recentChats'); // Correct target
+                if (!todaySection) return;
+
+                todaySection.innerHTML = ''; // Clear the current sidebar content
+
+                if (chats.length === 0) {
+                    todaySection.innerHTML = `<div class="chat-item placeholder-text">No recent chats yet</div>`;
+                    return;
+                }
+
+                chats.forEach(chat => {
+                    const chatElement = this.createChatElement(chat);
+                    todaySection.appendChild(chatElement);
+                });
+            }
+
             handleFileSelect(e) {
                 const file = e.target.files[0];
                 const filePreview = document.getElementById('filePreview');
                 
                 if (file) {
-                    filePreview.innerHTML = `
+                    filePreview.innerHTML = 
                         <div class="file-preview-content">
                             <span>📄 ${file.name}</span>
                             <span class="file-remove" onclick="chatManager.removeFile()">✕</span>
                         </div>
-                    `;
+                    ;
                     filePreview.classList.add('active');
                 }
             }
