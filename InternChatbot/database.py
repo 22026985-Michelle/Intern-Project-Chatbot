@@ -117,46 +117,43 @@ def create_user(email, password, username):  # Add username parameter
     
 def create_new_chat(user_id):
     """Create a new chat session for a user"""
-    logger.info(f"Creating new chat for user_id: {user_id}")
-    
+    connection = None
     try:
         connection = get_db_connection()
         if not connection:
-            logger.error("Failed to establish database connection")
+            logger.error("Failed to connect to database")
             return None
 
         cursor = connection.cursor(dictionary=True)
         
-        # Check chat count
+        # Check and cleanup old chats if needed
         count_query = "SELECT COUNT(*) as chat_count FROM chats WHERE user_id = %s"
         cursor.execute(count_query, (user_id,))
         count_result = cursor.fetchone()
         
         if count_result and count_result['chat_count'] >= 5:
-            # Keep only the 4 most recent chats
+            # Keep only the 4 most recent chats before adding new one
             cleanup_old_chats(user_id, keep_count=4)
         
         # Insert new chat
         insert_query = """
-        INSERT INTO chats (user_id, created_at, updated_at, section, title)
-        VALUES (%s, NOW(), NOW(), 'Now', 'New Chat')
+        INSERT INTO chats (user_id, created_at, updated_at, section)
+        VALUES (%s, NOW(), NOW(), 'Now')
         """
         cursor.execute(insert_query, (user_id,))
-        chat_id = cursor.lastrowid
+        chat_id = cursor.lastrowid  # Get the ID of the newly inserted chat
         
         connection.commit()
-        logger.info(f"Successfully created chat with ID: {chat_id}")
         return chat_id
         
-    except Exception as e:
+    except Error as e:
         logger.error(f"Error in create_new_chat: {str(e)}")
         if connection:
             connection.rollback()
         return None
     finally:
-        if cursor:
-            cursor.close()
         if connection and connection.is_connected():
+            cursor.close()
             connection.close()
 
 def add_message(chat_id, content, is_user=True):
@@ -229,23 +226,51 @@ def get_chat_messages(chat_id):
     return execute_query(query, (chat_id,))
 
 def cleanup_old_chats(user_id, keep_count=4):
-    """Delete old chats while keeping the specified number of most recent ones"""
+    """Delete old chats, keeping only the specified number of most recent ones"""
+    connection = None
     try:
-        delete_query = """
-        DELETE FROM chats 
-        WHERE chat_id IN (
-            SELECT chat_id FROM (
-                SELECT chat_id
-                FROM chats 
-                WHERE user_id = %s 
-                ORDER BY updated_at DESC 
-                LIMIT 100 OFFSET %s
-            ) tmp
-        )
+        connection = get_db_connection()
+        if not connection:
+            logger.error("Failed to connect to database")
+            return
+
+        cursor = connection.cursor(dictionary=True)
+        
+        # First get the IDs of chats to keep
+        keep_query = """
+        SELECT chat_id FROM chats 
+        WHERE user_id = %s 
+        ORDER BY updated_at DESC 
+        LIMIT %s
         """
-        execute_query(delete_query, (user_id, keep_count))
-    except Exception as e:
+        cursor.execute(keep_query, (user_id, keep_count))
+        keep_chats = cursor.fetchall()
+        keep_ids = [chat['chat_id'] for chat in keep_chats]
+        
+        if keep_ids:
+            # Delete all chats except the ones we want to keep
+            delete_query = """
+            DELETE FROM chats 
+            WHERE user_id = %s 
+            AND chat_id NOT IN ({})
+            """.format(','.join(['%s'] * len(keep_ids)))
+            
+            cursor.execute(delete_query, (user_id, *keep_ids))
+        else:
+            # If no chats to keep, delete all chats for the user
+            delete_query = "DELETE FROM chats WHERE user_id = %s"
+            cursor.execute(delete_query, (user_id,))
+        
+        connection.commit()
+        
+    except Error as e:
         logger.error(f"Error in cleanup_old_chats: {str(e)}")
+        if connection:
+            connection.rollback()
+    finally:
+        if connection and connection.is_connected():
+            cursor.close()
+            connection.close()
 
 
 def get_user_by_email(email):
