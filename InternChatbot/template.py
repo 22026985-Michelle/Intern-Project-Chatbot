@@ -761,10 +761,8 @@ HTML_TEMPLATE = '''
             }
 
             bindEvents() {
-                // New chat button
                 document.getElementById('newChatButton').addEventListener('click', () => this.handleNewChat());
                 
-                // Send button and input
                 document.getElementById('sendButton').addEventListener('click', () => this.sendMessage());
                 document.getElementById('userInput').addEventListener('keydown', (e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
@@ -773,11 +771,12 @@ HTML_TEMPLATE = '''
                     }
                 });
 
-                // File handling
                 const fileButton = document.getElementById('fileButton');
                 const fileInput = document.getElementById('fileInput');
-                fileButton.addEventListener('click', () => fileInput.click());
-                fileInput.addEventListener('change', this.handleFileSelect.bind(this));
+                if (fileButton && fileInput) {
+                    fileButton.addEventListener('click', () => fileInput.click());
+                    fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+                }
             }
 
             async generateChatTitle(message) {
@@ -827,12 +826,12 @@ HTML_TEMPLATE = '''
                 try {
                     const response = await fetch(`${this.BASE_URL}/api/chat-history`, {
                         method: 'GET',
-                        credentials: 'include',
-                        headers: { 'Content-Type': 'application/json' }
+                        credentials: 'include'
                     });
+
                     if (!response.ok) throw new Error('Failed to fetch chat history');
+                    
                     const data = await response.json();
-                    // Process chat data
                     this.updateSidebarChats(data.chats || []);
                 } catch (error) {
                     console.error('Error loading recent chats:', error);
@@ -859,31 +858,42 @@ HTML_TEMPLATE = '''
             }
 
 
-
             updateSidebarChats(chats) {
-                if (!Array.isArray(chats)) {
-                    console.error("Expected chats to be an array", chats);
-                    chats = [];
+                const nowSection = document.getElementById('nowChats');
+                const recentSection = document.getElementById('recentChats');
+
+                if (nowSection) {
+                    nowSection.innerHTML = '';
+                    const nowChats = chats.filter(chat => chat.section === 'Now');
+                    if (nowChats.length === 0) {
+                        nowSection.innerHTML = '<div class="chat-item placeholder-text">No active chats</div>';
+                    } else {
+                        nowChats.forEach(chat => {
+                            nowSection.appendChild(this.createChatElement(chat));
+                        });
+                    }
                 }
-                
-                const recentChats = document.getElementById('recentChats');
-                if (!recentChats) {
-                    console.error("Could not find recentChats element");
-                    return;
+
+                if (recentSection) {
+                    recentSection.innerHTML = '';
+                    const recentChats = chats.filter(chat => chat.section === 'Recents').slice(0, 5);
+                    if (recentChats.length === 0) {
+                        recentSection.innerHTML = '<div class="chat-item placeholder-text">No recent chats</div>';
+                    } else {
+                        recentChats.forEach(chat => {
+                            recentSection.appendChild(this.createChatElement(chat));
+                        });
+                    }
                 }
-                
-                recentChats.innerHTML = '';
-                chats.forEach(chat => {
-                    const chatElement = this.createChatElement(chat);
-                    recentChats.appendChild(chatElement);
-                });
             }
 
             createChatElement(chat) {
                 const div = document.createElement('div');
                 div.className = 'chat-item';
+                if (chat.chat_id === this.currentChatId) {
+                    div.classList.add('active');
+                }
 
-                // Use backticks for string templates
                 div.innerHTML = `
                     <span class="chat-title">${chat.title || 'New Chat'}</span>
                     <div class="chat-actions">
@@ -891,34 +901,19 @@ HTML_TEMPLATE = '''
                     </div>
                 `;
 
-                // Handle click to load the chat
-                div.querySelector('.chat-title').addEventListener('click', () => {
-                    this.loadChat(chat.chat_id);
-                });
-
-                // Handle delete button
-                div.querySelector('.delete-button').addEventListener('click', async (e) => {
+                div.querySelector('.chat-title').addEventListener('click', () => this.loadChat(chat.chat_id));
+                div.querySelector('.delete-button').addEventListener('click', (e) => {
                     e.stopPropagation();
-                    await this.deleteChat(chat.chat_id);
+                    this.deleteChat(chat.chat_id);
                 });
 
                 return div;
             }
 
-
+    
             async handleNewChat() {
                 try {
-                    // Clear the current chat interface
-                    document.getElementById('messagesList').innerHTML = '';
-                    document.getElementById('userInput').value = '';
-                    
-                    // Reset the greeting
-                    const greetingDiv = document.querySelector('.greeting');
-                    if (greetingDiv) {
-                        greetingDiv.style.display = 'block';
-                    }
-                    
-                    // If there's a current chat, move it to recents before creating new chat
+                    // Move the current chat to "Recents" if it exists
                     if (this.currentChatId) {
                         await fetch(`${this.BASE_URL}/api/chat/${this.currentChatId}/section`, {
                             method: 'PUT',
@@ -927,13 +922,22 @@ HTML_TEMPLATE = '''
                             body: JSON.stringify({ section: 'Recents' })
                         });
                     }
-                    
-                    // Reset current chat ID (new chat will be created on first message)
+
+                    // Reset UI for the new chat
+                    const messagesList = document.getElementById('messagesList');
+                    const userInput = document.getElementById('userInput');
+                    const greeting = document.querySelector('.greeting');
+
+                    if (messagesList) messagesList.innerHTML = '';
+                    if (userInput) userInput.value = '';
+                    if (greeting) greeting.style.display = 'block';
+
+                    // Reset current chat ID
                     this.currentChatId = null;
-                    
+
                     // Update chat sections
                     await this.loadRecentChats();
-                    
+
                     console.log('New chat initialized');
                 } catch (error) {
                     console.error('Error handling new chat:', error);
@@ -986,11 +990,9 @@ HTML_TEMPLATE = '''
                     const isFirstMessage = !this.currentChatId;
                     
                     if (isFirstMessage) {
-                        // Create new chat
                         const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
                             method: 'POST',
                             credentials: 'include',
-                            headers: { 'Content-Type': 'application/json' }
                         });
                         
                         if (!createResponse.ok) throw new Error('Failed to create chat');
@@ -1013,33 +1015,29 @@ HTML_TEMPLATE = '''
                             });
                         }
 
-                        // Hide greeting on first message
-                        const greetingDiv = document.querySelector('.greeting');
-                        if (greetingDiv) {
-                            greetingDiv.style.display = 'none';
-                        }
+                        // Hide greeting
+                        const greeting = document.querySelector('.greeting');
+                        if (greeting) greeting.style.display = 'none';
                     }
 
-                    // Send message to backend
+                    // Send message
                     const response = await fetch(`${this.BASE_URL}/api/chat`, {
                         method: 'POST',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({
                             chat_id: this.currentChatId,
-                            message: message
+                            message
                         })
                     });
 
                     if (!response.ok) throw new Error('Failed to send message');
                     const data = await response.json();
 
-                    // Add messages to UI
                     this.addMessageToUI(message, true);
                     this.addMessageToUI(data.response, false);
                     input.value = '';
 
-                    // Refresh chat sections
                     await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error sending message:', error);
@@ -1049,12 +1047,14 @@ HTML_TEMPLATE = '''
 
             addMessageToUI(content, isUser) {
                 const messagesList = document.getElementById('messagesList');
+                if (!messagesList) return;
+
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
-                messageDiv.innerHTML = 
-                    <div class="avatar">${isUser ? 'U' : 'C'}</div>
+                messageDiv.innerHTML = `
+                    <div class="avatar">${isUser ? 'U' : 'A'}</div>
                     <div class="message-content">${content}</div>
-                ;
+                `;
                 messagesList.appendChild(messageDiv);
                 messagesList.scrollTop = messagesList.scrollHeight;
             }
@@ -1151,28 +1151,31 @@ HTML_TEMPLATE = '''
                 });
             }
 
-            handleFileSelect(e) {
+            async handleFileSelect(e) {
                 const file = e.target.files[0];
+                if (!file) return;
+
                 const filePreview = document.getElementById('filePreview');
-                
-                if (file) {
-                    filePreview.innerHTML = 
-                        <div class="file-preview-content">
-                            <span>📄 ${file.name}</span>
-                            <span class="file-remove" onclick="chatManager.removeFile()">✕</span>
-                        </div>
-                    ;
-                    filePreview.classList.add('active');
-                }
+                if (!filePreview) return;
+
+                filePreview.innerHTML = `
+                    <div class="file-preview-content">
+                        <span>📄 ${file.name}</span>
+                        <span class="file-remove" onclick="window.chatManager.removeFile()">✕</span>
+                    </div>
+                `;
+                filePreview.classList.add('active');
             }
 
             removeFile() {
                 const fileInput = document.getElementById('fileInput');
                 const filePreview = document.getElementById('filePreview');
                 
-                fileInput.value = '';
-                filePreview.innerHTML = '';
-                filePreview.classList.remove('active');
+                if (fileInput) fileInput.value = '';
+                if (filePreview) {
+                    filePreview.innerHTML = '';
+                    filePreview.classList.remove('active');
+                }
             }
         }
 
