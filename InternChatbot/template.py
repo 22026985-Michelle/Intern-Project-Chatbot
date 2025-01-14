@@ -931,7 +931,7 @@ HTML_TEMPLATE = '''
 
             async getChatMessages(chatId) {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`);  
+                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`);
                     if (!response.ok) throw new Error('Failed to get chat messages');
                     const data = await response.json();
                     return data.messages;
@@ -1082,7 +1082,7 @@ HTML_TEMPLATE = '''
                 if (!confirm('Are you sure you want to delete this chat?')) return;
 
                 try {
-                    const response = await fetch(${this.BASE_URL}/api/chat/${chatId}, {
+                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}`, {
                         method: 'DELETE',
                         credentials: 'include'
                     });
