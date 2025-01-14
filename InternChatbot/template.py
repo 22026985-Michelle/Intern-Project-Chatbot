@@ -885,7 +885,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
                 div.className = 'chat-item';
 
                 div.innerHTML = 
-                    <span class="chat-title">${chat.title || 'New Chat'}</span>
+                    <span class="chat-title">{}</span>
                     <div class="chat-actions">
                         <button class="chat-action-button delete-button" title="Delete chat">🗑</button>
                     </div>
@@ -944,7 +944,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
             async moveToRecents(chatId) {
                 try {
                     // Update chat section to "Recents"
-                    const response = await fetch(${this.BASE_URL}/api/chat/${chatId}/section, {
+                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/section`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ section: 'Recents' })
@@ -958,7 +958,7 @@ HTML_TEMPLATE = '''<!DOCTYPE html>
 
             async getRecentChats() {
                 try {
-                    const response = await fetch(${this.BASE_URL}/api/chat-history);
+                    const response = await fetch(`${this.BASE_URL}/api/chat-history`);
                     if (!response.ok) throw new Error('Failed to fetch chats');
                     const data = await response.json();
                     return data.chats || [];
