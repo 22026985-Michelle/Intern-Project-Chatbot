@@ -119,6 +119,18 @@ HTML_TEMPLATE = '''
             border-bottom: 1px solid var(--border-color);
         }
 
+        .chat-sections {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+        }
+
+        .section {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
         .chat-list {
             display: flex;
             flex-direction: column;
@@ -169,6 +181,8 @@ HTML_TEMPLATE = '''
             color: var(--text-color);
             opacity: 0.7;
             cursor: default;
+            text-align: center;
+            padding: 1rem;      
         }
 
         .placeholder-text:hover {
@@ -185,6 +199,7 @@ HTML_TEMPLATE = '''
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            margin-right: 0.5rem;
         }
 
         .chat-icon {
@@ -571,13 +586,15 @@ HTML_TEMPLATE = '''
                     Start new chat
                 </button>
             </div>
-            <div class="section-title">Now</div>
-            <div class="chat-list" id="nowChats">
-                <div class="chat-item placeholder-text">No active chats yet</div>
-            </div>
-            <div class="section-title">Recents</div>
-            <div class="chat-list" id="recentChats">
-                <div class="chat-item placeholder-text">No recent chats yet</div>
+            <div class="chat-sections">
+                <div class="section">
+                    <div class="section-title">Now</div>
+                    <div class="chat-list" id="nowChats"></div>
+                </div>
+                <div class="section">
+                    <div class="section-title">Recents</div>
+                    <div class="chat-list" id="recentChats"></div>
+                </div>
             </div>
         </div>
         
@@ -824,22 +841,22 @@ HTML_TEMPLATE = '''
 
             async loadRecentChats() {
                 try {
-                    console.log('Fetching recent chats...'); // Debug log
+                    console.log('Fetching recent chats...');
                     const response = await fetch(`${this.BASE_URL}/api/chat-history`, {
                         method: 'GET',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' }
                     });
 
-                    if (!response.ok) throw new Error('Failed to fetch chat history');
+                    if (!response.ok) {
+                        throw new Error('Failed to fetch chat history');
+                    }
                     
                     const data = await response.json();
-                    console.log('Received chat data:', data); // Debug log
+                    console.log('Received chat data:', data);
                     
-                    if (data.status === 'success') {
-                        this.updateSidebarChats(data.chats || []);
-                    } else {
-                        console.error('Error in chat data:', data.error);
+                    if (data.chats) {
+                        this.updateSidebarChats(data.chats);
                     }
                 } catch (error) {
                     console.error('Error loading recent chats:', error);
@@ -867,63 +884,82 @@ HTML_TEMPLATE = '''
 
 
             updateSidebarChats(chats) {
+                console.log('Updating sidebar with chats:', chats);
+                
                 const nowSection = document.getElementById('nowChats');
                 const recentSection = document.getElementById('recentChats');
                 
-                console.log('Updating sidebar with chats:', chats); // Debug log
-
-                // Handle Now section
-                if (nowSection) {
-                    nowSection.innerHTML = '';
-                    const nowChats = chats.filter(chat => chat.section === 'Now');
-                    
-                    if (nowChats.length === 0) {
-                        nowSection.innerHTML = '<div class="chat-item placeholder-text">No active chats</div>';
-                    } else {
-                        nowChats.forEach(chat => {
-                            const chatElement = this.createChatElement(chat);
-                            nowSection.appendChild(chatElement);
-                        });
-                    }
+                if (!nowSection || !recentSection) {
+                    console.error('Could not find chat sections');
+                    return;
                 }
 
-                // Handle Recents section
-                if (recentSection) {
-                    recentSection.innerHTML = '';
-                    const recentChats = chats.filter(chat => chat.section === 'Recents');
-                    
-                    if (recentChats.length === 0) {
-                        recentSection.innerHTML = '<div class="chat-item placeholder-text">No recent chats</div>';
+                // Clear existing content
+                nowSection.innerHTML = '';
+                recentSection.innerHTML = '';
+
+                if (!Array.isArray(chats) || chats.length === 0) {
+                    nowSection.innerHTML = '<div class="chat-item placeholder-text">No active chats</div>';
+                    recentSection.innerHTML = '<div class="chat-item placeholder-text">No recent chats</div>';
+                    return;
+                }
+
+                // Separate chats by section
+                let nowChats = [];
+                let recentChats = [];
+
+                chats.forEach(chat => {
+                    if (chat.section?.toLowerCase() === 'now') {
+                        nowChats.push(chat);
                     } else {
-                        recentChats.forEach(chat => {
-                            const chatElement = this.createChatElement(chat);
-                            recentSection.appendChild(chatElement);
-                        });
+                        recentChats.push(chat);
                     }
+                });
+
+                // Update Now section
+                if (nowChats.length > 0) {
+                    nowChats.forEach(chat => {
+                        const chatElement = this.createChatElement(chat);
+                        nowSection.appendChild(chatElement);
+                    });
+                } else {
+                    nowSection.innerHTML = '<div class="chat-item placeholder-text">No active chats</div>';
+                }
+
+                // Update Recents section
+                if (recentChats.length > 0) {
+                    recentChats.forEach(chat => {
+                        const chatElement = this.createChatElement(chat);
+                        recentSection.appendChild(chatElement);
+                    });
+                } else {
+                    recentSection.innerHTML = '<div class="chat-item placeholder-text">No recent chats</div>';
                 }
             }
 
             createChatElement(chat) {
+                console.log('Creating chat element for:', chat);
                 const div = document.createElement('div');
                 div.className = 'chat-item';
+                
                 if (chat.chat_id === this.currentChatId) {
                     div.classList.add('active');
                 }
 
-                // Make sure title exists
-                const title = chat.title || 'New Chat';
-                const truncatedTitle = title.length > 25 ? title.substring(0, 25) + '...' : title;
+                // Remove quotes from title if they exist
+                let displayTitle = chat.title ? chat.title.replace(/^"|"$/g, '') : 'New Chat';
+                const truncatedTitle = displayTitle.length > 25 ? displayTitle.substring(0, 25) + '...' : displayTitle;
 
                 div.innerHTML = `
-                    <span class="chat-title" title="${title}">${truncatedTitle}</span>
+                    <span class="chat-title" title="${displayTitle}">${truncatedTitle}</span>
                     <div class="chat-actions">
                         <button class="chat-action-button delete-button" title="Delete chat">🗑</button>
                     </div>
                 `;
 
                 // Add click handlers
-                div.querySelector('.chat-title').addEventListener('click', () => {
-                    console.log('Loading chat:', chat.chat_id); // Debug log
+                div.addEventListener('click', () => {
+                    console.log('Loading chat:', chat.chat_id);
                     this.loadChat(chat.chat_id);
                 });
 
