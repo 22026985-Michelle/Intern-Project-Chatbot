@@ -188,23 +188,21 @@
             }
         }
 
-        // Add event listeners for both password fields
-        passwordInput.addEventListener('input', checkPasswordMatch);
-        confirmPasswordInput.addEventListener('input', checkPasswordMatch);
-
-        // Password strength checker with unmet requirement removal
+        // Password strength checker with unmet requirements removal
         passwordInput.addEventListener('input', function () {
             const password = this.value;
+
+            // List of unmet requirements
             const unmetRequirements = [];
 
-            // Check requirements and add unmet ones to the list
+            // Check requirements and only add unmet ones to the list
             if (password.length < 8) unmetRequirements.push('At least 8 characters');
             if (!/[A-Z]/.test(password)) unmetRequirements.push('At least one uppercase letter');
             if (!/[a-z]/.test(password)) unmetRequirements.push('At least one lowercase letter');
             if (!/\d/.test(password)) unmetRequirements.push('At least one digit');
             if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) unmetRequirements.push('At least one special character');
 
-            // Build the message for unmet requirements
+            // Build the HTML to display unmet requirements
             let message = '';
             if (unmetRequirements.length > 0) {
                 message += '<ul style="margin: 0; padding-left: 20px;">';
@@ -216,7 +214,7 @@
                 message = '<p style="color: #10B981;">Password meets all requirements!</p>';
             }
 
-            // Display the unmet requirements or success message
+            // Display unmet requirements or success message
             passwordStrength.innerHTML = message;
         });
 
@@ -229,14 +227,14 @@
             const password = passwordInput.value;
             const confirmPassword = confirmPasswordInput.value;
 
-            // Basic validation for password match
+            // Check if passwords match
             if (password !== confirmPassword) {
                 errorMessage.textContent = 'Passwords do not match';
                 errorMessage.style.display = 'block';
                 return;
             }
 
-            // Final policy check before submission
+            // Final validation of unmet requirements
             const unmetRequirements = [];
             if (password.length < 8) unmetRequirements.push('At least 8 characters');
             if (!/[A-Z]/.test(password)) unmetRequirements.push('At least one uppercase letter');
@@ -250,6 +248,7 @@
                 return;
             }
 
+            // Submit the form via API
             try {
                 const response = await fetch(`${BASE_URL}/api/signup`, {
                     method: 'POST',
