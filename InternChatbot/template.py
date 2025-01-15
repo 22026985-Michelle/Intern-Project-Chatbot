@@ -428,6 +428,11 @@ HTML_TEMPLATE = '''
             }
         }
 
+        #messagesList {
+            display: block;
+            min-height: 200px;
+        }
+
         .avatar {
             width: 40px;
             height: 40px;
@@ -785,6 +790,7 @@ HTML_TEMPLATE = '''
             constructor() {
                 this.currentChatId = null;
                 this.BASE_URL = 'https://internproject-4fq7.onrender.com';
+                this.messageCache = new Map(); // Add a cache to store messages
                 this.init();
             }
 
@@ -1039,7 +1045,6 @@ HTML_TEMPLATE = '''
                     const isFirstMessage = !this.currentChatId;
                     
                     if (isFirstMessage) {
-                        // Create new chat for first message
                         const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
                             method: 'POST',
                             credentials: 'include',
@@ -1049,6 +1054,12 @@ HTML_TEMPLATE = '''
                         if (!createResponse.ok) throw new Error('Failed to create chat');
                         const chatData = await createResponse.json();
                         this.currentChatId = chatData.chat_id;
+
+                        // Hide greeting immediately when starting new chat
+                        const greeting = document.querySelector('.greeting');
+                        if (greeting) {
+                            greeting.style.display = 'none';
+                        }
 
                         // Generate and set chat title
                         const titleResponse = await fetch(`${this.BASE_URL}/api/generate-title`, {
@@ -1065,13 +1076,12 @@ HTML_TEMPLATE = '''
                                 body: JSON.stringify({ title: titleData.title })
                             });
                         }
-
-                        // Hide greeting for new chat
-                        const greeting = document.querySelector('.greeting');
-                        if (greeting) greeting.style.display = 'none';
                     }
 
-                    // Send message
+                    // Add user message to UI immediately
+                    this.addMessageToUI(message, true);
+
+                    // Send message to server
                     const response = await fetch(`${this.BASE_URL}/api/chat`, {
                         method: 'POST',
                         credentials: 'include',
@@ -1085,24 +1095,33 @@ HTML_TEMPLATE = '''
                     if (!response.ok) throw new Error('Failed to send message');
                     const data = await response.json();
 
-                    // Add messages to UI
-                    this.addMessageToUI(message, true);
+                    // Add bot response to UI
                     this.addMessageToUI(data.response, false);
+
+                    // Cache the messages for this chat
+                    if (!this.messageCache.has(this.currentChatId)) {
+                        this.messageCache.set(this.currentChatId, []);
+                    }
+                    this.messageCache.get(this.currentChatId).push(
+                        { content: message, is_user: true },
+                        { content: data.response, is_user: false }
+                    );
 
                     // Clear input after successful send
                     input.value = '';
 
-                    // Scroll to bottom
+                    // Refresh recent chats
+                    await this.loadRecentChats();
+
+                    // Ensure messages are visible
                     const messagesList = document.getElementById('messagesList');
                     if (messagesList) {
+                        messagesList.style.display = 'block';
                         messagesList.scrollTop = messagesList.scrollHeight;
                     }
 
-                    // Update recent chats list
-                    await this.loadRecentChats();
                 } catch (error) {
                     console.error('Error sending message:', error);
-                    // Optionally show error to user
                     alert('Failed to send message. Please try again.');
                 }
             }
@@ -1111,10 +1130,14 @@ HTML_TEMPLATE = '''
                 const messagesList = document.getElementById('messagesList');
                 if (!messagesList) return;
 
+                // Ensure messages list is visible
+                messagesList.style.display = 'block';
+
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
+                messageDiv.style.opacity = '1';
+                messageDiv.style.transform = 'translateY(0)';
                 
-                // Create message content with proper escaping for HTML
                 const escapedContent = this.escapeHtml(content);
                 
                 messageDiv.innerHTML = `
@@ -1125,6 +1148,8 @@ HTML_TEMPLATE = '''
                 messagesList.appendChild(messageDiv);
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
+        
+
             escapeHtml(unsafe) {
                 if (!unsafe) return '';
                 return unsafe
@@ -1134,6 +1159,7 @@ HTML_TEMPLATE = '''
                     .replace(/"/g, "&quot;")
                     .replace(/'/g, "&#039;");
             }
+
             clearMessages() {
                 const messagesList = document.getElementById('messagesList');
                 if (messagesList) {
@@ -1201,46 +1227,45 @@ HTML_TEMPLATE = '''
                     console.log('Loading chat:', chatId);
                     this.currentChatId = chatId;
                     
-                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`, {
-                        method: 'GET',
-                        credentials: 'include',
-                        headers: { 'Content-Type': 'application/json' }
-                    });
-
-                    if (!response.ok) {
-                        throw new Error('Failed to load chat messages');
-                    }
-                    
-                    const data = await response.json();
-                    console.log('Received messages:', data);
-
                     // Hide greeting
                     const greeting = document.querySelector('.greeting');
                     if (greeting) {
                         greeting.style.display = 'none';
                     }
-                    
-                    // Clear and reload messages
+
+                    // Clear and show messages container
                     const messagesList = document.getElementById('messagesList');
                     if (!messagesList) return;
-                    
                     messagesList.innerHTML = '';
-                    
-                    if (data.messages && Array.isArray(data.messages)) {
-                        data.messages.forEach(message => {
-                            const messageDiv = document.createElement('div');
-                            messageDiv.className = 'message';
-                            messageDiv.style.opacity = '1'; // Make sure messages are visible
-                            messageDiv.style.transform = 'translateY(0)'; // Reset transform
-                            messageDiv.innerHTML = `
-                                <div class="avatar">${message.is_user ? 'U' : 'A'}</div>
-                                <div class="message-content">${this.escapeHtml(message.content)}</div>
-                            `;
-                            messagesList.appendChild(messageDiv);
+                    messagesList.style.display = 'block';
+
+                    // Try to get messages from cache first
+                    let messages = this.messageCache.get(chatId);
+
+                    // If not in cache, fetch from server
+                    if (!messages) {
+                        const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`, {
+                            method: 'GET',
+                            credentials: 'include',
+                            headers: { 'Content-Type': 'application/json' }
                         });
+
+                        if (!response.ok) {
+                            throw new Error('Failed to load chat messages');
+                        }
                         
-                        // Scroll to bottom after loading all messages
-                        messagesList.scrollTop = messagesList.scrollHeight;
+                        const data = await response.json();
+                        messages = data.messages;
+                        
+                        // Cache the messages
+                        this.messageCache.set(chatId, messages);
+                    }
+
+                    // Display messages
+                    if (messages && Array.isArray(messages)) {
+                        messages.forEach(message => {
+                            this.addMessageToUI(message.content, message.is_user);
+                        });
                     }
 
                     // Update active state in sidebar
@@ -1251,6 +1276,9 @@ HTML_TEMPLATE = '''
                             item.classList.add('active');
                         }
                     });
+
+                    // Scroll to bottom
+                    messagesList.scrollTop = messagesList.scrollHeight;
 
                 } catch (error) {
                     console.error('Error loading chat:', error);
