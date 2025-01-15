@@ -115,9 +115,12 @@
             font-size: 0.875rem;
         }
 
-        .strength-weak { color: #EF4444; }
-        .strength-medium { color: #F59E0B; }
-        .strength-strong { color: #10B981; }
+        #passwordStrength {
+        margin-top: -0.5rem;
+        margin-bottom: 1rem;
+        font-size: 0.875rem;
+        }   
+
     </style>
 </head>
 <body>
@@ -142,7 +145,7 @@
             <div class="form-group">
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required>
-                <div id="passwordStrength" class="password-strength"></div>
+                <div id="passwordStrength"></div>
             </div>
             <div class="form-group">
                 <label for="confirmPassword">Confirm Password</label>
