@@ -209,35 +209,35 @@ passwordInput.addEventListener('input', function () {
     // Evaluate each requirement and provide feedback
     if (requirements.length) {
         strength++;
-        message += '<li style="color: #10B981;">✔ At least 8 characters</li>';
+        message += '<li style="color: #10B981;"></li>';
     } else {
         message += '<li style="color: #EF4444;">✘ At least 8 characters</li>';
     }
 
     if (requirements.uppercase) {
         strength++;
-        message += '<li style="color: #10B981;">✔ At least one uppercase letter</li>';
+        message += '<li style="color: #10B981;"></li>';
     } else {
         message += '<li style="color: #EF4444;">✘ At least one uppercase letter</li>';
     }
 
     if (requirements.lowercase) {
         strength++;
-        message += '<li style="color: #10B981;">✔ At least one lowercase letter</li>';
+        message += '<li style="color: #10B981;"></li>';
     } else {
         message += '<li style="color: #EF4444;">✘ At least one lowercase letter</li>';
     }
 
     if (requirements.digit) {
         strength++;
-        message += '<li style="color: #10B981;">✔ At least one digit</li>';
+        message += '<li style="color: #10B981;"></li>';
     } else {
         message += '<li style="color: #EF4444;">✘ At least one digit</li>';
     }
 
     if (requirements.specialChar) {
         strength++;
-        message += '<li style="color: #10B981;">✔ At least one special character</li>';
+        message += '<li style="color: #10B981;"></li>';
     } else {
         message += '<li style="color: #EF4444;">✘ At least one special character</li>';
     }
