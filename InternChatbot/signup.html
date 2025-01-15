@@ -194,28 +194,27 @@
         passwordInput.addEventListener('input', function () {
             const password = this.value;
 
-            // List of unmet requirements
+            // List of unmet requirements - only add if NOT met
             const unmetRequirements = [];
 
-            // Check requirements and only add unmet ones to the list
+            // Only add requirements that are NOT met
             if (password.length < 8) unmetRequirements.push('At least 8 characters');
             if (!/[A-Z]/.test(password)) unmetRequirements.push('At least one uppercase letter');
             if (!/[a-z]/.test(password)) unmetRequirements.push('At least one lowercase letter');
             if (!/\d/.test(password)) unmetRequirements.push('At least one digit');
             if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) unmetRequirements.push('At least one special character');
 
-            // Build the HTML to display only unmet requirements
+            // Build the HTML for ONLY the unmet requirements
             let message = '';
             if (unmetRequirements.length > 0) {
-                message += '<ul style="margin: 0; padding-left: 20px;">';
+                message += '<div style="color: #EF4444;">';  // Only red color
                 unmetRequirements.forEach(req => {
-                    message += `<li style="color: #EF4444;">✘ ${req}</li>`;
+                    message += `<div>✘ ${req}</div>`;
                 });
-                message += '</ul>';
+                message += '</div>';
             }
-            // No else clause needed since we want nothing to show when all requirements are met
 
-            // Display unmet requirements (or nothing if all requirements are met)
+            // Display only unmet requirements
             passwordStrength.innerHTML = message;
         });
 
