@@ -194,21 +194,30 @@
         passwordInput.addEventListener('input', function () {
             const password = this.value;
 
-            // List of unmet requirements - only add if NOT met
-            const unmetRequirements = [];
+            // List of all requirements
+            const requirements = {
+                length: 'At least 8 characters',
+                uppercase: 'At least one uppercase letter',
+                lowercase: 'At least one lowercase letter',
+                digit: 'At least one digit',
+                special: 'At least one special character',
+            };
 
-            // Only add requirements that are NOT met
-            if (password.length < 8) unmetRequirements.push('At least 8 characters');
-            if (!/[A-Z]/.test(password)) unmetRequirements.push('At least one uppercase letter');
-            if (!/[a-z]/.test(password)) unmetRequirements.push('At least one lowercase letter');
-            if (!/\d/.test(password)) unmetRequirements.push('At least one digit');
-            if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) unmetRequirements.push('At least one special character');
+            // Object to track unmet requirements
+            const unmetRequirements = {};
 
-            // Build the HTML for ONLY the unmet requirements
+            // Add unmet requirements to the object
+            if (password.length < 8) unmetRequirements.length = requirements.length;
+            if (!/[A-Z]/.test(password)) unmetRequirements.uppercase = requirements.uppercase;
+            if (!/[a-z]/.test(password)) unmetRequirements.lowercase = requirements.lowercase;
+            if (!/\d/.test(password)) unmetRequirements.digit = requirements.digit;
+            if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) unmetRequirements.special = requirements.special;
+
+            // Build the HTML for unmet requirements
             let message = '';
-            if (unmetRequirements.length > 0) {
-                message += '<div style="color: #EF4444;">';  // Only red color
-                unmetRequirements.forEach(req => {
+            if (Object.keys(unmetRequirements).length > 0) {
+                message += '<div style="color: #EF4444;">'; // Red color for unmet requirements
+                Object.values(unmetRequirements).forEach(req => {
                     message += `<div>✘ ${req}</div>`;
                 });
                 message += '</div>';
