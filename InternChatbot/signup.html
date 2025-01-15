@@ -199,6 +199,7 @@
 
             // Only check for and add requirements that are NOT met
             if (password.length < 8) unmetRequirements.push('At least 8 characters');
+            else if (password.length >= 8) unmetRequirements.push('');
             if (!/[A-Z]/.test(password)) unmetRequirements.push('At least one uppercase letter');
             if (!/[a-z]/.test(password)) unmetRequirements.push('At least one lowercase letter');
             if (!/\d/.test(password)) unmetRequirements.push('At least one digit');
