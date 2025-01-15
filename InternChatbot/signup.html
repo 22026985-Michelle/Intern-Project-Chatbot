@@ -188,7 +188,6 @@
             }
         }
 
-        // Password strength checker with unmet requirements removal
         passwordInput.addEventListener('input', function () {
             const password = this.value;
 
@@ -202,7 +201,7 @@
             if (!/\d/.test(password)) unmetRequirements.push('At least one digit');
             if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) unmetRequirements.push('At least one special character');
 
-            // Build the HTML to display unmet requirements
+            // Build the HTML to display only unmet requirements
             let message = '';
             if (unmetRequirements.length > 0) {
                 message += '<ul style="margin: 0; padding-left: 20px;">';
@@ -210,15 +209,14 @@
                     message += `<li style="color: #EF4444;">✘ ${req}</li>`;
                 });
                 message += '</ul>';
-            } else {
-                message = '<p style="color: #10B981;">Password meets all requirements!</p>';
             }
+            // No else clause needed since we want nothing to show when all requirements are met
 
-            // Display unmet requirements or success message
+            // Display unmet requirements (or nothing if all requirements are met)
             passwordStrength.innerHTML = message;
         });
 
-        // Prevent submission if password doesn't meet the policy
+        // Rest of the code remains the same
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
