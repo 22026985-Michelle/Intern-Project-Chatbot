@@ -52,7 +52,36 @@ HTML_TEMPLATE = '''
             --input-container-border: #4B5563;
             --box-shadow: rgba(0, 0, 0, 0.2);
         }
+        
 
+        .avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            border: 1px solid var(--border-color);
+        }
+
+        .user-avatar {
+            background-color: var(--avatar-bg);
+            font-weight: bold;
+            color: var(--text-color);
+        }
+
+        .bot-avatar {
+            background-color: white;
+            padding: 8px;
+        }
+
+        .bot-avatar svg {
+            width: 100%;
+            height: 100%;
+        }
+        
+        
         /* Global Styles */
         * {
             margin: 0;
@@ -409,8 +438,8 @@ HTML_TEMPLATE = '''
 
         /* Message Styles */
         .message {
-            opacity: 0;
-            transform: translateY(10px);
+            opacity: 1;
+            transform: translateY(0);
             display: flex;
             gap: 1rem;
             margin-bottom: 1rem;
@@ -419,6 +448,11 @@ HTML_TEMPLATE = '''
             border-radius: 8px;
             background-color: var(--message-bg);
             border: 1px solid var(--border-color);
+        }
+
+        .message-content {
+            flex-grow: 1;
+            word-break: break-word;
         }
 
         @keyframes fadeIn {
@@ -1130,25 +1164,35 @@ HTML_TEMPLATE = '''
                 const messagesList = document.getElementById('messagesList');
                 if (!messagesList) return;
 
-                // Ensure messages list is visible
                 messagesList.style.display = 'block';
 
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
-                messageDiv.style.opacity = '1';
-                messageDiv.style.transform = 'translateY(0)';
                 
                 const escapedContent = this.escapeHtml(content);
                 
+                // Get the user's email first letter for the avatar
+                const userEmail = document.querySelector('.user-email').textContent;
+                const userAvatar = userEmail[0].toUpperCase();
+                
+                // Bot avatar SVG
+                const botAvatarSvg = `
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
+                        <path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                `;
+                
                 messageDiv.innerHTML = `
-                    <div class="avatar">${isUser ? 'U' : 'A'}</div>
+                    <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
+                        ${isUser ? userAvatar : botAvatarSvg}
+                    </div>
                     <div class="message-content">${escapedContent}</div>
                 `;
                 
                 messagesList.appendChild(messageDiv);
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
-        
 
             escapeHtml(unsafe) {
                 if (!unsafe) return '';
@@ -1469,6 +1513,10 @@ HTML_TEMPLATE = '''
 
             // Initialize chat manager
             window.chatManager = new ChatManager();
+
+            const styleSheet = document.createElement("style");
+            styleSheet.textContent = styles;
+            document.head.appendChild(styleSheet);
         });
     </script>
 </body>
