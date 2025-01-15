@@ -244,7 +244,7 @@
 
             message += '</ul>';
 
-            // Display the password strength message
+            // Display the password requirements
             passwordStrength.innerHTML = message;
 
             // Optionally indicate overall strength
@@ -282,6 +282,7 @@
                 specialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password),
             };
 
+            // If any requirement is not met, prevent submission
             if (!policyCheck.length || !policyCheck.uppercase || !policyCheck.lowercase || !policyCheck.digit || !policyCheck.specialChar) {
                 errorMessage.textContent = 'Password must meet all the strength requirements.';
                 errorMessage.style.display = 'block';
