@@ -115,12 +115,9 @@
             font-size: 0.875rem;
         }
 
-        #passwordStrength {
-        margin-top: -0.5rem;
-        margin-bottom: 1rem;
-        font-size: 0.875rem;
-        }   
-
+        .strength-weak { color: #EF4444; }
+        .strength-medium { color: #F59E0B; }
+        .strength-strong { color: #10B981; }
     </style>
 </head>
 <body>
@@ -145,7 +142,7 @@
             <div class="form-group">
                 <label for="password">Password</label>
                 <input type="password" id="password" name="password" required>
-                <div id="passwordStrength"></div>
+                <div id="passwordStrength" class="password-strength"></div>
             </div>
             <div class="form-group">
                 <label for="confirmPassword">Confirm Password</label>
@@ -191,36 +188,76 @@
             }
         }
 
-        passwordInput.addEventListener('input', function () {
-            const password = this.value;
+        // Add event listeners for both password fields
+        passwordInput.addEventListener('input', checkPasswordMatch);
+        confirmPasswordInput.addEventListener('input', checkPasswordMatch);
 
-            // List of unmet requirements - only add requirements that are NOT met
-            const unmetRequirements = [];
+ // Password strength checker with detailed policy validation
+passwordInput.addEventListener('input', function () {
+    const password = this.value;
+    const requirements = {
+        length: password.length >= 8,
+        uppercase: /[A-Z]/.test(password),
+        lowercase: /[a-z]/.test(password),
+        digit: /\d/.test(password),
+        specialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+    };
 
-            // Only check for and add requirements that are NOT met
-            if (password.length < 8) unmetRequirements.push('At least 8 characters');
-            if (password.length >= 8) unmetRequirements.push('');
+    let strength = 0;
+    let message = '<ul style="margin: 0; padding-left: 20px;">';
 
-            if (!/[A-Z]/.test(password)) unmetRequirements.push('At least one uppercase letter');
-            if (/[A-Z]/.test(password)) unmetRequirements.push('');
-            
-            if (!/[a-z]/.test(password)) unmetRequirements.push('At least one lowercase letter');
-            if (!/\d/.test(password)) unmetRequirements.push('At least one digit');
-            if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) unmetRequirements.push('At least one special character');
+    // Evaluate each requirement and provide feedback
+    if (requirements.length) {
+        strength++;
+        message += '<li style="color: #10B981;">✔ At least 8 characters</li>';
+    } else {
+        message += '<li style="color: #EF4444;">✘ At least 8 characters</li>';
+    }
 
-            // Build the HTML to display only unmet requirements
-            let message = '';
-            if (unmetRequirements.length > 0) {
-                unmetRequirements.forEach(req => {
-                    message += `<div style="color: #EF4444;">✘ ${req}</div>`;
-                });
-            }
+    if (requirements.uppercase) {
+        strength++;
+        message += '<li style="color: #10B981;">✔ At least one uppercase letter</li>';
+    } else {
+        message += '<li style="color: #EF4444;">✘ At least one uppercase letter</li>';
+    }
 
-            // Display only unmet requirements
-            passwordStrength.innerHTML = message;
-        });
+    if (requirements.lowercase) {
+        strength++;
+        message += '<li style="color: #10B981;">✔ At least one lowercase letter</li>';
+    } else {
+        message += '<li style="color: #EF4444;">✘ At least one lowercase letter</li>';
+    }
 
-        // Rest of the code remains the same
+    if (requirements.digit) {
+        strength++;
+        message += '<li style="color: #10B981;">✔ At least one digit</li>';
+    } else {
+        message += '<li style="color: #EF4444;">✘ At least one digit</li>';
+    }
+
+    if (requirements.specialChar) {
+        strength++;
+        message += '<li style="color: #10B981;">✔ At least one special character</li>';
+    } else {
+        message += '<li style="color: #EF4444;">✘ At least one special character</li>';
+    }
+
+    message += '</ul>';
+
+    // Display the password strength message
+    passwordStrength.innerHTML = message;
+
+    // Optionally indicate overall strength
+    if (strength <= 2) {
+        passwordStrength.innerHTML += '<p class="strength-weak">Weak password</p>';
+    } else if (strength === 3 || strength === 4) {
+        passwordStrength.innerHTML += '<p class="strength-medium">Medium password</p>';
+    } else if (strength === 5) {
+        passwordStrength.innerHTML += '<p class="strength-strong">Strong password</p>';
+    }
+});
+
+        // Prevent submission if password doesn't meet the policy
         signupForm.addEventListener('submit', async (e) => {
             e.preventDefault();
 
@@ -229,28 +266,28 @@
             const password = passwordInput.value;
             const confirmPassword = confirmPasswordInput.value;
 
-            // Check if passwords match
+            // Basic validation
             if (password !== confirmPassword) {
                 errorMessage.textContent = 'Passwords do not match';
                 errorMessage.style.display = 'block';
                 return;
             }
 
-            // Final validation of unmet requirements
-            const unmetRequirements = [];
-            if (password.length < 8) unmetRequirements.push('At least 8 characters');
-            if (!/[A-Z]/.test(password)) unmetRequirements.push('At least one uppercase letter');
-            if (!/[a-z]/.test(password)) unmetRequirements.push('At least one lowercase letter');
-            if (!/\d/.test(password)) unmetRequirements.push('At least one digit');
-            if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) unmetRequirements.push('At least one special character');
+            // Check if the password meets the full policy
+            const policyCheck = {
+                length: password.length >= 8,
+                uppercase: /[A-Z]/.test(password),
+                lowercase: /[a-z]/.test(password),
+                digit: /\d/.test(password),
+                specialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+            };
 
-            if (unmetRequirements.length > 0) {
+            if (!policyCheck.length || !policyCheck.uppercase || !policyCheck.lowercase || !policyCheck.digit || !policyCheck.specialChar) {
                 errorMessage.textContent = 'Password must meet all the strength requirements.';
                 errorMessage.style.display = 'block';
                 return;
             }
 
-            // Submit the form via API
             try {
                 const response = await fetch(`${BASE_URL}/api/signup`, {
                     method: 'POST',
