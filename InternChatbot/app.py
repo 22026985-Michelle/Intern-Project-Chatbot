@@ -5,8 +5,16 @@ import os
 from functools import wraps
 from template import HTML_TEMPLATE
 from database import get_db_connection, execute_query, create_user, create_new_chat,  get_recent_chats, add_message, cleanup_old_chats
-from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.security import generate_password_hash, check_password_hash, secure_filename
 import logging
+
+UPLOAD_FOLDER = 'static/profile_pictures'
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -200,17 +208,22 @@ def chat():
 def get_profile():
     """Get user profile data"""
     try:
-        email = session['user_email']
-        query = "SELECT username, email FROM users WHERE email = %s"
+        email = session.get('user_email')
+        if not email:
+            return jsonify({"error": "Not authenticated"}), 401
+
+        query = "SELECT username, email, profile_picture FROM users WHERE email = %s"
         result = execute_query(query, (email,))
         
-        if result:
+        if result and result[0]:
             return jsonify({
                 "name": result[0]['username'],
-                "email": result[0]['email']
+                "email": result[0]['email'],
+                "profilePicture": result[0]['profile_picture']
             })
         return jsonify({"error": "User not found"}), 404
     except Exception as e:
+        app.logger.error(f"Error getting profile: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/update-profile', methods=['POST'])
@@ -218,20 +231,41 @@ def get_profile():
 def update_profile():
     """Update user profile"""
     try:
-        email = session['user_email']
-        data = request.form
-        
+        email = session.get('user_email')
+        if not email:
+            return jsonify({"error": "Not authenticated"}), 401
+
         updates = []
         params = []
         
-        if data.get('name'):
+        # Handle name update
+        if 'name' in request.form:
             updates.append("username = %s")
-            params.append(data['name'])
-            
-        if data.get('newPassword'):
+            params.append(request.form['name'])
+        
+        # Handle password update
+        if request.form.get('newPassword'):
             updates.append("password = %s")
-            params.append(generate_password_hash(data['newPassword']))
-            
+            params.append(generate_password_hash(request.form['newPassword']))
+        
+        # Handle profile picture upload
+        if 'profilePicture' in request.files:
+            file = request.files['profilePicture']
+            if file and file.filename and allowed_file(file.filename):
+                # Ensure upload directory exists
+                os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
+                
+                # Create unique filename
+                filename = secure_filename(f"{email}_{file.filename}")
+                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+                
+                # Save file
+                file.save(filepath)
+                
+                # Update database with relative path
+                updates.append("profile_picture = %s")
+                params.append(f"/static/profile_pictures/{filename}")
+
         if not updates:
             return jsonify({"error": "No updates provided"}), 400
             
@@ -242,6 +276,7 @@ def update_profile():
         
         return jsonify({"status": "success", "message": "Profile updated successfully"})
     except Exception as e:
+        app.logger.error(f"Error updating profile: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
 @app.after_request

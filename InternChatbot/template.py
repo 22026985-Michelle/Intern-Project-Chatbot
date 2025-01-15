@@ -1513,10 +1513,6 @@ HTML_TEMPLATE = '''
 
             // Initialize chat manager
             window.chatManager = new ChatManager();
-
-            const styleSheet = document.createElement("style");
-            styleSheet.textContent = styles;
-            document.head.appendChild(styleSheet);
         });
     </script>
 </body>
