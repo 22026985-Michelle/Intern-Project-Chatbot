@@ -9,6 +9,9 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import logging
 
+app = Flask(__name__)
+app.secret_key = os.urandom(24)
+
 UPLOAD_FOLDER = 'static/profile_pictures'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
@@ -16,9 +19,6 @@ ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
-
-app = Flask(__name__)
-app.secret_key = os.urandom(24)
 
 # Initialize Anthropic client
 ANTHROPIC_API_KEY = os.getenv('ANTHROPIC_API_KEY', '')
