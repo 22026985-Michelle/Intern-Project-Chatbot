@@ -192,70 +192,70 @@
         passwordInput.addEventListener('input', checkPasswordMatch);
         confirmPasswordInput.addEventListener('input', checkPasswordMatch);
 
- // Password strength checker with detailed policy validation
-passwordInput.addEventListener('input', function () {
-    const password = this.value;
-    const requirements = {
-        length: password.length >= 8,
-        uppercase: /[A-Z]/.test(password),
-        lowercase: /[a-z]/.test(password),
-        digit: /\d/.test(password),
-        specialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password),
-    };
+        // Password strength checker with detailed policy validation
+        passwordInput.addEventListener('input', function () {
+            const password = this.value;
+            const requirements = {
+                length: password.length >= 8,
+                uppercase: /[A-Z]/.test(password),
+                lowercase: /[a-z]/.test(password),
+                digit: /\d/.test(password),
+                specialChar: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+            };
 
-    let strength = 0;
-    let message = '<ul style="margin: 0; padding-left: 20px;">';
+            let strength = 0;
+            let message = '<ul style="margin: 0; padding-left: 20px;">';
 
-    // Evaluate each requirement and provide feedback
-    if (requirements.length) {
-        strength++;
-        message += '<li style="color: #10B981;">✔ At least 8 characters</li>';
-    } else {
-        message += '<li style="color: #EF4444;">✘ At least 8 characters</li>';
-    }
+            // Evaluate each requirement and provide feedback
+            if (requirements.length) {
+                strength++;
+                message += '<li style="color: #10B981;">✔ At least 8 characters</li>';
+            } else {
+                message += '<li style="color: #EF4444;">✘ At least 8 characters</li>';
+            }
 
-    if (requirements.uppercase) {
-        strength++;
-        message += '<li style="color: #10B981;">✔ At least one uppercase letter</li>';
-    } else {
-        message += '<li style="color: #EF4444;">✘ At least one uppercase letter</li>';
-    }
+            if (requirements.uppercase) {
+                strength++;
+                message += '<li style="color: #10B981;">✔ At least one uppercase letter</li>';
+            } else {
+                message += '<li style="color: #EF4444;">✘ At least one uppercase letter</li>';
+            }
 
-    if (requirements.lowercase) {
-        strength++;
-        message += '<li style="color: #10B981;">✔ At least one lowercase letter</li>';
-    } else {
-        message += '<li style="color: #EF4444;">✘ At least one lowercase letter</li>';
-    }
+            if (requirements.lowercase) {
+                strength++;
+                message += '<li style="color: #10B981;">✔ At least one lowercase letter</li>';
+            } else {
+                message += '<li style="color: #EF4444;">✘ At least one lowercase letter</li>';
+            }
 
-    if (requirements.digit) {
-        strength++;
-        message += '<li style="color: #10B981;">✔ At least one digit</li>';
-    } else {
-        message += '<li style="color: #EF4444;">✘ At least one digit</li>';
-    }
+            if (requirements.digit) {
+                strength++;
+                message += '<li style="color: #10B981;">✔ At least one digit</li>';
+            } else {
+                message += '<li style="color: #EF4444;">✘ At least one digit</li>';
+            }
 
-    if (requirements.specialChar) {
-        strength++;
-        message += '<li style="color: #10B981;">✔ At least one special character</li>';
-    } else {
-        message += '<li style="color: #EF4444;">✘ At least one special character</li>';
-    }
+            if (requirements.specialChar) {
+                strength++;
+                message += '<li style="color: #10B981;">✔ At least one special character</li>';
+            } else {
+                message += '<li style="color: #EF4444;">✘ At least one special character</li>';
+            }
 
-    message += '</ul>';
+            message += '</ul>';
 
-    // Display the password strength message
-    passwordStrength.innerHTML = message;
+            // Display the password strength message
+            passwordStrength.innerHTML = message;
 
-    // Optionally indicate overall strength
-    if (strength <= 2) {
-        passwordStrength.innerHTML += '<p class="strength-weak">Weak password</p>';
-    } else if (strength === 3 || strength === 4) {
-        passwordStrength.innerHTML += '<p class="strength-medium">Medium password</p>';
-    } else if (strength === 5) {
-        passwordStrength.innerHTML += '<p class="strength-strong">Strong password</p>';
-    }
-});
+            // Optionally indicate overall strength
+            if (strength <= 2) {
+                passwordStrength.innerHTML += '<p class="strength-weak">Weak password</p>';
+            } else if (strength === 3 || strength === 4) {
+                passwordStrength.innerHTML += '<p class="strength-medium">Medium password</p>';
+            } else if (strength === 5) {
+                passwordStrength.innerHTML += '<p class="strength-strong">Strong password</p>';
+            }
+        });
 
         // Prevent submission if password doesn't meet the policy
         signupForm.addEventListener('submit', async (e) => {
