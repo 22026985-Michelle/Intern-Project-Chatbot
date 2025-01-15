@@ -5,7 +5,8 @@ import os
 from functools import wraps
 from template import HTML_TEMPLATE
 from database import get_db_connection, execute_query, create_user, create_new_chat,  get_recent_chats, add_message, cleanup_old_chats
-from werkzeug.security import generate_password_hash, check_password_hash, secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
+from werkzeug.utils import secure_filename
 import logging
 
 UPLOAD_FOLDER = 'static/profile_pictures'
