@@ -319,6 +319,9 @@
 
         // Password validation
         const passwordInput = document.getElementById("newPassword");
+        const confirmPasswordInput = document.getElementById("confirmPassword");
+        const saveButton = document.getElementById("saveButton");
+
         const requirements = {
             length: { element: document.getElementById("lengthReq"), test: p => p.length >= 8 },
             upper: { element: document.getElementById("upperReq"), test: p => /[A-Z]/.test(p) },
@@ -341,11 +344,23 @@
                 }
             });
 
-            // If all requirements are met, you might want to do something
-            if (allMet) {
-                document.getElementById('passwordRequirements').style.display = 'none';
+            // If all requirements are met, enable save button
+            if (allMet && password === confirmPasswordInput.value) {
+                saveButton.disabled = false;
             } else {
-                document.getElementById('passwordRequirements').style.display = 'block';
+                saveButton.disabled = true;
+            }
+        });
+
+        confirmPasswordInput.addEventListener("input", function() {
+            const password = passwordInput.value;
+            const confirmPassword = this.value;
+            
+            // If passwords match and all other requirements are met, enable the save button
+            if (password === confirmPassword && document.getElementById("lengthReq").style.display === 'none' && document.getElementById("upperReq").style.display === 'none' && document.getElementById("lowerReq").style.display === 'none' && document.getElementById("digitReq").style.display === 'none' && document.getElementById("specialReq").style.display === 'none') {
+                saveButton.disabled = false;
+            } else {
+                saveButton.disabled = true;
             }
         });
 
@@ -376,7 +391,7 @@
                 alert('Failed to update profile');
             }
         }
-
+        
         // Set initial profile data
         window.addEventListener('DOMContentLoaded', async () => {
             try {
