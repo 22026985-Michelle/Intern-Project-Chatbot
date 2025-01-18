@@ -216,16 +216,17 @@
                     <input type="email" id="email" name="email" required>
                 </div>
 
+                <!-- BEGIN: Password validation logic -->
                 <div class="form-group">
                     <label for="newPassword">New Password</label>
                     <input type="password" id="newPassword" name="newPassword">
-                    <div id="passwordStrength" class="password-strength"></div>
+                    <div id="passwordStrength"></div> <!-- Added for password policy feedback -->
                 </div>
-
                 <div class="form-group">
                     <label for="confirmPassword">Confirm New Password</label>
                     <input type="password" id="confirmPassword" name="confirmPassword">
                 </div>
+                <!-- END: Password validation logic -->
 
                 <button type="submit" class="button primary-button">Save Changes</button>
             </form>
@@ -242,86 +243,168 @@
     <script>
         let currentProfilePic = null;
 
-        // Password Policy Checker
-        const passwordInput = document.getElementById("newPassword");
-        const passwordStrength = document.getElementById("passwordStrength");
+        // Handle profile picture preview
+        document.getElementById('profilePicInput').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const profilePic = document.getElementById('profilePic');
+                    const letterDiv = profilePic.querySelector('.profile-pic-letter');
+                    
+                    // Remove existing image if any
+                    const existingImg = profilePic.querySelector('img');
+                    if (existingImg) {
+                        existingImg.remove();
+                    }
 
-        passwordInput.addEventListener("input", function () {
-            const password = this.value;
-            const unmetRequirements = [];
+                    // Create and add new image
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    profilePic.insertBefore(img, letterDiv);
+                    letterDiv.style.display = 'none';
 
-            if (password.length < 8) unmetRequirements.push("At least 8 characters");
-            if (!/[A-Z]/.test(password)) unmetRequirements.push("At least one uppercase letter");
-            if (!/[a-z]/.test(password)) unmetRequirements.push("At least one lowercase letter");
-            if (!/\d/.test(password)) unmetRequirements.push("At least one digit");
-            if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) unmetRequirements.push("At least one special character");
-
-            // Display unmet requirements
-            let message = "";
-            if (unmetRequirements.length > 0) {
-                unmetRequirements.forEach((req) => {
-                    message += `<div style="color: #EF4444;">✘ ${req}</div>`;
-                });
-            } else {
-                message = `<div style="color: #10B981;">✔ Password meets all requirements</div>`;
+                    // Show preview container
+                    document.getElementById('previewContainer').classList.add('active');
+                    
+                    currentProfilePic = file;
+                };
+                reader.readAsDataURL(file);
             }
-
-            passwordStrength.innerHTML = message;
         });
 
-        // Validate profile form submission
+        function removeProfilePicture() {
+            const profilePic = document.getElementById('profilePic');
+            const letterDiv = profilePic.querySelector('.profile-pic-letter');
+            const img = profilePic.querySelector('img');
+            
+            if (img) {
+                img.remove();
+            }
+            
+            letterDiv.style.display = 'flex';
+            document.getElementById('previewContainer').classList.remove('active');
+            document.getElementById('profilePicInput').value = '';
+            currentProfilePic = null;
+        }
+
+        function showSection(section) {
+            // Update nav items
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            event.target.classList.add('active');
+
+            // Show selected section
+            document.querySelectorAll('.settings-section').forEach(section => {
+                section.classList.remove('active');
+            });
+            document.getElementById(section + 'Section').classList.add('active');
+        }
+
+        function handleLogout() {
+            window.location.href = '/logout';
+        }
+
         async function handleProfileSubmit(event) {
             event.preventDefault();
             const formData = new FormData(event.target);
-
+            
+            // Password policy validation
             const newPassword = formData.get("newPassword");
             const confirmPassword = formData.get("confirmPassword");
 
-            // Password match validation
+            // Password policy check
+            const unmetRequirements = [];
+            if (newPassword && newPassword.length < 8) unmetRequirements.push("At least 8 characters");
+            if (newPassword && !/[A-Z]/.test(newPassword)) unmetRequirements.push("At least one uppercase letter");
+            if (newPassword && !/[a-z]/.test(newPassword)) unmetRequirements.push("At least one lowercase letter");
+            if (newPassword && !/\d/.test(newPassword)) unmetRequirements.push("At least one digit");
+            if (newPassword && !/[!@#$%^&*(),.?\":{}|<>]/.test(newPassword)) unmetRequirements.push("At least one special character");
+
+            if (unmetRequirements.length > 0) {
+                alert("Password must meet the following requirements:\n" + unmetRequirements.join("\n"));
+                return;
+            }
+
+            // Validate password match
             if (newPassword && newPassword !== confirmPassword) {
                 alert("Passwords don't match!");
                 return;
             }
 
-            // Final password policy validation
-            const unmetRequirements = [];
-            if (newPassword.length < 8) unmetRequirements.push("At least 8 characters");
-            if (!/[A-Z]/.test(newPassword)) unmetRequirements.push("At least one uppercase letter");
-            if (!/[a-z]/.test(newPassword)) unmetRequirements.push("At least one lowercase letter");
-            if (!/\d/.test(newPassword)) unmetRequirements.push("At least one digit");
-            if (!/[!@#$%^&*(),.?":{}|<>]/.test(newPassword)) unmetRequirements.push("At least one special character");
-
-            if (unmetRequirements.length > 0) {
-                alert("Password must meet all the strength requirements.");
-                return;
-            }
-
             // Add profile picture to form data if exists
             if (currentProfilePic) {
-                formData.append("profilePicture", currentProfilePic);
+                formData.append('profilePicture', currentProfilePic);
             }
 
-            // Submit profile update request
             try {
-                const response = await fetch("/api/update-profile", {
-                    method: "POST",
-                    body: formData,
+                const response = await fetch('/api/update-profile', {
+                    method: 'POST',
+                    body: formData
                 });
-
+                
                 const data = await response.json();
-
-                if (data.status === "success") {
-                    alert("Profile updated successfully!");
+                
+                if (data.status === 'success') {
+                    alert('Profile updated successfully!');
                 } else {
-                    alert(data.error || "Failed to update profile");
+                    alert(data.error || 'Failed to update profile');
                 }
             } catch (error) {
-                console.error("Error:", error);
-                alert("Failed to update profile");
+                console.error('Error:', error);
+                alert('Failed to update profile');
             }
         }
 
-        // Rest of your original JS logic here...
+        // Dynamic password strength feedback
+        const passwordInput = document.getElementById("newPassword");
+        const passwordStrength = document.getElementById("passwordStrength");
+
+        passwordInput.addEventListener("input", function () {
+            const password = this.value;
+            let unmetRequirements = "";
+
+            if (password.length < 8) unmetRequirements += '<div style="color: #EF4444;">✘ At least 8 characters</div>';
+            if (!/[A-Z]/.test(password)) unmetRequirements += '<div style="color: #EF4444;">✘ At least one uppercase letter</div>';
+            if (!/[a-z]/.test(password)) unmetRequirements += '<div style="color: #EF4444;">✘ At least one lowercase letter</div>';
+            if (!/\d/.test(password)) unmetRequirements += '<div style="color: #EF4444;">✘ At least one digit</div>';
+            if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) unmetRequirements += '<div style="color: #EF4444;">✘ At least one special character</div>';
+
+            // Feedback display
+            if (password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password) && /[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+                passwordStrength.innerHTML = '<div style="color: #10B981;">✔ Password meets all requirements</div>';
+            } else {
+                passwordStrength.innerHTML = unmetRequirements;
+            }
+        });
+
+        // Set initial profile data
+        window.addEventListener('DOMContentLoaded', async () => {
+            try {
+                const response = await fetch('/api/get-profile');
+                const data = await response.json();
+                
+                document.getElementById('name').value = data.name || '';
+                document.getElementById('email').value = data.email || '';
+                
+                const profilePic = document.getElementById('profilePic');
+                const letterDiv = profilePic.querySelector('.profile-pic-letter');
+                
+                if (data.profilePicture) {
+                    const img = document.createElement('img');
+                    img.src = data.profilePicture;
+                    profilePic.insertBefore(img, letterDiv);
+                    letterDiv.style.display = 'none';
+                    document.getElementById('previewContainer').classList.add('active');
+                } else {
+                    letterDiv.textContent = data.email[0].toUpperCase();
+                    letterDiv.style.display = 'flex';
+                }
+            } catch (error) {
+                console.error('Error:', error);
+            }
+        });
     </script>
 </body>
 </html>
