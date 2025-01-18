@@ -173,6 +173,12 @@
         #accountSection {
             max-width: 600px;
         }
+
+        .requirement {
+            color: #EF4444;
+            margin-top: 0.25rem;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 <body>
@@ -216,17 +222,22 @@
                     <input type="email" id="email" name="email" required>
                 </div>
 
-                <!-- BEGIN: Password validation logic -->
                 <div class="form-group">
                     <label for="newPassword">New Password</label>
                     <input type="password" id="newPassword" name="newPassword">
-                    <div id="passwordStrength"></div> <!-- Added for password policy feedback -->
+                    <div id="passwordRequirements">
+                        <div class="requirement" id="lengthReq">✘ At least 8 characters</div>
+                        <div class="requirement" id="upperReq">✘ At least one uppercase letter</div>
+                        <div class="requirement" id="lowerReq">✘ At least one lowercase letter</div>
+                        <div class="requirement" id="digitReq">✘ At least one digit</div>
+                        <div class="requirement" id="specialReq">✘ At least one special character</div>
+                    </div>
                 </div>
+
                 <div class="form-group">
                     <label for="confirmPassword">Confirm New Password</label>
                     <input type="password" id="confirmPassword" name="confirmPassword">
                 </div>
-                <!-- END: Password validation logic -->
 
                 <button type="submit" class="button primary-button">Save Changes</button>
             </form>
@@ -306,34 +317,43 @@
             window.location.href = '/logout';
         }
 
+        // Password validation
+        const passwordInput = document.getElementById("newPassword");
+        const requirements = {
+            length: { element: document.getElementById("lengthReq"), test: p => p.length >= 8 },
+            upper: { element: document.getElementById("upperReq"), test: p => /[A-Z]/.test(p) },
+            lower: { element: document.getElementById("lowerReq"), test: p => /[a-z]/.test(p) },
+            digit: { element: document.getElementById("digitReq"), test: p => /\d/.test(p) },
+            special: { element: document.getElementById("specialReq"), test: p => /[!@#$%^&*(),.?":{}|<>]/.test(p) }
+        };
+
+        passwordInput.addEventListener("input", function() {
+            const password = this.value;
+            let allMet = true;
+
+            // Check each requirement
+            Object.values(requirements).forEach(({ element, test }) => {
+                if (test(password)) {
+                    element.style.display = 'none';
+                } else {
+                    element.style.display = 'block';
+                    allMet = false;
+                }
+            });
+
+            // If all requirements are met, you might want to do something
+            if (allMet) {
+                document.getElementById('passwordRequirements').style.display = 'none';
+            } else {
+                document.getElementById('passwordRequirements').style.display = 'block';
+            }
+        });
+
+        // Form submission
         async function handleProfileSubmit(event) {
             event.preventDefault();
             const formData = new FormData(event.target);
             
-            // Password policy validation
-            const newPassword = formData.get("newPassword");
-            const confirmPassword = formData.get("confirmPassword");
-
-            // Password policy check
-            const unmetRequirements = [];
-            if (newPassword && newPassword.length < 8) unmetRequirements.push("At least 8 characters");
-            if (newPassword && !/[A-Z]/.test(newPassword)) unmetRequirements.push("At least one uppercase letter");
-            if (newPassword && !/[a-z]/.test(newPassword)) unmetRequirements.push("At least one lowercase letter");
-            if (newPassword && !/\d/.test(newPassword)) unmetRequirements.push("At least one digit");
-            if (newPassword && !/[!@#$%^&*(),.?\":{}|<>]/.test(newPassword)) unmetRequirements.push("At least one special character");
-
-            if (unmetRequirements.length > 0) {
-                alert("Password must meet the following requirements:\n" + unmetRequirements.join("\n"));
-                return;
-            }
-
-            // Validate password match
-            if (newPassword && newPassword !== confirmPassword) {
-                alert("Passwords don't match!");
-                return;
-            }
-
-            // Add profile picture to form data if exists
             if (currentProfilePic) {
                 formData.append('profilePicture', currentProfilePic);
             }
@@ -356,28 +376,6 @@
                 alert('Failed to update profile');
             }
         }
-
-        // Dynamic password strength feedback
-        const passwordInput = document.getElementById("newPassword");
-        const passwordStrength = document.getElementById("passwordStrength");
-
-        passwordInput.addEventListener("input", function () {
-            const password = this.value;
-            let unmetRequirements = "";
-
-            if (password.length < 8) unmetRequirements += '<div style="color: #EF4444;">✘ At least 8 characters</div>';
-            if (!/[A-Z]/.test(password)) unmetRequirements += '<div style="color: #EF4444;">✘ At least one uppercase letter</div>';
-            if (!/[a-z]/.test(password)) unmetRequirements += '<div style="color: #EF4444;">✘ At least one lowercase letter</div>';
-            if (!/\d/.test(password)) unmetRequirements += '<div style="color: #EF4444;">✘ At least one digit</div>';
-            if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) unmetRequirements += '<div style="color: #EF4444;">✘ At least one special character</div>';
-
-            // Feedback display
-            if (password.length >= 8 && /[A-Z]/.test(password) && /[a-z]/.test(password) && /\d/.test(password) && /[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-                passwordStrength.innerHTML = '<div style="color: #10B981;">✔ Password meets all requirements</div>';
-            } else {
-                passwordStrength.innerHTML = unmetRequirements;
-            }
-        });
 
         // Set initial profile data
         window.addEventListener('DOMContentLoaded', async () => {
