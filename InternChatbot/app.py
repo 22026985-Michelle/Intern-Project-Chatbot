@@ -17,7 +17,7 @@ from database import (
     add_message, 
     cleanup_old_chats,
     FileHandler,
-    handle_format_request 
+    handle_conversion_request 
 )
 
 app = Flask(__name__)
@@ -564,97 +564,3 @@ def test_db():
         app.logger.error(f"Database test failed: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
     
-
-@app.route('/api/process-file', methods=['POST'])
-@login_required
-def process_file():
-    try:
-        file = request.files.get('file')
-        target_format = request.form.get('target_format', 'json')
-        reference_format = request.form.get('reference_format')
-        chat_id = request.form.get('chat_id')
-        user_email = session.get('user_email')
-
-        if not file:
-            return jsonify({"error": "No file provided"}), 400
-
-        if not chat_id:
-            return jsonify({"error": "Chat ID is required"}), 400
-
-        # Get user_id from email
-        user_query = "SELECT user_id FROM users WHERE email = %s"
-        user_result = execute_query(user_query, (user_email,))
-        if not user_result:
-            return jsonify({"error": "User not found"}), 404
-
-        user_id = user_result[0]['user_id']
-
-        # Process file
-        file_handler = FileHandler()
-        result = file_handler.process_file(
-            file=file,
-            chat_id=chat_id,
-            user_id=user_id,
-            target_format=target_format,
-            reference_format=reference_format
-        )
-
-        # Update chat timestamp
-        update_query = "UPDATE chats SET updated_at = NOW() WHERE chat_id = %s"
-        execute_query(update_query, (chat_id,))
-
-        return jsonify({
-            "status": "success",
-            "result": result
-        })
-
-    except Exception as e:
-        app.logger.error(f"Error in file processing: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/get-file-history', methods=['GET'])
-@login_required
-def get_file_history():
-    try:
-        user_email = session.get('user_email')
-        user_query = "SELECT user_id FROM users WHERE email = %s"
-        user_result = execute_query(user_query, (user_email,))
-        
-        if not user_result:
-            return jsonify({"error": "User not found"}), 404
-
-        user_id = user_result[0]['user_id']
-        
-        file_handler = FileHandler()
-        file_data = file_handler.get_previous_file_data(user_id)
-        
-        return jsonify({
-            "status": "success",
-            "file_data": file_data
-        })
-
-    except Exception as e:
-        app.logger.error(f"Error getting file history: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-    
-
-@app.route('/api/convert-format', methods=['POST'])
-@login_required
-def convert_format():
-    try:
-        message = request.form.get('message', '')
-        file = request.files.get('file')
-        chat_id = request.form.get('chat_id')
-        reference_format = request.form.get('reference_format')
-
-        result = handle_format_request(message, chat_id, file, reference_format)
-        
-        if result["status"] == "need_reference":
-            # Store the original file temporarily for when reference format is provided
-            store_temp_file(chat_id, file)
-            
-        return jsonify(result)
-
-    except Exception as e:
-        logger.error(f"Error in convert_format endpoint: {str(e)}")
-        return jsonify({"error": str(e)}), 500

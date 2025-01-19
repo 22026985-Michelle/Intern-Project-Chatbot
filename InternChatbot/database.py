@@ -10,6 +10,17 @@ import json
 from flask import jsonify
 from datetime import datetime
 
+__all__ = [
+    'get_db_connection',
+    'execute_query',
+    'create_user',
+    'create_new_chat',
+    'get_recent_chats',
+    'add_message',
+    'cleanup_old_chats',
+    'handle_conversion_request'
+]
+
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
