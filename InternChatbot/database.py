@@ -26,11 +26,23 @@ __all__ = [
     'handle_conversion_request'
 ]
 
+KEY_FILE = 'encryption_key.key'
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-ENCRYPTION_KEY = Fernet.generate_key()
+def load_or_generate_key():
+    """Load the encryption key from a file, or generate it if not found."""
+    if os.path.exists(KEY_FILE):
+        with open(KEY_FILE, 'rb') as key_file:
+            key = key_file.read()
+    else:
+        key = Fernet.generate_key()
+        with open(KEY_FILE, 'wb') as key_file:
+            key_file.write(key)
+    return key
+
+ENCRYPTION_KEY = load_or_generate_key()
 cipher = Fernet(ENCRYPTION_KEY)
 
 def encrypt_message(message: str) -> bytes:
