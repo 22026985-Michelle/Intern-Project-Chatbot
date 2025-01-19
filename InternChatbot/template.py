@@ -699,10 +699,6 @@ HTML_TEMPLATE = '''
         <div class="input-container">
             <div class="input-wrapper">
                 <div class="input-group">
-                    <button id="fileButton" class="file-button">
-                        <span class="file-icon">📎</span>
-                        <input type="file" id="fileInput" style="display: none">
-                    </button>
                     <textarea 
                         class="input-box" 
                         placeholder="How can I help you today?"
@@ -965,13 +961,15 @@ HTML_TEMPLATE = '''
                     const data = await response.json();
 
                     this.currentChatId = data.chat_id;
-                    document.getElementById('messagesList').innerHTML = '';
-                    document.getElementById('userInput').value = '';
-
+                    this.messageCache.delete(this.currentChatId); // Clear cache for new chat
+                    
                     // Refresh recent chats
                     await this.loadRecentChats();
+                    
+                    return data.chat_id;
                 } catch (error) {
-                    console.error('Error creating new chat:', error);
+                    console.error('Error in createNewChat:', error);
+                    throw error;
                 }
             }
 
@@ -1082,35 +1080,23 @@ HTML_TEMPLATE = '''
 
     
             handleNewChat() {
-                try {
-                    // Clear the messages list when explicitly starting a new chat
-                    const messagesList = document.getElementById('messagesList');
-                    if (messagesList) {
-                        messagesList.innerHTML = '';
-                    }
-
-                    this.currentChatId = null;
-
-                    // Show the greeting
+                this.createNewChat().then(() => {
+                    // Clear messages and input
+                    this.clearMessages();
+                    document.getElementById('userInput').value = '';
+                    
+                    // Remove active state from all chat items
+                    const chatItems = document.querySelectorAll('.chat-item');
+                    chatItems.forEach(item => item.classList.remove('active'));
+                    
+                    // Show greeting
                     const greeting = document.querySelector('.greeting');
                     if (greeting) {
                         greeting.style.display = 'block';
                     }
-
-                    // Clear input
-                    const userInput = document.getElementById('userInput');
-                    if (userInput) {
-                        userInput.value = '';
-                    }
-
-                    // Remove active state from all chat items
-                    const chatItems = document.querySelectorAll('.chat-item');
-                    chatItems.forEach(item => item.classList.remove('active'));
-
-                    console.log('New chat initialized with cleared interface');
-                } catch (error) {
-                    console.error('Error handling new chat:', error);
-                }
+                }).catch(error => {
+                    console.error('Error creating new chat:', error);
+                });
             }
 
             async getChatMessages(chatId) {
@@ -1555,6 +1541,10 @@ HTML_TEMPLATE = '''
 
             // Initialize chat manager
             window.chatManager = new ChatManager();
+
+            document.getElementById('newChatButton').addEventListener('click', () => {
+                window.chatManager.handleNewChat();
+            });
         });
     </script>
 </body>
