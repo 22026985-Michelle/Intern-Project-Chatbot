@@ -1304,18 +1304,20 @@ HTML_TEMPLATE = '''
 
             async updateChatTitle(chatId, title) {
                 try {
-                    const response = await fetch(this.BASE_URL + '/api/chat/' + chatId + '/title', {
-                        method: 'PUT',
+                    const response = await fetch(this.BASE_URL + "/api/chat/" + chatId + "/title", {
+                        method: "PUT",
                         headers: {
-                            'Content-Type': 'application/json'
+                            "Content-Type": "application/json"
                         },
                         body: JSON.stringify({ title })
                     });
                     
-                    if (!response.ok) throw new Error('Failed to update chat title');
+                    if (!response.ok) {
+                        throw new Error("Failed to update chat title");
+                    }
                     await this.loadRecentChats();
                 } catch (error) {
-                    console.error('Error updating chat title:', error);
+                    console.error("Error updating chat title:", error);
                 }
             }
 
