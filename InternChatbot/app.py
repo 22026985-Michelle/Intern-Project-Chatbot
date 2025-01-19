@@ -6,6 +6,7 @@ from functools import wraps
 from template import HTML_TEMPLATE
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from dynamic_formatter import DynamicFormatter
 import logging
 logger = logging.getLogger(__name__)
 from database import (
@@ -22,6 +23,7 @@ from database import (
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+formatter = DynamicFormatter()
 
 UPLOAD_FOLDER = 'static/profile_pictures'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -564,3 +566,53 @@ def test_db():
         app.logger.error(f"Database test failed: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
     
+
+@app.route('/format', methods=['POST'])
+def format_data():
+    try:
+        data = request.get_json()
+        
+        if not data or 'content' not in data:
+            return jsonify({'error': 'No content provided'}), 400
+            
+        content = data['content']
+        result = formatter.process_data(content)
+        
+        return jsonify({
+            'status': 'success',
+            'formatted_json': result['json'],
+            'formatted_tabular': result['tabular']
+        })
+        
+    except Exception as e:
+        logging.error(f"Error processing request: {str(e)}")
+        return jsonify({'error': str(e)}), 500
+    
+@app.route('/api/format-test-case', methods=['POST'])
+def format_test_case():
+    try:
+        data = request.get_json()
+        formatter = DynamicFormatter()
+        
+        result = formatter.process_data(data['content'])
+        
+        # Update database with formatted result
+        update_query = '''
+            UPDATE test_cases 
+            SET formatted_json = %s,
+                formatted_tabular = %s 
+            WHERE test_case_id = %s
+        '''
+        execute_query(update_query, (
+            result['json'],
+            result['tabular'],
+            data['test_case_id']
+        ))
+        
+        return jsonify({
+            'status': 'success',
+            'formatted_data': result
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

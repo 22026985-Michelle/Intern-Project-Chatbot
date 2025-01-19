@@ -9,6 +9,9 @@ import pandas as pd
 import json
 from flask import jsonify
 from datetime import datetime
+from typing import Union, Dict, List, Any
+import re
+from io import StringIO
 
 __all__ = [
     'get_db_connection',
@@ -611,3 +614,217 @@ class FileHandler:
         except Exception as e:
             logger.error(f"Error saving output file: {str(e)}")
             raise
+
+class DynamicFormatter:
+    def __init__(self):
+        self.date_formats = [
+            "%d/%m/%Y",
+            "%Y-%m-%d",
+            "%d-%m-%Y",
+            "%Y/%m/%d",
+            "%d %b %Y",
+            "%d %B %Y"
+        ]
+
+    def detect_format(self, data: str) -> str:
+        """Detect if the input is JSON or tabular data."""
+        try:
+            # Try parsing as JSON
+            json.loads(data.strip())
+            return 'json'
+        except json.JSONDecodeError:
+            # If not JSON, check if it's tabular
+            if '\t' in data or ',' in data or '|' in data:
+                return 'tabular'
+            # Check if it looks like space-separated
+            lines = data.strip().split('\n')
+            if len(lines) > 1 and all(len(line.split()) > 1 for line in lines[:2]):
+                return 'tabular'
+        return 'unknown'
+
+    def capitalize_keys(self, obj: Union[Dict, List, Any]) -> Union[Dict, List, Any]:
+        """Recursively capitalize dictionary keys."""
+        if isinstance(obj, dict):
+            return {
+                k[0].upper() + k[1:] if isinstance(k, str) else k: 
+                self.capitalize_keys(v)
+                for k, v in obj.items()
+            }
+        elif isinstance(obj, list):
+            return [self.capitalize_keys(item) for item in obj]
+        return obj
+
+    def format_value(self, value: Any) -> Any:
+        """Format values appropriately based on type."""
+        if isinstance(value, (int, float, bool)):
+            return value
+        elif isinstance(value, str):
+            # Try parsing as date
+            for date_format in self.date_formats:
+                try:
+                    datetime.datetime.strptime(value, date_format)
+                    return value  # Return original format if it's a date
+                except ValueError:
+                    continue
+            # Clean other strings
+            return value.strip()
+        return value
+
+    def format_json(self, data: Union[str, dict], indent: int = 4) -> str:
+        """Format JSON with proper indentation and capitalized keys."""
+        try:
+            # Parse if string
+            if isinstance(data, str):
+                data = json.loads(data)
+
+            # Capitalize keys and format values
+            formatted_data = self.capitalize_keys(data)
+            
+            # Format all values
+            if isinstance(formatted_data, dict):
+                formatted_data = {
+                    k: self.format_value(v)
+                    for k, v in formatted_data.items()
+                }
+
+            return json.dumps(formatted_data, indent=indent)
+        except Exception as e:
+            logger.error(f"Error formatting JSON: {str(e)}")
+            raise
+
+    def detect_delimiter(self, data: str) -> str:
+        """Detect the delimiter in tabular data."""
+        delimiters = {
+            '\t': 0,  # Tab
+            ',': 0,   # Comma
+            '|': 0,   # Pipe
+            ' ': 0    # Space
+        }
+        
+        lines = data.strip().split('\n')[:2]  # Check first two lines
+        for line in lines:
+            for delimiter in delimiters:
+                if delimiter in line:
+                    # Count consistent occurrences
+                    parts = [p for p in line.split(delimiter) if p.strip()]
+                    delimiters[delimiter] += len(parts)
+
+        # Get delimiter with most consistent splits
+        max_splits = max(delimiters.values())
+        for delimiter, count in delimiters.items():
+            if count == max_splits:
+                return delimiter
+                
+        return '\t'  # Default to tab if no clear delimiter
+
+    def clean_column_names(self, columns: List[str]) -> List[str]:
+        """Clean and format column names."""
+        cleaned = []
+        for col in columns:
+            # Remove special characters and multiple spaces
+            clean_col = re.sub(r'[^\w\s]', ' ', col)
+            clean_col = ' '.join(clean_col.split())
+            # Capitalize first letter of each word
+            clean_col = ' '.join(word.capitalize() for word in clean_col.split())
+            cleaned.append(clean_col)
+        return cleaned
+
+    def format_tabular(self, data: str) -> pd.DataFrame:
+        """Format tabular data for Excel compatibility."""
+        try:
+            # Detect delimiter
+            delimiter = self.detect_delimiter(data)
+            
+            # Handle different delimiter cases
+            if delimiter == ' ':
+                # Split by multiple spaces
+                lines = [re.split(r'\s{2,}', line.strip()) 
+                        for line in data.strip().split('\n')]
+                df = pd.DataFrame(lines[1:], columns=lines[0])
+            else:
+                # Use pandas with detected delimiter
+                df = pd.read_csv(StringIO(data), sep=delimiter)
+
+            # Clean column names
+            df.columns = self.clean_column_names(df.columns.tolist())
+            
+            # Clean data values
+            for col in df.columns:
+                df[col] = df[col].apply(self.format_value)
+
+            return df
+
+        except Exception as e:
+            logger.error(f"Error formatting tabular data: {str(e)}")
+            raise
+
+    def df_to_excel_format(self, df: pd.DataFrame) -> str:
+        """Convert DataFrame to Excel-compatible format."""
+        return df.to_csv(sep='\t', index=False)
+
+    def process_data(self, data: str) -> Dict[str, str]:
+        """Process any input data and return both JSON and tabular formats."""
+        try:
+            data_format = self.detect_format(data)
+            result = {}
+
+            if data_format == 'json':
+                # Format as JSON
+                formatted_json = self.format_json(data)
+                result['json'] = formatted_json
+                
+                # Convert to tabular
+                json_data = json.loads(data)
+                df = pd.json_normalize(json_data)
+                result['tabular'] = self.df_to_excel_format(df)
+
+            elif data_format == 'tabular':
+                # Format as tabular
+                df = self.format_tabular(data)
+                result['tabular'] = self.df_to_excel_format(df)
+                
+                # Convert to JSON
+                result['json'] = self.format_json(df.to_dict(orient='records'))
+
+            else:
+                raise ValueError("Unrecognized data format")
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Error processing data: {str(e)}")
+            raise
+
+# Example usage
+if __name__ == "__main__":
+    formatter = DynamicFormatter()
+    
+    # Example JSON data
+    json_data = '''
+    {
+        "testCase": {
+            "serialNo": 1,
+            "testScenarioID": "CMS-23-R061_TS001_TC001",
+            "description": "Test case description"
+        }
+    }
+    '''
+    
+    # Example tabular data
+    tabular_data = """
+    Test Case    Child Gender    Child DOB    Child ID No    Child ID Type
+    TC001       M               25/06/2022   T123456A       BC
+    """
+    
+    # Process both formats
+    try:
+        json_result = formatter.process_data(json_data)
+        tabular_result = formatter.process_data(tabular_data)
+        
+        print("JSON Data Processed:")
+        print(json_result['json'])
+        print("\nTabular Data Processed:")
+        print(tabular_result['tabular'])
+        
+    except Exception as e:
+        print(f"Error: {str(e)}")
