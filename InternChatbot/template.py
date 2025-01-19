@@ -1301,6 +1301,7 @@ HTML_TEMPLATE = '''
                 }
             }
 
+
             async updateChatTitle(chatId, title) {
                 try {
                     const response = await fetch(this.BASE_URL + '/api/chat/' + chatId + '/title', {
