@@ -174,8 +174,14 @@ def chat():
             return jsonify({"error": "Anthropic client not initialized"}), 500
 
         data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
         message = data.get('message', '')
         chat_id = data.get('chat_id')
+
+        if not message:
+            return jsonify({"error": "Message is required"}), 400
 
         # Create new chat if no chat_id provided
         if not chat_id:
@@ -251,8 +257,8 @@ def chat():
         })
 
     except Exception as e:
-        logger.error(f"Error in chat endpoint: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        app.logger.error(f"Error in chat endpoint: {str(e)}")
+        return jsonify({"error": "Internal server error", "details": str(e)}), 500
     
 def format_json_data(message):
     """Handle JSON formatting requests"""
