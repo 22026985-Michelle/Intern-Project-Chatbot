@@ -1184,38 +1184,6 @@ HTML_TEMPLATE = '''
                     // Add bot response to UI
                     this.addMessageToUI(data.response, false);
 
-                    // Clear input after successful send
-                    input.value = '';
-
-                    // Refresh recent chats
-                    await this.loadRecentChats();
-
-                } catch (error) {
-                    console.error('Error sending message:', error);
-                    alert('Failed to send message. Please try again.');
-                }
-            }
-
-                    // Add user message to UI immediately
-                    this.addMessageToUI(message, true);
-
-                    // Send message to server
-                    const response = await fetch(`${this.BASE_URL}/api/chat`, {
-                        method: 'POST',
-                        credentials: 'include',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            chat_id: this.currentChatId,
-                            message
-                        })
-                    });
-
-                    if (!response.ok) throw new Error('Failed to send message');
-                    const data = await response.json();
-
-                    // Add bot response to UI
-                    this.addMessageToUI(data.response, false);
-
                     // Cache the messages for this chat
                     if (!this.messageCache.has(this.currentChatId)) {
                         this.messageCache.set(this.currentChatId, []);
@@ -1479,16 +1447,6 @@ HTML_TEMPLATE = '''
             let isMenuOpen = false;
             let isOverSidebar = false;
             let sidebarTimeout = null;
-
-
-            function escapeHtml(unsafe) {
-                return unsafe
-                    .replace(/&/g, "&amp;")
-                    .replace(/</g, "&lt;")
-                    .replace(/>/g, "&gt;")
-                    .replace(/"/g, "&quot;")
-                    .replace(/'/g, "&#039;");
-            }
 
             // Sidebar Control Functions
             function showSidebar() {
