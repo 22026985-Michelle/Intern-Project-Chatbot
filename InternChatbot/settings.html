@@ -317,10 +317,14 @@
             window.location.href = '/logout';
         }
 
-        // Password validation
+        // Get password-related elements
         const passwordInput = document.getElementById("newPassword");
         const confirmPasswordInput = document.getElementById("confirmPassword");
         const saveButton = document.getElementById("saveButton");
+        const passwordRequirements = document.getElementById("passwordRequirements");
+
+        // Hide requirements initially
+        passwordRequirements.style.display = 'none';
 
         const requirements = {
             length: { element: document.getElementById("lengthReq"), test: p => p.length >= 8 },
@@ -330,37 +334,57 @@
             special: { element: document.getElementById("specialReq"), test: p => /[!@#$%^&*(),.?":{}|<>]/.test(p) }
         };
 
-        passwordInput.addEventListener("input", function() {
-            const password = this.value;
-            let allMet = true;
-
-            // Check each requirement
-            Object.values(requirements).forEach(({ element, test }) => {
-                if (test(password)) {
-                    element.style.display = 'none';
-                } else {
+        // Show requirements only when user focuses on password field
+        passwordInput.addEventListener("focus", function() {
+            if (this.value.length === 0) {
+                passwordRequirements.style.display = 'block';
+                // Show all requirements initially
+                Object.values(requirements).forEach(({ element }) => {
                     element.style.display = 'block';
-                    allMet = false;
-                }
-            });
-
-            // If all requirements are met, enable save button
-            if (allMet && password === confirmPasswordInput.value) {
-                saveButton.disabled = false;
-            } else {
-                saveButton.disabled = true;
+                });
             }
         });
 
+        passwordInput.addEventListener("input", function() {
+            const password = this.value;
+            
+            if (password.length === 0) {
+                // Hide requirements if field is empty
+                passwordRequirements.style.display = 'none';
+            } else {
+                // Show requirements container
+                passwordRequirements.style.display = 'block';
+                
+                let allMet = true;
+
+                // Check each requirement
+                Object.values(requirements).forEach(({ element, test }) => {
+                    if (test(password)) {
+                        element.style.display = 'none';
+                    } else {
+                        element.style.display = 'block';
+                        allMet = false;
+                    }
+                });
+
+                // If all requirements are met and passwords match, enable save button
+                if (allMet && password === confirmPasswordInput.value) {
+                    saveButton.disabled = false;
+                } else {
+                    saveButton.disabled = true;
+                }
+            }
+        });
+
+        // Handle confirm password matching
         confirmPasswordInput.addEventListener("input", function() {
             const password = passwordInput.value;
             const confirmPassword = this.value;
             
-            // If passwords match and all other requirements are met, enable the save button
-            if (password === confirmPassword && document.getElementById("lengthReq").style.display === 'none' && document.getElementById("upperReq").style.display === 'none' && document.getElementById("lowerReq").style.display === 'none' && document.getElementById("digitReq").style.display === 'none' && document.getElementById("specialReq").style.display === 'none') {
-                saveButton.disabled = false;
-            } else {
-                saveButton.disabled = true;
+            // Only check if main password field has valid input
+            if (password.length > 0 && 
+                Object.values(requirements).every(({ test }) => test(password))) {
+                saveButton.disabled = password !== confirmPassword;
             }
         });
 
