@@ -107,6 +107,15 @@
             margin-bottom: 1rem;
             display: none;
         }
+
+        #captchaContainer {
+            text-align: center;
+            border: 1px solid var(--border-color);
+            padding: 1rem;
+            border-radius: 4px;
+            background-color: var(--input-bg);
+            color: var(--text-color);
+        }
     </style>
 </head>
 <body>
@@ -140,6 +149,8 @@
         const loginForm = document.getElementById('loginForm');
         const errorMessage = document.getElementById('errorMessage');
 
+        let failedAttempts = 0;
+
         function sanitizeHTML(input) {
             const div = document.createElement('div');
             div.textContent = input;
@@ -151,6 +162,13 @@
             
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
+            const loginButton = e.target.querySelector('button');
+
+            if (failedAttempts >= 3) {
+                errorMessage.textContent = sanitizeHTML('Please complete the CAPTCHA before attempting again.');
+                errorMessage.style.display = 'block';
+                return;
+            }
 
             try {
                 const response = await fetch(`${BASE_URL}/api/login`, {
@@ -171,14 +189,62 @@
                     window.location.href = '/';
                 } else {
                     // Use sanitizeHTML for error messages
+                    failedAttempts++;
                     errorMessage.textContent = sanitizeHTML(data.error || 'Login failed');
                     errorMessage.style.display = 'block';
+
+                    if (failedAttempts >= 3) {
+                        showCaptcha();
+                    }
+                    
                 }
             } catch (error) {
+                failedAttempts++;
                 errorMessage.textContent = sanitizeHTML('An error occurred. Please try again.');
                 errorMessage.style.display = 'block';
+
+                if (failedAttempts >= 3) {
+                    showCaptcha();
+                }
             }
         });
+        function showCaptcha() {
+            const captchaContainer = document.createElement('div');
+            captchaContainer.id = 'captchaContainer';
+            captchaContainer.style.marginTop = '1rem';
+
+            captchaContainer.innerHTML = `
+                <p>Please solve the CAPTCHA to continue:</p>
+                <div id="captchaChallenge" style="margin-bottom: 1rem;">
+                    <span>${generateCaptcha()}</span>
+                    <input type="text" id="captchaInput" placeholder="Enter answer" style="margin-left: 1rem;">
+                </div>
+                <button onclick="validateCaptcha()">Verify CAPTCHA</button>
+            `;
+
+            loginForm.appendChild(captchaContainer);
+        }
+
+        function generateCaptcha() {
+            const a = Math.floor(Math.random() * 10) + 1;
+            const b = Math.floor(Math.random() * 10) + 1;
+            window.captchaAnswer = a + b;
+            return `${a} + ${b}`;
+        }
+
+        function validateCaptcha() {
+            const captchaInput = document.getElementById('captchaInput').value;
+            if (parseInt(captchaInput) === window.captchaAnswer) {
+                failedAttempts = 0;
+                document.getElementById('captchaContainer').remove();
+                errorMessage.textContent = sanitizeHTML('CAPTCHA verified! Please try logging in again.');
+                errorMessage.style.color = '#10B981';
+                errorMessage.style.display = 'block';
+            } else {
+                errorMessage.textContent = sanitizeHTML('Incorrect CAPTCHA. Please try again.');
+                errorMessage.style.display = 'block';
+            }
+        }
     </script>
 </body>
 </html>
