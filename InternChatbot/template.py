@@ -1507,6 +1507,36 @@ HTML_TEMPLATE = '''
                     greetingText.textContent = 'Having a late night?';
                 }
             }
+
+            function handleFileUpload(file, chatId) {
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('chat_id', chatId);
+                formData.append('target_format', 'json'); // or 'table'
+
+                fetch('/api/process-file', {
+                    method: 'POST',
+                    body: formData,
+                    credentials: 'include'
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        // Update chat interface with the processed result
+                        addMessageToUI(data.result, false);
+                    } else {
+                        console.error('Error:', data.error);
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            }
+
+            document.getElementById('fileInput').addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    handleFileUpload(file, currentChatId);
+                }
+            });
             
             setGreeting();
             setInterval(setGreeting, 60000);
