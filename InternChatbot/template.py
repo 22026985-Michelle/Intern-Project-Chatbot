@@ -1297,12 +1297,13 @@ HTML_TEMPLATE = '''
 
             async updateChatTitle(chatId, title) {
                 try {
-                    const response = await fetch(this.BASE_URL + "/api/chat/" + chatId + "/title", {
+                    const url = this.BASE_URL + "/api/chat/" + chatId + "/title";
+                    const response = await fetch(url, {
                         method: "PUT",
                         headers: {
                             "Content-Type": "application/json"
                         },
-                        body: JSON.stringify({ title })
+                        body: JSON.stringify({ title: title })
                     });
                     
                     if (!response.ok) {
@@ -1312,7 +1313,7 @@ HTML_TEMPLATE = '''
                 } catch (error) {
                     console.error("Error updating chat title:", error);
                 }
-            }
+            },
 
             async deleteChat(chatId) {
                 if (!confirm("Are you sure you want to delete this chat?")) return;
