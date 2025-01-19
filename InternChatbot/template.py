@@ -821,7 +821,7 @@ HTML_TEMPLATE = '''
             constructor() {
                 this.currentChatId = null;
                 this.BASE_URL = 'https://internproject-4fq7.onrender.com';
-                this.messageCache = new Map(); // Add a cache to store messages
+                this.messageCache = new Map(); 
                 this.init();
             }
 
@@ -1222,26 +1222,18 @@ HTML_TEMPLATE = '''
                 let formattedContent = this.escapeHtml(content);
                 
                 // Handle newlines by replacing them with <br> tags
-                formattedContent = formattedContent.split('\n').join('<br>');
+                formattedContent = formattedContent.split('\\n').join('<br>');
                 
                 // Get the user's email first letter for the avatar
                 const userEmail = document.querySelector('.user-email').textContent;
                 const userAvatar = userEmail[0].toUpperCase();
                 
                 // Bot avatar SVG
-                const botAvatarSvg = `
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
-                        <path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
-                    </svg>
-                `;
+                const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
                 
-                messageDiv.innerHTML = `
-                    <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
-                        ${isUser ? userAvatar : botAvatarSvg}
-                    </div>
-                    <div class="message-content">${formattedContent}</div>
-                `;
+                messageDiv.innerHTML = '<div class="avatar ' + (isUser ? 'user-avatar' : 'bot-avatar') + '">' +
+                    (isUser ? userAvatar : botAvatarSvg) +
+                    '</div><div class="message-content">' + formattedContent + '</div>';
                 
                 messagesList.appendChild(messageDiv);
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -1272,7 +1264,7 @@ HTML_TEMPLATE = '''
 
             async updateChatSection(chatId, section) {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/section`, {
+                    const response = await fetch(this.BASE_URL + '/api/chat/' + chatId + '/section', {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json'
@@ -1288,7 +1280,7 @@ HTML_TEMPLATE = '''
 
             async updateChatTitle(chatId, title) {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/title`, {
+                    const response = await fetch(this.BASE_URL + '/api/chat/' + chatId + '/title', {
                         method: 'PUT',
                         headers: {
                             'Content-Type': 'application/json'
