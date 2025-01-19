@@ -174,15 +174,70 @@
             max-width: 600px;
         }
 
+        #passwordRequirements {
+            margin-top: 0.5rem;
+            transition: all 0.3s ease;
+        }
+
         .requirement {
             color: #EF4444;
             margin-top: 0.25rem;
             font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+
+        .back-button-container {
+            position: absolute;
+            top: 2rem;
+            left: 2rem;
+        }
+
+        .back-button {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1rem;
+            background-color: transparent;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-color);
+            cursor: pointer;
+            font-size: 0.875rem;
+            transition: all 0.2s ease;
+        }
+
+        .back-button:hover {
+            background-color: var(--hover-color);
+        }
+
+        .back-button svg {
+            width: 16px;
+            height: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .back-button-container {
+                top: 1rem;
+                left: 1rem;
+            }
+            
+            .back-button {
+                padding: 0.4rem 0.8rem;
+            }
         }
     </style>
 </head>
 <body>
     <div class="settings-container">
+        <div class="back-button-container">
+            <button onclick="goBack()" class="back-button">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M19 12H5M12 19l-7-7 7-7"/>
+                </svg>
+                Back to Chat
+            </button>
+        </div>
+
         <div class="settings-header">
             <h1>Settings</h1>
             <p>Manage your profile and account settings</p>
@@ -320,7 +375,7 @@
         // Get password-related elements
         const passwordInput = document.getElementById("newPassword");
         const confirmPasswordInput = document.getElementById("confirmPassword");
-        const saveButton = document.getElementById("saveButton");
+        const saveButton = document.querySelector("#profileForm button[type='submit']");
         const passwordRequirements = document.getElementById("passwordRequirements");
 
         // Hide requirements initially
