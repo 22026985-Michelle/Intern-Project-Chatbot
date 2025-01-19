@@ -186,7 +186,7 @@ def add_message(chat_id, content, is_user=True):
         INSERT INTO messages (chat_id, content, is_user, created_at)
         VALUES (%s, %s, %s, NOW())
         """
-        cursor.execute(message_query, (chat_id, content, is_user))
+        cursor.execute(message_query, (chat_id, encrypted_content, is_user))
         
         # Update chat timestamp
         update_query = """
