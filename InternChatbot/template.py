@@ -1224,7 +1224,7 @@ HTML_TEMPLATE = '''
                 let formattedContent = this.escapeHtml(content);
                 
                 // Handle the 'json' prefix and format JSON content
-                if (formattedContent.toLowerCase().includes('here\'s the data converted to json format:')) {
+                if (formattedContent.toLowerCase().includes('here\`s the data converted to json format:')) {
                     const jsonStart = formattedContent.indexOf('{');
                     if (jsonStart !== -1) {
                         const prefix = formattedContent.substring(0, jsonStart);
@@ -1237,8 +1237,8 @@ HTML_TEMPLATE = '''
                         }
                     }
                 }
-                
-                // Handle newlines
+
+                // Handle newlines by replacing them with <br> tags
                 formattedContent = formattedContent.split(`\n`).join('<br>');
                 
                 const userEmail = document.querySelector('.user-email').textContent;
