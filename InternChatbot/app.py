@@ -186,14 +186,14 @@ def chat():
             if not chat_id:
                 return jsonify({"error": "Failed to create chat"}), 500
 
-            # Generate and update title for first message
-            title = generate_chat_title(message)
-            update_chat_title(chat_id, title)
+            # Set title based on first message
+            if message.lower().startswith('please help me convert'):
+                update_chat_title(chat_id, "Data Format Conversion")
+            else:
+                title = generate_chat_title(message)
+                update_chat_title(chat_id, title)
 
-        # Store user message
-        add_message(chat_id, message, is_user=True)
-
-        # Get Claude's response based on previous context
+        # Get previous messages for context
         messages_query = """
         SELECT content, is_user 
         FROM messages 
@@ -201,26 +201,36 @@ def chat():
         ORDER BY created_at ASC
         """
         previous_messages = execute_query(messages_query, (chat_id,))
-        
-        # Build message history for context
-        message_history = []
-        for msg in previous_messages:
-            role = "user" if msg['is_user'] else "assistant"
-            message_history.append({"role": role, "content": msg['content']})
 
-        # Add current message
-        message_history.append({"role": "user", "content": message})
+        # Store user message
+        add_message(chat_id, message, is_user=True)
 
-        # Get response
-        response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=1000,
-            temperature=0,
-            messages=message_history
-        )
-        
-        bot_response = response.content[0].text
-        
+        # Check if this is a conversion request
+        if message.lower().startswith('please help me convert') or \
+           (previous_messages and any('help me convert' in msg['content'].lower() for msg in previous_messages)):
+            # Handle conversion workflow
+            bot_response = handle_conversion_request(
+                message,
+                [{'content': msg['content'], 'is_user': msg['is_user']} 
+                 for msg in previous_messages]
+            )
+        else:
+            # Regular chat processing
+            message_history = []
+            for msg in previous_messages:
+                role = "user" if msg['is_user'] else "assistant"
+                message_history.append({"role": role, "content": msg['content']})
+
+            message_history.append({"role": "user", "content": message})
+
+            response = client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=1000,
+                temperature=0,
+                messages=message_history
+            )
+            bot_response = response.content[0].text
+
         # Store bot response
         add_message(chat_id, bot_response, is_user=False)
         

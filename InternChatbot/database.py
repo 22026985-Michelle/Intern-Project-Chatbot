@@ -312,97 +312,133 @@ def update_chat_section(chat_id, section):
         logger.error(f"Error updating chat section: {str(e)}")
         return None
     
-def handle_format_request(message, chat_id, file=None):
-    """Handle data format conversion requests"""
-    try:
-        # Case 1: No data provided
-        if not file and not (message and len(message.split('\n')) > 1):
-            return {
-                "status": "need_data",
-                "message": "Please provide the data you would want to convert and add a supporting JSON file "
-                          "(if excel file is input and vice versa) to help me format the output correctly."
-            }
-
-        file_handler = FileHandler()
-        
-        # Case 2: Copy-pasted text with data
-        if not file and message:
-            # Check if it contains actual data (more than just the convert request)
-            if len(message.split('\n')) > 1:
-                formatted_text = format_text_with_indentation(message)
-                return {
-                    "status": "success",
-                    "result": formatted_text,
-                    "format": "json"
-                }
+def handle_conversion_request(message, previous_messages):
+    """Handle the three-step conversion workflow"""
+    if not previous_messages:
+        # Step 1: Initial request
+        return "I don't see any data provided. Could you please share the data you'd like to convert?"
+    
+    previous_request = previous_messages[-1]
+    if "Could you please share the data" in previous_request['content']:
+        # Step 2: Data provided
+        data = message.strip()
+        if len(data.split('\n')) <= 1:
+            return "Please provide the actual data you want to convert."
             
-        # Case 3: File upload
-        elif file:
-            filename = file.filename
-            ext = os.path.splitext(filename)[1].lower()
+        source_format = detect_format(data)
+        if source_format == 'json':
+            # Show example tabular format
+            return ("I see you've provided JSON data. I'll convert it to tabular format. " 
+                   "Would you like the output similar to this format?\n\n"
+                   "| Column1 | Column2 | Column3 |\n"
+                   "|---------|---------|----------|\n"
+                   "| value1  | value2  | value3  |")
+        else:
+            # Show example JSON format
+            return ("I see you've provided tabular data. I'll convert it to JSON format. "
+                   "Would you like the output similar to this format?\n\n"
+                   "{\n  \"field1\": \"value1\",\n  \"field2\": \"value2\"\n}")
+    
+    # Step 3: Convert and format
+    data = previous_messages[-2]['content']  # Get the actual data
+    source_format = detect_format(data)
+    return convert_format(data, source_format)
+
+def detect_format(text):
+    """Enhanced format detection"""
+    text = text.strip()
+    # Check for JSON format
+    if (text.startswith('{') and text.endswith('}')) or \
+       (text.startswith('[') and text.endswith(']')):
+        try:
+            json.loads(text)
+            return 'json'
+        except json.JSONDecodeError:
+            pass
             
-            if ext in ['.xlsx', '.xls', '.csv']:
-                return {
-                    "status": "need_reference",
-                    "message": "Please provide a JSON file to help me format the output correctly."
-                }
-            elif ext in ['.json', '.txt']:
-                try:
-                    # Process the JSON reference format
-                    reference_format = json.load(file)
-                    return {
-                        "status": "reference_received",
-                        "reference_format": reference_format
-                    }
-                except json.JSONDecodeError:
-                    return {
-                        "status": "error",
-                        "message": "The provided file is not valid JSON. Please check the format."
-                    }
+    # Look for tabular indicators
+    lines = text.split('\n')
+    if len(lines) > 1:
+        # Check for consistent delimiters and header row
+        first_line = lines[0].strip()
+        if '|' in first_line or '\t' in first_line or ',' in first_line:
+            return 'tabular'
+        # Check if it looks like space-separated column headers
+        if len(first_line.split()) > 1 and \
+           all(not c.isdigit() for c in first_line):
+            return 'tabular'
+            
+    return 'tabular'
 
-        return {
-            "status": "error",
-            "message": "Please provide either data to convert or a file to process."
-        }
-
-    except Exception as e:
-        logger.error(f"Error in format conversion: {str(e)}")
-        return {
-            "status": "error",
-            "message": f"Error processing request: {str(e)}"
-        }
-
-    except Exception as e:
-        logger.error(f"Error in format conversion: {str(e)}")
-        return {
-            "status": "error",
-            "message": f"Error processing request: {str(e)}"
-        }
-
-def format_text_with_indentation(text):
-    """Format text as properly indented JSON"""
+def convert_format(text, source_format):
+    """Enhanced format conversion"""
     try:
-        # Convert text to structured data
-        data = convert_text_to_structured_data(text)
-        # Return properly indented JSON
-        return json.dumps(data, indent=2)
+        if source_format == 'json':
+            # Convert JSON to tabular
+            data = json.loads(text)
+            if isinstance(data, dict):
+                data = [data]
+                
+            # Extract all possible keys while preserving order
+            headers = []
+            seen_keys = set()
+            for item in data:
+                for key in item.keys():
+                    if key not in seen_keys:
+                        headers.append(key)
+                        seen_keys.add(key)
+            
+            # Create table with aligned columns
+            rows = []
+            # Add header row
+            rows.append('| ' + ' | '.join(headers) + ' |')
+            # Add separator row
+            rows.append('|' + '|'.join(['---' for _ in headers]) + '|')
+            # Add data rows
+            for item in data:
+                row_values = []
+                for header in headers:
+                    value = str(item.get(header, ''))
+                    row_values.append(value)
+                rows.append('| ' + ' | '.join(row_values) + ' |')
+                
+            return '\n'.join(rows)
+            
+        else:
+            # Convert tabular to JSON
+            lines = [line.strip() for line in text.split('\n') if line.strip()]
+            
+            # Handle different table formats
+            if '|' in lines[0]:
+                # Markdown table format
+                headers = [h.strip() for h in lines[0].strip('|').split('|')]
+                data_lines = lines[2:]  # Skip header and separator
+                delimiter = '|'
+            else:
+                # Space/tab separated
+                headers = lines[0].split()
+                data_lines = lines[1:]
+                delimiter = None
+                
+            # Parse data rows
+            data = []
+            for line in data_lines:
+                if delimiter:
+                    values = [v.strip() for v in line.strip(delimiter).split(delimiter)]
+                else:
+                    values = line.split()
+                    
+                row = {}
+                for i, header in enumerate(headers):
+                    if i < len(values):
+                        row[header.strip()] = values[i].strip()
+                data.append(row)
+                
+            return json.dumps(data, indent=2)
+            
     except Exception as e:
-        logger.error(f"Error formatting text: {str(e)}")
-        return None
-
-def convert_text_to_structured_data(text):
-    """Convert raw text input to structured data format"""
-    # Add your text parsing logic here
-    # This should return a dictionary that matches your desired JSON structure
-    return {
-        "ChildInfo": {
-            "IdentityNumber": "",
-            "IdentityType": "",
-            "YearOfBirth": "",
-            "TypeOfCitizenship": ""
-        },
-        # ... rest of the structure
-    }
+        logger.error(f"Error converting format: {str(e)}")
+        return f"Error converting format: {str(e)}"
 
 def parse_text_data(text):
     """Parse copy-pasted text data into structured format"""
