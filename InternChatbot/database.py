@@ -5,6 +5,10 @@ from datetime import datetime
 import uuid
 from werkzeug.security import generate_password_hash, check_password_hash
 import logging
+import pandas as pd
+import json
+from flask import jsonify
+from datetime import datetime
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -323,3 +327,132 @@ def update_chat_section(chat_id, section):
     except Exception as e:
         logger.error(f"Error updating chat section: {str(e)}")
         return None
+    
+class FileHandler:
+    def __init__(self):
+        self.supported_formats = {
+            'excel': ['.xlsx', '.xls'],
+            'json': ['.json', '.txt'],
+            'csv': ['.csv']
+        }
+        
+    def process_file(self, file, chat_id, user_id, target_format='json', reference_format=None):
+        """
+        Process uploaded file and convert to target format
+        """
+        try:
+            filename = file.filename
+            ext = os.path.splitext(filename)[1].lower()
+            
+            # Store file metadata in users table
+            self._store_file_metadata(user_id, filename, ext)
+            
+            # Read and process file
+            if ext in self.supported_formats['excel']:
+                df = pd.read_excel(file)
+                data = self._process_dataframe(df)
+            elif ext in self.supported_formats['csv']:
+                df = pd.read_csv(file)
+                data = self._process_dataframe(df)
+            elif ext in self.supported_formats['json']:
+                data = json.load(file)
+            else:
+                raise ValueError(f"Unsupported file format: {ext}")
+
+            # Convert to target format
+            if target_format == 'json':
+                result = self._to_json(data, reference_format)
+            elif target_format == 'table':
+                result = self._to_table(data)
+            else:
+                raise ValueError(f"Unsupported target format: {target_format}")
+
+            # Store the processed result in messages table
+            self._store_message(chat_id, result, False)
+            
+            return result
+
+        except Exception as e:
+            logging.error(f"Error processing file: {str(e)}")
+            raise
+
+    def _store_file_metadata(self, user_id, filename, file_type):
+        """Store file metadata in users table"""
+        query = """
+        UPDATE users 
+        SET file_name = %s, 
+            file_type = %s,
+            file_data = NOW()
+        WHERE user_id = %s
+        """
+        execute_query(query, (filename, file_type, user_id))
+
+    def _store_message(self, chat_id, content, is_user):
+        """Store message in messages table"""
+        query = """
+        INSERT INTO messages (chat_id, content, is_user, created_at)
+        VALUES (%s, %s, %s, NOW())
+        """
+        execute_query(query, (chat_id, content, is_user))
+
+    def _process_dataframe(self, df):
+        """Convert DataFrame to dictionary with proper structure"""
+        # Remove any unnamed columns
+        df = df.loc[:, ~df.columns.str.contains('^Unnamed')]
+        return df.to_dict(orient='records')
+
+    def _to_json(self, data, reference_format=None):
+        """Convert data to JSON format with proper indentation"""
+        if reference_format:
+            formatted_data = self._apply_reference_format(data, reference_format)
+        else:
+            formatted_data = data
+        return json.dumps(formatted_data, indent=2)
+
+    def _to_table(self, data):
+        """Convert JSON data to table format"""
+        if isinstance(data, str):
+            data = json.loads(data)
+            
+        flat_data = self._flatten_json(data)
+        headers = list(flat_data.keys())
+        rows = [list(flat_data.values())]
+        
+        table = "| " + " | ".join(headers) + " |\n"
+        table += "|" + "|".join(["-" * (len(header) + 2) for header in headers]) + "|\n"
+        for row in rows:
+            table += "| " + " | ".join(str(cell) for cell in row) + " |\n"
+            
+        return table
+
+    def _flatten_json(self, nested_json, prefix=''):
+        """Flatten nested JSON structure"""
+        flattened = {}
+        for key, value in nested_json.items():
+            if isinstance(value, dict):
+                flattened.update(self._flatten_json(value, f"{prefix}{key}_"))
+            else:
+                flattened[f"{prefix}{key}"] = value
+        return flattened
+
+    def _apply_reference_format(self, data, reference_format):
+        """Apply reference JSON format structure to the data"""
+        if isinstance(reference_format, str):
+            reference_format = json.loads(reference_format)
+            
+        formatted_data = {}
+        for key, value in reference_format.items():
+            if isinstance(value, dict):
+                formatted_data[key] = self._apply_reference_format(data, value)
+            else:
+                formatted_data[key] = data.get(key, "")
+        return formatted_data
+
+    def get_previous_file_data(self, user_id):
+        """Retrieve previous file data for a user"""
+        query = """
+        SELECT file_name, file_type, file_data
+        FROM users
+        WHERE user_id = %s
+        """
+        return execute_query(query, (user_id,))
