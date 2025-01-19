@@ -323,44 +323,120 @@ def update_chat_section(chat_id, section):
         logger.error(f"Error updating chat section: {str(e)}")
         return None
     
+def convert_json_to_table(json_data):
+    """Convert JSON to table format"""
+    try:
+        # Flatten the JSON structure
+        flattened_data = {}
+        for section, content in json_data.items():
+            if isinstance(content, dict):
+                for key, value in content.items():
+                    if isinstance(value, dict):
+                        for subkey, subvalue in value.items():
+                            flattened_data[f"{section}_{key}_{subkey}"] = str(subvalue)
+                    else:
+                        flattened_data[f"{section}_{key}"] = str(value) if value != "" else "-"
+            else:
+                flattened_data[section] = str(content) if content != "" else "-"
+
+        # Create DataFrame
+        df = pd.DataFrame([flattened_data])
+        
+        # Generate formatted table
+        headers = list(df.columns)
+        
+        # Create table string
+        table = "| " + " | ".join(headers) + " |\n"
+        table += "|" + "|".join(["---" for _ in headers]) + "|\n"
+        table += "| " + " | ".join([str(v) if v != "" else "-" for v in df.iloc[0]]) + " |"
+        
+        return table
+        
+    except Exception as e:
+        logger.error(f"Error converting to table: {str(e)}")
+        return None
+    
+def convert_tabular_to_json(text):
+    """Convert tabular data to JSON format"""
+    try:
+        # Split into lines and remove empty lines
+        lines = [line.strip() for line in text.split('\n') if line.strip()]
+        
+        # Get headers
+        if '|' in lines[0]:
+            # Handle markdown table format
+            headers = [h.strip() for h in lines[0].strip('|').split('|') if h.strip()]
+            data_lines = lines[2:] if len(lines) > 2 else []  # Skip separator line
+            separator = '|'
+        else:
+            # Handle space/tab separated
+            headers = lines[0].split()
+            data_lines = lines[1:]
+            separator = None
+            
+        # Parse data into structured format
+        structured_data = {}
+        if data_lines:
+            if separator:
+                values = [v.strip() for v in data_lines[0].strip('|').split('|') if v.strip()]
+            else:
+                values = data_lines[0].split()
+                
+            # Group by section
+            current_section = None
+            for header, value in zip(headers, values):
+                if '_' in header:
+                    section, field = header.split('_', 1)
+                    if section != current_section:
+                        current_section = section
+                        if current_section not in structured_data:
+                            structured_data[current_section] = {}
+                    structured_data[current_section][field] = value
+                else:
+                    structured_data[header] = value
+        
+        # Format JSON with proper indentation
+        return json.dumps(structured_data, indent=2, ensure_ascii=False)
+        
+    except Exception as e:
+        logger.error(f"Error converting to JSON: {str(e)}")
+        return None
+
 def handle_conversion_request(message, previous_messages):
-    """Handle the three-step conversion workflow with proper formatting"""
+    """Handle data conversion with automatic format detection"""
     if not previous_messages:
         # Step 1: Initial request
         return "I don't see any data provided. Could you please share the data you'd like to convert?"
     
     previous_request = previous_messages[-1]
     if "Could you please share the data" in previous_request['content']:
-        # Step 2: Data provided
+        # Step 2: Data provided, detect format and convert
         data = message.strip()
         if len(data.split('\n')) <= 1:
             return "Please provide the actual data you want to convert."
             
-        source_format = detect_format(data)
-        if source_format == 'json':
-            result = convert_format(data, 'json')
-            return "I see you've provided JSON data. I'll convert it to tabular format.\n\n" + result
-        else:
-            result = convert_format(data, 'tabular')
-            return "I see you've provided tabular data. I'll convert it to JSON format.\n\n" + result
+        # Detect format and convert automatically
+        try:
+            # Try parsing as JSON first
+            json.loads(data)
+            # If successful, it's JSON - convert to table
+            table = convert_json_to_table(json.loads(data))
+            return f"I see you've provided JSON data. Here's your converted data in tabular format:\n\n{table}"
+        except json.JSONDecodeError:
+            # Not JSON, assume it's tabular - convert to JSON
+            result = convert_tabular_to_json(data)
+            return f"I see you've provided tabular data. Here's your converted data in JSON format:\n\n{result}"
     
-    # Step 3: Process the data
-    data = previous_messages[-2]['content']  # Get the actual data
-    source_format = detect_format(data)
-    result = convert_format(data, source_format)
+    # Step 3: Process previous data
+    data = previous_messages[-2]['content']
+    try:
+        json.loads(data)
+        table = convert_json_to_table(json.loads(data))
+        return f"Here's your data in tabular format:\n\n{table}"
+    except json.JSONDecodeError:
+        result = convert_tabular_to_json(data)
+        return f"Here's your data in JSON format:\n\n{result}"
     
-    # Format response with proper newlines and indentation
-    if source_format == 'json':
-        return "Here's your data in tabular format:\n\n" + result
-    else:
-        return (
-            "Based on your data, I'll help convert it to JSON format. "
-            "Here's the structured JSON:\n\n" + result + "\n\n"
-            "This JSON structure organizes your data into logical sections and maintains "
-            "the relationships between different elements. I've grouped related information "
-            "together and formatted dates consistently."
-        )
-
 def detect_format(text):
     """Enhanced format detection"""
     text = text.strip()
