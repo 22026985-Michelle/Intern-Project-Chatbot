@@ -6,8 +6,8 @@ from functools import wraps
 from template import HTML_TEMPLATE
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
+from dynamic_formatter import DynamicFormatter
 import logging
-logger = logging.getLogger(__name__)
 from database import (
     get_db_connection, 
     execute_query, 
@@ -22,6 +22,7 @@ from database import (
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
+formatter = DynamicFormatter()
 
 UPLOAD_FOLDER = 'static/profile_pictures'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -328,10 +329,6 @@ def after_request(response):
     response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
     return response
 
-if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
-
 @app.route('/api/create-chat', methods=['POST'])
 @login_required
 def create_chat():
@@ -564,3 +561,26 @@ def test_db():
         app.logger.error(f"Database test failed: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
     
+
+@app.route('/format', methods=['POST'])
+def format_data():
+    try:
+        data = request.get_json()
+        if not data or 'content' not in data:
+            return jsonify({'error': 'No content provided'}), 400
+            
+        content = data['content']
+        if not isinstance(content, (str, dict)):
+            return jsonify({'error': 'Invalid content format'}), 400
+            
+        result = formatter.process_data(content)
+        
+        return jsonify({
+            'status': 'success',
+            'formatted_json': result['json'],
+            'formatted_tabular': result['tabular']
+        })
+        
+    except Exception as e:
+        logging.error(f"Error processing request: {str(e)}")
+        return jsonify({'error': str(e)}), 500
