@@ -885,22 +885,27 @@ HTML_TEMPLATE = '''
                 const file = e.target.files[0];
                 if (!file) return;
 
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('chat_id', this.currentChatId);
-                
-                const message = document.getElementById('userInput').value.trim();
-                if (message) {
-                    formData.append('message', message);
-                }
-
                 try {
-                    const response = await fetch('/api/chat', {
+                    if (!this.currentChatId) {
+                        await this.createNewChat();
+                    }
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('chat_id', this.currentChatId);
+                    
+                    const message = document.getElementById('userInput').value.trim();
+                    if (message) {
+                        formData.append('message', message);
+                    }
+
+                    const response = await fetch(`${this.BASE_URL}/api/chat`, {
                         method: 'POST',
-                        body: formData,
-                        credentials: 'include'
+                        credentials: 'include',
+                        body: formData
                     });
 
+                    if (!response.ok) throw new Error('Failed to upload file');
                     const data = await response.json();
                     
                     if (data.response) {
@@ -909,8 +914,10 @@ HTML_TEMPLATE = '''
                         document.getElementById('userInput').value = '';
                         this.clearFileInput();
                     }
+
                 } catch (error) {
                     console.error('Error uploading file:', error);
+                    alert('Failed to upload file. Please try again.');
                 }
             }
 
@@ -1150,41 +1157,44 @@ HTML_TEMPLATE = '''
                 if (!message) return;
 
                 try {
-                    const isFirstMessage = !this.currentChatId;
-                    
-                    if (isFirstMessage) {
-                        const createResponse = await fetch(`${this.BASE_URL}/api/create-chat`, {
-                            method: 'POST',
-                            credentials: 'include',
-                            headers: { 'Content-Type': 'application/json' }
-                        });
-                        
-                        if (!createResponse.ok) throw new Error('Failed to create chat');
-                        const chatData = await createResponse.json();
-                        this.currentChatId = chatData.chat_id;
-
-                        // Hide greeting immediately when starting new chat
-                        const greeting = document.querySelector('.greeting');
-                        if (greeting) {
-                            greeting.style.display = 'none';
-                        }
-
-                        // Generate and set chat title
-                        const titleResponse = await fetch(`${this.BASE_URL}/api/generate-title`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ message })
-                        });
-                        
-                        if (titleResponse.ok) {
-                            const titleData = await titleResponse.json();
-                            await fetch(`${this.BASE_URL}/api/chat/${this.currentChatId}/title`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({ title: titleData.title })
-                            });
-                        }
+                    if (!this.currentChatId) {
+                        await this.createNewChat();
                     }
+
+                    // Add user message to UI immediately
+                    this.addMessageToUI(message, true);
+
+                    const response = await fetch(`${this.BASE_URL}/api/chat`, {
+                        method: 'POST',
+                        credentials: 'include',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            chat_id: this.currentChatId,
+                            message
+                        })
+                    });
+
+                    if (!response.ok) throw new Error('Failed to send message');
+                    const data = await response.json();
+
+                    if (data.chat_id) {
+                        this.currentChatId = data.chat_id;
+                    }
+
+                    // Add bot response to UI
+                    this.addMessageToUI(data.response, false);
+
+                    // Clear input after successful send
+                    input.value = '';
+
+                    // Refresh recent chats
+                    await this.loadRecentChats();
+
+                } catch (error) {
+                    console.error('Error sending message:', error);
+                    alert('Failed to send message. Please try again.');
+                }
+            }
 
                     // Add user message to UI immediately
                     this.addMessageToUI(message, true);

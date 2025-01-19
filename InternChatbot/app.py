@@ -155,12 +155,21 @@ def chat():
         if not client:
             return jsonify({"error": "Anthropic client not initialized"}), 500
 
-        message = request.form.get('message', '')
-        file = request.files.get('file')
-        chat_id = request.form.get('chat_id')
+        # Check if this is a file upload or regular message
+        is_file_upload = request.files and request.files.get('file')
         
+        if is_file_upload:
+            file = request.files['file']
+            message = request.form.get('message', '')
+            chat_id = request.form.get('chat_id')
+        else:
+            data = request.get_json()
+            message = data.get('message', '')
+            chat_id = data.get('chat_id')
+            file = None
+
+        # Create new chat if no chat_id provided
         if not chat_id:
-            # Create new chat if no chat_id provided
             user_email = session.get('user_email')
             user_query = "SELECT user_id FROM users WHERE email = %s"
             user_result = execute_query(user_query, (user_email,))
@@ -172,42 +181,17 @@ def chat():
             if not chat_id:
                 return jsonify({"error": "Failed to create chat"}), 500
 
-        # Handle format conversion request
-        if "convert" in message.lower() and "format" in message.lower():
+        # Handle convert format request
+        if message and "convert" in message.lower():
             result = handle_format_request(message, chat_id, file)
-            
-            if result["status"] == "need_data":
-                response_text = result["message"]
-            elif result["status"] == "success":
-                # Ensure proper formatting with indentation
-                if isinstance(result["result"], dict):
-                    response_text = (
-                        "Here's your data in JSON format:\n\n"
-                        f"```json\n{json.dumps(result['result'], indent=2)}\n```"
-                    )
-                else:
-                    response_text = (
-                        "Here's your data in JSON format:\n\n"
-                        f"```json\n{result['result']}\n```"
-                    )
-            else:
-                response_text = result.get("message", "An error occurred during processing")
+            return jsonify({"response": result.get("message") if result.get("status") != "success" else result.get("result")})
 
-            # Store the interaction in the database
-            add_message(chat_id, message, is_user=True)
-            add_message(chat_id, response_text, is_user=False)
-
-            return jsonify({"response": response_text})
-
-        # Normal chat processing
+        # Regular chat processing
         response = client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=1000,
             temperature=0,
-            messages=[{
-                "role": "user",
-                "content": message
-            }]
+            messages=[{"role": "user", "content": message}]
         )
         
         bot_response = response.content[0].text
@@ -216,7 +200,11 @@ def chat():
         add_message(chat_id, message, is_user=True)
         add_message(chat_id, bot_response, is_user=False)
         
-        return jsonify({"response": bot_response})
+        return jsonify({"response": bot_response, "chat_id": chat_id})
+
+    except Exception as e:
+        logger.error(f"Error in chat endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
     except Exception as e:
         logger.error(f"Error in chat endpoint: {str(e)}")
