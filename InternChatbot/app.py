@@ -4,12 +4,21 @@ from datetime import datetime
 import os
 from functools import wraps
 from template import HTML_TEMPLATE
-from database import get_db_connection, execute_query, create_user, create_new_chat,  get_recent_chats, add_message, cleanup_old_chats
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import logging
 logger = logging.getLogger(__name__)
-from database import FileHandler
+from database import (
+    get_db_connection, 
+    execute_query, 
+    create_user, 
+    create_new_chat, 
+    get_recent_chats, 
+    add_message, 
+    cleanup_old_chats,
+    FileHandler,
+    handle_format_request 
+)
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -335,6 +344,10 @@ def create_chat():
     except Exception as e:
         app.logger.error(f"Error creating chat: {str(e)}")
         return jsonify({"error": str(e)}), 500
+
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
 
 @app.route('/api/chat-history', methods=['GET'])
 @login_required
