@@ -17,7 +17,7 @@ from database import (
     add_message, 
     cleanup_old_chats,
     FileHandler,
-    handle_format_request 
+    handle_conversion_request 
 )
 
 app = Flask(__name__)
@@ -186,14 +186,14 @@ def chat():
             if not chat_id:
                 return jsonify({"error": "Failed to create chat"}), 500
 
-            # Generate and update title for first message
-            title = generate_chat_title(message)
-            update_chat_title(chat_id, title)
+            # Set title based on first message
+            if message.lower().startswith('please help me convert'):
+                update_chat_title(chat_id, "Data Format Conversion")
+            else:
+                title = generate_chat_title(message)
+                update_chat_title(chat_id, title)
 
-        # Store user message
-        add_message(chat_id, message, is_user=True)
-
-        # Get Claude's response based on previous context
+        # Get previous messages for context
         messages_query = """
         SELECT content, is_user 
         FROM messages 
@@ -201,26 +201,36 @@ def chat():
         ORDER BY created_at ASC
         """
         previous_messages = execute_query(messages_query, (chat_id,))
-        
-        # Build message history for context
-        message_history = []
-        for msg in previous_messages:
-            role = "user" if msg['is_user'] else "assistant"
-            message_history.append({"role": role, "content": msg['content']})
 
-        # Add current message
-        message_history.append({"role": "user", "content": message})
+        # Store user message
+        add_message(chat_id, message, is_user=True)
 
-        # Get response
-        response = client.messages.create(
-            model="claude-3-5-sonnet-20241022",
-            max_tokens=1000,
-            temperature=0,
-            messages=message_history
-        )
-        
-        bot_response = response.content[0].text
-        
+        # Check if this is a conversion request
+        if message.lower().startswith('please help me convert') or \
+           (previous_messages and any('help me convert' in msg['content'].lower() for msg in previous_messages)):
+            # Handle conversion workflow
+            bot_response = handle_conversion_request(
+                message,
+                [{'content': msg['content'], 'is_user': msg['is_user']} 
+                 for msg in previous_messages]
+            )
+        else:
+            # Regular chat processing
+            message_history = []
+            for msg in previous_messages:
+                role = "user" if msg['is_user'] else "assistant"
+                message_history.append({"role": role, "content": msg['content']})
+
+            message_history.append({"role": "user", "content": message})
+
+            response = client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=1000,
+                temperature=0,
+                messages=message_history
+            )
+            bot_response = response.content[0].text
+
         # Store bot response
         add_message(chat_id, bot_response, is_user=False)
         
@@ -554,97 +564,3 @@ def test_db():
         app.logger.error(f"Database test failed: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
     
-
-@app.route('/api/process-file', methods=['POST'])
-@login_required
-def process_file():
-    try:
-        file = request.files.get('file')
-        target_format = request.form.get('target_format', 'json')
-        reference_format = request.form.get('reference_format')
-        chat_id = request.form.get('chat_id')
-        user_email = session.get('user_email')
-
-        if not file:
-            return jsonify({"error": "No file provided"}), 400
-
-        if not chat_id:
-            return jsonify({"error": "Chat ID is required"}), 400
-
-        # Get user_id from email
-        user_query = "SELECT user_id FROM users WHERE email = %s"
-        user_result = execute_query(user_query, (user_email,))
-        if not user_result:
-            return jsonify({"error": "User not found"}), 404
-
-        user_id = user_result[0]['user_id']
-
-        # Process file
-        file_handler = FileHandler()
-        result = file_handler.process_file(
-            file=file,
-            chat_id=chat_id,
-            user_id=user_id,
-            target_format=target_format,
-            reference_format=reference_format
-        )
-
-        # Update chat timestamp
-        update_query = "UPDATE chats SET updated_at = NOW() WHERE chat_id = %s"
-        execute_query(update_query, (chat_id,))
-
-        return jsonify({
-            "status": "success",
-            "result": result
-        })
-
-    except Exception as e:
-        app.logger.error(f"Error in file processing: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/get-file-history', methods=['GET'])
-@login_required
-def get_file_history():
-    try:
-        user_email = session.get('user_email')
-        user_query = "SELECT user_id FROM users WHERE email = %s"
-        user_result = execute_query(user_query, (user_email,))
-        
-        if not user_result:
-            return jsonify({"error": "User not found"}), 404
-
-        user_id = user_result[0]['user_id']
-        
-        file_handler = FileHandler()
-        file_data = file_handler.get_previous_file_data(user_id)
-        
-        return jsonify({
-            "status": "success",
-            "file_data": file_data
-        })
-
-    except Exception as e:
-        app.logger.error(f"Error getting file history: {str(e)}")
-        return jsonify({"error": str(e)}), 500
-    
-
-@app.route('/api/convert-format', methods=['POST'])
-@login_required
-def convert_format():
-    try:
-        message = request.form.get('message', '')
-        file = request.files.get('file')
-        chat_id = request.form.get('chat_id')
-        reference_format = request.form.get('reference_format')
-
-        result = handle_format_request(message, chat_id, file, reference_format)
-        
-        if result["status"] == "need_reference":
-            # Store the original file temporarily for when reference format is provided
-            store_temp_file(chat_id, file)
-            
-        return jsonify(result)
-
-    except Exception as e:
-        logger.error(f"Error in convert_format endpoint: {str(e)}")
-        return jsonify({"error": str(e)}), 500
