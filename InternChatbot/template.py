@@ -888,33 +888,33 @@ HTML_TEMPLATE = '''
                     }
 
                     const formData = new FormData();
-                    formData.append('file', file);
-                    formData.append('chat_id', this.currentChatId);
+                    formData.append("file", file);
+                    formData.append("chat_id", this.currentChatId);
                     
-                    const message = document.getElementById('userInput').value.trim();
+                    const message = document.getElementById("userInput").value.trim();
                     if (message) {
-                        formData.append('message', message);
+                        formData.append("message", message);
                     }
 
-                    const response = await fetch(`${this.BASE_URL}/api/chat`, {
-                        method: 'POST',
-                        credentials: 'include',
+                    const response = await fetch(this.BASE_URL + "/api/chat", {
+                        method: "POST",
+                        credentials: "include",
                         body: formData
                     });
 
-                    if (!response.ok) throw new Error('Failed to upload file');
+                    if (!response.ok) throw new Error("Failed to upload file");
                     const data = await response.json();
                     
                     if (data.response) {
-                        this.addMessageToUI(message || `Uploaded file: ${file.name}`, true);
+                        this.addMessageToUI(message || "Uploaded file: " + file.name, true);
                         this.addMessageToUI(data.response, false);
-                        document.getElementById('userInput').value = '';
+                        document.getElementById("userInput").value = "";
                         this.clearFileInput();
                     }
 
                 } catch (error) {
-                    console.error('Error uploading file:', error);
-                    alert('Failed to upload file. Please try again.');
+                    console.error("Error uploading file:", error);
+                    alert("Failed to upload file. Please try again.");
                 }
             }
 
@@ -932,20 +932,20 @@ HTML_TEMPLATE = '''
 
             async generateChatTitle(message) {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/generate-title`, { 
-                        method: 'POST',
+                    const response = await fetch(this.BASE_URL + "/api/generate-title", {
+                        method: "POST",
                         headers: {
-                            'Content-Type': 'application/json'
+                            "Content-Type": "application/json"
                         },
-                        body: JSON.stringify({ message })
+                        body: JSON.stringify({ message: message })
                     });
 
-                    if (!response.ok) throw new Error('Failed to generate title');
+                    if (!response.ok) throw new Error("Failed to generate title");
                     const data = await response.json();
                     return data.title;
                 } catch (error) {
-                    console.error('Error generating title:', error);
-                    return 'New Chat';
+                    console.error("Error generating title:", error);
+                    return "New Chat";
                 }
             }
 
@@ -1102,12 +1102,12 @@ HTML_TEMPLATE = '''
 
             async getChatMessages(chatId) {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`);
-                    if (!response.ok) throw new Error('Failed to get chat messages');
+                    const response = await fetch(this.BASE_URL + "/api/chat/" + chatId + "/messages");
+                    if (!response.ok) throw new Error("Failed to get chat messages");
                     const data = await response.json();
                     return data.messages;
                 } catch (error) {
-                    console.error('Error getting chat messages:', error);
+                    console.error("Error getting chat messages:", error);
                     return [];
                 }
             }
@@ -1139,7 +1139,7 @@ HTML_TEMPLATE = '''
             }
                         
             async sendMessage() {
-                const input = document.getElementById('userInput');
+                const input = document.getElementById("userInput");
                 const message = input.value.trim();
                 if (!message) return;
 
@@ -1148,30 +1148,27 @@ HTML_TEMPLATE = '''
                         await this.createNewChat();
                     }
 
-                    // Add user message to UI immediately
                     this.addMessageToUI(message, true);
 
-                    const response = await fetch(`${this.BASE_URL}/api/chat`, {
-                        method: 'POST',
-                        credentials: 'include',
-                        headers: { 'Content-Type': 'application/json' },
+                    const response = await fetch(this.BASE_URL + "/api/chat", {
+                        method: "POST",
+                        credentials: "include",
+                        headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             chat_id: this.currentChatId,
-                            message
+                            message: message
                         })
                     });
 
-                    if (!response.ok) throw new Error('Failed to send message');
+                    if (!response.ok) throw new Error("Failed to send message");
                     const data = await response.json();
 
                     if (data.chat_id) {
                         this.currentChatId = data.chat_id;
                     }
 
-                    // Add bot response to UI
                     this.addMessageToUI(data.response, false);
 
-                    // Cache the messages for this chat
                     if (!this.messageCache.has(this.currentChatId)) {
                         this.messageCache.set(this.currentChatId, []);
                     }
@@ -1180,22 +1177,18 @@ HTML_TEMPLATE = '''
                         { content: data.response, is_user: false }
                     );
 
-                    // Clear input after successful send
-                    input.value = '';
-
-                    // Refresh recent chats
+                    input.value = "";
                     await this.loadRecentChats();
 
-                    // Ensure messages are visible
-                    const messagesList = document.getElementById('messagesList');
+                    const messagesList = document.getElementById("messagesList");
                     if (messagesList) {
-                        messagesList.style.display = 'block';
+                        messagesList.style.display = "block";
                         messagesList.scrollTop = messagesList.scrollHeight;
                     }
 
                 } catch (error) {
-                    console.error('Error sending message:', error);
-                    alert('Failed to send message. Please try again.');
+                    console.error("Error sending message:", error);
+                    alert("Failed to send message. Please try again.");
                 }
             }
 
@@ -1322,87 +1315,78 @@ HTML_TEMPLATE = '''
             }
 
             async deleteChat(chatId) {
-                if (!confirm('Are you sure you want to delete this chat?')) return;
+                if (!confirm("Are you sure you want to delete this chat?")) return;
 
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}`, {
-                        method: 'DELETE',
-                        credentials: 'include'
+                    const response = await fetch(this.BASE_URL + "/api/chat/" + chatId, {
+                        method: "DELETE",
+                        credentials: "include"
                     });
 
-                    if (!response.ok) throw new Error('Failed to delete chat');
+                    if (!response.ok) throw new Error("Failed to delete chat");
 
                     if (chatId === this.currentChatId) {
                         this.currentChatId = null;
-                        document.getElementById('messagesList').innerHTML = '';
+                        document.getElementById("messagesList").innerHTML = "";
                     }
 
                     await this.loadRecentChats();
                 } catch (error) {
-                    console.error('Error deleting chat:', error);
+                    console.error("Error deleting chat:", error);
                 }
             }
 
             async loadChat(chatId) {
                 try {
-                    console.log('Loading chat:', chatId);
+                    console.log("Loading chat:", chatId);
                     this.currentChatId = chatId;
                     
-                    // Hide greeting
-                    const greeting = document.querySelector('.greeting');
+                    const greeting = document.querySelector(".greeting");
                     if (greeting) {
-                        greeting.style.display = 'none';
+                        greeting.style.display = "none";
                     }
 
-                    // Clear and show messages container
-                    const messagesList = document.getElementById('messagesList');
+                    const messagesList = document.getElementById("messagesList");
                     if (!messagesList) return;
-                    messagesList.innerHTML = '';
-                    messagesList.style.display = 'block';
+                    messagesList.innerHTML = "";
+                    messagesList.style.display = "block";
 
-                    // Try to get messages from cache first
                     let messages = this.messageCache.get(chatId);
 
-                    // If not in cache, fetch from server
                     if (!messages) {
-                        const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/messages`, {
-                            method: 'GET',
-                            credentials: 'include',
-                            headers: { 'Content-Type': 'application/json' }
+                        const response = await fetch(this.BASE_URL + "/api/chat/" + chatId + "/messages", {
+                            method: "GET",
+                            credentials: "include",
+                            headers: { "Content-Type": "application/json" }
                         });
 
                         if (!response.ok) {
-                            throw new Error('Failed to load chat messages');
+                            throw new Error("Failed to load chat messages");
                         }
                         
                         const data = await response.json();
                         messages = data.messages;
-                        
-                        // Cache the messages
                         this.messageCache.set(chatId, messages);
                     }
 
-                    // Display messages
                     if (messages && Array.isArray(messages)) {
                         messages.forEach(message => {
                             this.addMessageToUI(message.content, message.is_user);
                         });
                     }
 
-                    // Update active state in sidebar
-                    const allChatItems = document.querySelectorAll('.chat-item');
+                    const allChatItems = document.querySelectorAll(".chat-item");
                     allChatItems.forEach(item => {
-                        item.classList.remove('active');
-                        if (item.getAttribute('data-chat-id') === chatId.toString()) {
-                            item.classList.add('active');
+                        item.classList.remove("active");
+                        if (item.getAttribute("data-chat-id") === chatId.toString()) {
+                            item.classList.add("active");
                         }
                     });
 
-                    // Scroll to bottom
                     messagesList.scrollTop = messagesList.scrollHeight;
 
                 } catch (error) {
-                    console.error('Error loading chat:', error);
+                    console.error("Error loading chat:", error);
                 }
             }
 
