@@ -535,6 +535,26 @@ def update_chat_title(chat_id, title):
     except Exception as e:
         logger.error(f"Error updating chat title: {str(e)}")
         return False
+    
+@app.route('/api/chat/<int:chat_id>/title', methods=['PUT'])
+@login_required
+def update_chat_title_endpoint(chat_id):
+    try:
+        data = request.get_json()
+        title = data.get('title')
+        
+        if not title:
+            return jsonify({"error": "Title is required"}), 400
+            
+        # Update the chat title
+        query = "UPDATE chats SET title = %s WHERE chat_id = %s"
+        execute_query(query, (title, chat_id))
+        
+        return jsonify({"status": "success"})
+        
+    except Exception as e:
+        app.logger.error(f"Error updating chat title: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 # Update your get_recent_chats function to include titles
 def get_recent_chats(user_id, limit=5):
