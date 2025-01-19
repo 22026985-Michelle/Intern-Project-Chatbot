@@ -1239,7 +1239,7 @@ HTML_TEMPLATE = '''
                 }
                 
                 // Handle newlines
-                formattedContent = formattedContent.split('\n').join('<br>');
+                formattedContent = formattedContent.split(`\n`).join('<br>');
                 
                 const userEmail = document.querySelector('.user-email').textContent;
                 const userAvatar = userEmail[0].toUpperCase();
