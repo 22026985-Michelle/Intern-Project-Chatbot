@@ -324,7 +324,7 @@ def update_chat_section(chat_id, section):
         return None
     
 def handle_conversion_request(message, previous_messages):
-    """Handle the three-step conversion workflow"""
+    """Handle the three-step conversion workflow with proper formatting"""
     if not previous_messages:
         # Step 1: Initial request
         return "I don't see any data provided. Could you please share the data you'd like to convert?"
@@ -338,22 +338,20 @@ def handle_conversion_request(message, previous_messages):
             
         source_format = detect_format(data)
         if source_format == 'json':
-            # Show example tabular format
-            return ("I see you've provided JSON data. I'll convert it to tabular format. " 
-                   "Would you like the output similar to this format?\n\n"
-                   "| Column1 | Column2 | Column3 |\n"
-                   "|---------|---------|----------|\n"
-                   "| value1  | value2  | value3  |")
+            return "I see you've provided JSON data. I'll convert it to tabular format. Here's your converted data:\n\n" + convert_format(data, 'json')
         else:
-            # Show example JSON format
-            return ("I see you've provided tabular data. I'll convert it to JSON format. "
-                   "Would you like the output similar to this format?\n\n"
-                   "{\n  \"field1\": \"value1\",\n  \"field2\": \"value2\"\n}")
+            result = convert_format(data, 'tabular')
+            return "I see you've provided tabular data. I'll convert it to JSON format. Here's your converted data:\n\n" + result
     
-    # Step 3: Convert and format
+    # Step 3: Convert and format based on previous input
     data = previous_messages[-2]['content']  # Get the actual data
     source_format = detect_format(data)
-    return convert_format(data, source_format)
+    result = convert_format(data, source_format)
+    
+    if source_format == 'json':
+        return "Here's your data in tabular format:\n\n" + result
+    else:
+        return "Here's your data in JSON format:\n\n" + result
 
 def detect_format(text):
     """Enhanced format detection"""
@@ -382,71 +380,77 @@ def detect_format(text):
     return 'tabular'
 
 def convert_format(text, source_format):
-    """Enhanced format conversion"""
+    """Enhanced format conversion with proper formatting"""
     try:
         if source_format == 'json':
             # Convert JSON to tabular
             data = json.loads(text)
-            if isinstance(data, dict):
-                data = [data]
-                
-            # Extract all possible keys while preserving order
+            
+            # Create headers list
             headers = []
-            seen_keys = set()
-            for item in data:
-                for key in item.keys():
-                    if key not in seen_keys:
-                        headers.append(key)
-                        seen_keys.add(key)
-            
-            # Create table with aligned columns
+            if isinstance(data, dict):
+                # Flatten nested dictionary structure
+                flat_data = {}
+                for main_key, main_value in data.items():
+                    if isinstance(main_value, dict):
+                        for sub_key, sub_value in main_value.items():
+                            column_name = f"{main_key}_{sub_key}"
+                            flat_data[column_name] = str(sub_value)
+                    else:
+                        flat_data[main_key] = str(main_value)
+                headers = list(flat_data.keys())
+                data = [flat_data]
+            else:
+                headers = list(data[0].keys())
+
+            # Create rows
             rows = []
-            # Add header row
-            rows.append('| ' + ' | '.join(headers) + ' |')
-            # Add separator row
-            rows.append('|' + '|'.join(['---' for _ in headers]) + '|')
-            # Add data rows
             for item in data:
-                row_values = []
-                for header in headers:
-                    value = str(item.get(header, ''))
-                    row_values.append(value)
-                rows.append('| ' + ' | '.join(row_values) + ' |')
-                
-            return '\n'.join(rows)
-            
+                row = [str(item.get(header, '')) for header in headers]
+                rows.append(row)
+
+            # Format output with proper spacing
+            # Header row
+            result = '|' + '|'.join(headers) + '|\n'
+            # Separator row
+            result += '|' + '|'.join(['---' for _ in headers]) + '|\n'
+            # Data rows
+            for row in rows:
+                result += '|' + '|'.join(row) + '|\n'
+
+            return result
+
         else:
             # Convert tabular to JSON
             lines = [line.strip() for line in text.split('\n') if line.strip()]
             
-            # Handle different table formats
+            # Handle header row
             if '|' in lines[0]:
                 # Markdown table format
                 headers = [h.strip() for h in lines[0].strip('|').split('|')]
                 data_lines = lines[2:]  # Skip header and separator
-                delimiter = '|'
             else:
                 # Space/tab separated
                 headers = lines[0].split()
                 data_lines = lines[1:]
-                delimiter = None
-                
-            # Parse data rows
-            data = []
-            for line in data_lines:
-                if delimiter:
-                    values = [v.strip() for v in line.strip(delimiter).split(delimiter)]
+
+            # Parse data into structured format
+            data = {}
+            for header, value in zip(headers, data_lines[0].strip('|').split('|')):
+                # Split header on underscore to recreate nested structure
+                parts = header.strip().split('_')
+                if len(parts) > 1:
+                    main_key = parts[0]
+                    sub_key = '_'.join(parts[1:])
+                    if main_key not in data:
+                        data[main_key] = {}
+                    data[main_key][sub_key] = value.strip()
                 else:
-                    values = line.split()
-                    
-                row = {}
-                for i, header in enumerate(headers):
-                    if i < len(values):
-                        row[header.strip()] = values[i].strip()
-                data.append(row)
-                
-            return json.dumps(data, indent=2)
-            
+                    data[header.strip()] = value.strip()
+
+            # Return properly indented JSON
+            return json.dumps(data, indent=2, ensure_ascii=False)
+
     except Exception as e:
         logger.error(f"Error converting format: {str(e)}")
         return f"Error converting format: {str(e)}"
