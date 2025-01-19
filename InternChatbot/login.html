@@ -116,6 +116,25 @@
             background-color: var(--input-bg);
             color: var(--text-color);
         }
+        #captchaChallenge {
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center; /* Align numbers and input vertically */
+            gap: 1rem; /* Space between numbers and input */
+        }
+
+        #captchaChallenge span {
+            font-size: 1.2rem; /* Adjust font size if necessary */
+            font-weight: bold; /* Ensure the numbers stand out */
+            display: inline-block; /* Ensures the numbers are inline with the input */
+        }
+
+        #captchaInput {
+            padding: 0.5rem;
+            flex-grow: 1;
+            text-align: center; /* Center the text inside the input */
+            font-size: 1rem; /* Ensure the input text matches the number size */
+        }
     </style>
 </head>
 <body>
@@ -148,7 +167,7 @@
         const BASE_URL = 'https://internproject-4fq7.onrender.com';
         const loginForm = document.getElementById('loginForm');
         const errorMessage = document.getElementById('errorMessage');
-        const loginButton = loginForm.querySelector('button');
+        
 
         let failedAttempts = 0;
         const maxAttempts = 3;
@@ -163,7 +182,7 @@
 
         function updateAttemptsCounter() {
             const remainingAttempts = maxAttempts - failedAttempts;
-            if (remainingAttempts > 0) {
+            if (remainingAttempts > 0 && remainingAttempts > 0) {
                 attemptsCounter.textContent = `${remainingAttempts} more tries remaining`;
             } else {
                 attemptsCounter.textContent = '';
