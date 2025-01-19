@@ -140,6 +140,12 @@
         const loginForm = document.getElementById('loginForm');
         const errorMessage = document.getElementById('errorMessage');
 
+        function sanitizeHTML(input) {
+            const div = document.createElement('div');
+            div.textContent = input;
+            return div.innerHTML;
+        }   
+
         loginForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             
@@ -164,11 +170,12 @@
                     // Redirect to main chat interface
                     window.location.href = '/';
                 } else {
-                    errorMessage.textContent = data.error || 'Login failed';
+                    // Use sanitizeHTML for error messages
+                    errorMessage.textContent = sanitizeHTML(data.error || 'Login failed');
                     errorMessage.style.display = 'block';
                 }
             } catch (error) {
-                errorMessage.textContent = 'An error occurred. Please try again.';
+                errorMessage.textContent = sanitizeHTML('An error occurred. Please try again.');
                 errorMessage.style.display = 'block';
             }
         });
