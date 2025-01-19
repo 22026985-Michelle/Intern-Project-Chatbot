@@ -395,7 +395,7 @@ def after_request(response):
     app.logger.info(f"Current session data: {session}")
     response.headers.add('Access-Control-Allow-Origin', '*')
     response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
-    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, OPTIONS')
+    response.headers.add('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')  
     return response
 
 @app.route('/api/create-chat', methods=['POST'])
@@ -555,6 +555,14 @@ def update_chat_title_endpoint(chat_id):
     except Exception as e:
         app.logger.error(f"Error updating chat title: {str(e)}")
         return jsonify({"error": str(e)}), 500
+    
+@app.route('/api/chat/<int:chat_id>/title', methods=['OPTIONS'])
+def chat_title_options(chat_id):
+    response = jsonify({'status': 'ok'})
+    response.headers.add('Access-Control-Allow-Origin', '*')
+    response.headers.add('Access-Control-Allow-Headers', 'Content-Type')
+    response.headers.add('Access-Control-Allow-Methods', 'PUT')
+    return response
 
 # Update your get_recent_chats function to include titles
 def get_recent_chats(user_id, limit=5):
