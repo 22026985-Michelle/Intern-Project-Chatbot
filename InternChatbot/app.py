@@ -229,13 +229,13 @@ def chat():
                 temperature=0,
                 messages=message_history
             )
-            bot_response = response.content[0].text
+            bot_response = response.content[0].text.replace('```json', '').replace('```', '')
 
         # Store bot response
         add_message(chat_id, bot_response, is_user=False)
         
         return jsonify({
-            "response": bot_response, 
+            "response": bot_response,
             "chat_id": chat_id
         })
 

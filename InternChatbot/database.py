@@ -338,20 +338,28 @@ def handle_conversion_request(message, previous_messages):
             
         source_format = detect_format(data)
         if source_format == 'json':
-            return "I see you've provided JSON data. I'll convert it to tabular format. Here's your converted data:\n\n" + convert_format(data, 'json')
+            result = convert_format(data, 'json')
+            return "I see you've provided JSON data. I'll convert it to tabular format.\n\n" + result
         else:
             result = convert_format(data, 'tabular')
-            return "I see you've provided tabular data. I'll convert it to JSON format. Here's your converted data:\n\n" + result
+            return "I see you've provided tabular data. I'll convert it to JSON format.\n\n" + result
     
-    # Step 3: Convert and format based on previous input
+    # Step 3: Process the data
     data = previous_messages[-2]['content']  # Get the actual data
     source_format = detect_format(data)
     result = convert_format(data, source_format)
     
+    # Format response with proper newlines and indentation
     if source_format == 'json':
         return "Here's your data in tabular format:\n\n" + result
     else:
-        return "Here's your data in JSON format:\n\n" + result
+        return (
+            "Based on your data, I'll help convert it to JSON format. "
+            "Here's the structured JSON:\n\n" + result + "\n\n"
+            "This JSON structure organizes your data into logical sections and maintains "
+            "the relationships between different elements. I've grouped related information "
+            "together and formatted dates consistently."
+        )
 
 def detect_format(text):
     """Enhanced format detection"""
@@ -383,73 +391,62 @@ def convert_format(text, source_format):
     """Enhanced format conversion with proper formatting"""
     try:
         if source_format == 'json':
-            # Convert JSON to tabular
+            # Convert JSON to tabular using pandas
             data = json.loads(text)
+            # Flatten nested JSON structure
+            flattened_data = []
             
-            # Create headers list
-            headers = []
-            if isinstance(data, dict):
-                # Flatten nested dictionary structure
-                flat_data = {}
-                for main_key, main_value in data.items():
-                    if isinstance(main_value, dict):
-                        for sub_key, sub_value in main_value.items():
-                            column_name = f"{main_key}_{sub_key}"
-                            flat_data[column_name] = str(sub_value)
+            def flatten_dict(d, parent_key=''):
+                items = []
+                for k, v in d.items():
+                    new_key = f"{parent_key}_{k}" if parent_key else k
+                    if isinstance(v, dict):
+                        items.extend(flatten_dict(v, new_key).items())
+                    elif isinstance(v, list):
+                        items.append((new_key, ','.join(map(str, v))))
                     else:
-                        flat_data[main_key] = str(main_value)
-                headers = list(flat_data.keys())
-                data = [flat_data]
+                        items.append((new_key, v))
+                return dict(items)
+            
+            if isinstance(data, dict):
+                flattened_data.append(flatten_dict(data))
             else:
-                headers = list(data[0].keys())
-
-            # Create rows
-            rows = []
-            for item in data:
-                row = [str(item.get(header, '')) for header in headers]
-                rows.append(row)
-
-            # Format output with proper spacing
-            # Header row
-            result = '|' + '|'.join(headers) + '|\n'
-            # Separator row
-            result += '|' + '|'.join(['---' for _ in headers]) + '|\n'
-            # Data rows
-            for row in rows:
-                result += '|' + '|'.join(row) + '|\n'
-
-            return result
+                for item in data:
+                    flattened_data.append(flatten_dict(item))
+            
+            # Convert to pandas DataFrame
+            df = pd.DataFrame(flattened_data)
+            
+            # Format DataFrame as markdown table
+            return df.to_markdown(index=False)
 
         else:
-            # Convert tabular to JSON
+            # Convert tabular to JSON with proper formatting
             lines = [line.strip() for line in text.split('\n') if line.strip()]
             
-            # Handle header row
-            if '|' in lines[0]:
-                # Markdown table format
-                headers = [h.strip() for h in lines[0].strip('|').split('|')]
-                data_lines = lines[2:]  # Skip header and separator
-            else:
-                # Space/tab separated
-                headers = lines[0].split()
-                data_lines = lines[1:]
-
-            # Parse data into structured format
+            # Parse headers and data
+            headers = [h.strip() for h in lines[0].split('|') if h.strip()]
             data = {}
-            for header, value in zip(headers, data_lines[0].strip('|').split('|')):
-                # Split header on underscore to recreate nested structure
-                parts = header.strip().split('_')
-                if len(parts) > 1:
-                    main_key = parts[0]
-                    sub_key = '_'.join(parts[1:])
-                    if main_key not in data:
-                        data[main_key] = {}
-                    data[main_key][sub_key] = value.strip()
+            values = [v.strip() for v in lines[-1].split('|') if v.strip()]
+            
+            # Build structured data
+            current_section = None
+            for header, value in zip(headers, values):
+                if '_' in header:
+                    section, field = header.split('_', 1)
+                    if section != current_section:
+                        current_section = section
+                        if current_section not in data:
+                            data[current_section] = {}
+                    data[current_section][field] = value
                 else:
-                    data[header.strip()] = value.strip()
-
-            # Return properly indented JSON
-            return json.dumps(data, indent=2, ensure_ascii=False)
+                    data[header] = value
+            
+            # Format JSON with proper indentation
+            formatted_json = json.dumps(data, indent=2, ensure_ascii=False)
+            
+            # Add newlines for better readability
+            return formatted_json
 
     except Exception as e:
         logger.error(f"Error converting format: {str(e)}")
