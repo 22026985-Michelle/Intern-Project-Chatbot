@@ -1313,7 +1313,7 @@ HTML_TEMPLATE = '''
                 } catch (error) {
                     console.error("Error updating chat title:", error);
                 }
-            },
+            }
 
             async deleteChat(chatId) {
                 if (!confirm("Are you sure you want to delete this chat?")) return;
