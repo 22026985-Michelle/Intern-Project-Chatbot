@@ -8,6 +8,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from dynamic_formatter import DynamicFormatter
 import logging
+logger = logging.getLogger(__name__)
 from database import (
     get_db_connection, 
     execute_query, 
@@ -188,8 +189,11 @@ def chat():
                 return jsonify({"error": "Failed to create chat"}), 500
 
             # Set title based on first message
-            title = await generate_chat_title(message)
-            update_chat_title(chat_id, title)
+            if message.lower().startswith('please help me convert'):
+                update_chat_title(chat_id, "Data Format Conversion")
+            else:
+                title = generate_chat_title(message)
+                update_chat_title(chat_id, title)
 
         # Get previous messages for context
         messages_query = """
@@ -439,9 +443,10 @@ def get_chat_messages(chat_id):
         app.logger.error(f"Error getting chat messages: {str(e)}")
         return jsonify({"error": str(e)}), 500
     
-async def generate_chat_title(message):
+def generate_chat_title(message):
     try:
-        response = await client.messages.create(
+        # Use Claude to generate title
+        response = client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=50,
             temperature=0,
