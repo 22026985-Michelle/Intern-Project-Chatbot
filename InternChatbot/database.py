@@ -13,6 +13,7 @@ from typing import Union, Dict, List, Any
 import re
 from io import StringIO
 from cryptography.fernet import Fernet
+import base64
 
 __all__ = [
     'get_db_connection',
@@ -32,13 +33,32 @@ logger = logging.getLogger(__name__)
 ENCRYPTION_KEY = Fernet.generate_key()
 cipher = Fernet(ENCRYPTION_KEY)
 
-def encrypt_message(message):
+def encrypt_message(message: str) -> bytes:
     """Encrypts the message using Fernet symmetric encryption."""
-    return cipher.encrypt(message.encode())
+    if isinstance(message, str):
+        return cipher.encrypt(message.encode())
+    return message
 
-def decrypt_message(encrypted_message):
+def decrypt_message(encrypted_message: Union[str, bytes]) -> str:
     """Decrypts the encrypted message using Fernet symmetric encryption."""
-    return cipher.decrypt(encrypted_message).decode()
+    try:
+        # If the message is already a string and not encrypted, return it
+        if isinstance(encrypted_message, str):
+            try:
+                # Try to decode it as base64 first
+                encrypted_bytes = base64.b64decode(encrypted_message)
+                return cipher.decrypt(encrypted_bytes).decode()
+            except:
+                return encrypted_message
+                
+        # If it's bytes, decrypt it
+        if isinstance(encrypted_message, bytes):
+            return cipher.decrypt(encrypted_message).decode()
+            
+        return str(encrypted_message)
+    except Exception as e:
+        logger.error(f"Error decrypting message: {str(e)}")
+        return str(encrypted_message)
 
 def get_db_connection():
     """Get database connection with retry mechanism"""
@@ -228,8 +248,33 @@ def get_recent_chats(user_id, limit=5):
     """
     try:
         result = execute_query(query, (user_id, limit))
-        logger.info(f"Recent chats query result: {result}")
+        
+        if not result:
+            return []
+            
+        # Process each chat
+        for chat in result:
+            try:
+                # Decrypt last message if it exists
+                if chat.get('last_message'):
+                    chat['last_message'] = decrypt_message(chat['last_message'])
+                else:
+                    chat['last_message'] = ''
+                    
+                # Format timestamps
+                if 'created_at' in chat and chat['created_at']:
+                    chat['created_at'] = chat['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+                if 'updated_at' in chat and chat['updated_at']:
+                    chat['updated_at'] = chat['updated_at'].strftime('%Y-%m-%d %H:%M:%S')
+                    
+            except Exception as e:
+                logger.error(f"Error processing chat {chat.get('chat_id')}: {str(e)}")
+                # If decryption fails, set a placeholder message
+                chat['last_message'] = 'Message unavailable'
+                
+        logger.info(f"Retrieved and processed {len(result)} recent chats for user {user_id}")
         return result
+        
     except Exception as e:
         logger.error(f"Error in get_recent_chats: {str(e)}")
         return []
@@ -253,15 +298,24 @@ def get_chat_messages(chat_id):
             
         # Ensure all fields are serializable
         for message in result:
-            message['content'] = decrypt_message(message['content'])
-            if 'created_at' in message and message['created_at']:
-                message['created_at'] = message['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+            try:
+                # Decrypt the content
+                encrypted_content = message['content']
+                message['content'] = decrypt_message(encrypted_content)
+                
+                # Format timestamp
+                if 'created_at' in message and message['created_at']:
+                    message['created_at'] = message['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+            except Exception as e:
+                logger.error(f"Error processing message: {str(e)}")
+                # If decryption fails, return the original content
+                message['content'] = str(encrypted_content)
         
         return result
     except Exception as e:
         logger.error(f"Error getting chat messages: {str(e)}")
         return []
-
+    
 def cleanup_old_chats(user_id, keep_count=4):
     """Delete old chats, keeping only the specified number of most recent ones"""
     connection = None
