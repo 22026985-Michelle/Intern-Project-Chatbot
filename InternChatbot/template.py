@@ -1231,7 +1231,7 @@ HTML_TEMPLATE = '''
                 }
                 
                 // Handle newlines by replacing them with <br> tags
-                formattedContent = formattedContent.split('\n').join('<br>');
+                formattedContent = formattedContent.replace(/\n/g, '<br>');
                 
                 // Get the user's email first letter for the avatar
                 const userEmail = document.querySelector('.user-email').textContent;
