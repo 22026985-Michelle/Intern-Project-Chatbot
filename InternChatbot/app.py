@@ -8,6 +8,8 @@ from database import get_db_connection, execute_query, create_user, create_new_c
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 import logging
+logger = logging.getLogger(__name__)
+from database import FileHandler
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -16,6 +18,9 @@ UPLOAD_FOLDER = 'static/profile_pictures'
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -201,10 +206,6 @@ def chat():
         add_message(chat_id, bot_response, is_user=False)
         
         return jsonify({"response": bot_response, "chat_id": chat_id})
-
-    except Exception as e:
-        logger.error(f"Error in chat endpoint: {str(e)}")
-        return jsonify({"error": str(e)}), 500
 
     except Exception as e:
         logger.error(f"Error in chat endpoint: {str(e)}")
