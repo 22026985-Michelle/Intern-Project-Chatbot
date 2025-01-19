@@ -28,18 +28,11 @@ __all__ = [
 
 class ChatEncryption:
     def __init__(self, key=None):
-        self.key = key or self._load_or_generate_key()
+        self.key = key or self._generate_key()
         self.cipher = Fernet(self.key)
 
-    def _load_or_generate_key(self):
-        key_file = 'chat_encryption.key'
-        if os.path.exists(key_file):
-            with open(key_file, 'rb') as f:
-                return f.read()
-        key = Fernet.generate_key()
-        with open(key_file, 'wb') as f:
-            f.write(key)
-        return key
+    def _generate_key(self):
+        return Fernet.generate_key()
 
     def encrypt_conversation(self, messages):
         """Encrypt entire conversation as a single unit"""
