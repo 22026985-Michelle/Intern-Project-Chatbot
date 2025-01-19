@@ -12,6 +12,7 @@ from datetime import datetime
 from typing import Union, Dict, List, Any
 import re
 from io import StringIO
+from cryptography.fernet import Fernet
 
 __all__ = [
     'get_db_connection',
@@ -27,6 +28,17 @@ __all__ = [
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
+
+ENCRYPTION_KEY = Fernet.generate_key()
+cipher = Fernet(ENCRYPTION_KEY)
+
+def encrypt_message(message):
+    """Encrypts the message using Fernet symmetric encryption."""
+    return cipher.encrypt(message.encode())
+
+def decrypt_message(encrypted_message):
+    """Decrypts the encrypted message using Fernet symmetric encryption."""
+    return cipher.decrypt(encrypted_message).decode()
 
 def get_db_connection():
     """Get database connection with retry mechanism"""
@@ -167,6 +179,7 @@ def add_message(chat_id, content, is_user=True):
             return False
 
         cursor = connection.cursor(dictionary=True)
+        encrypted_content = encrypt_message(content)
         
         # Add message
         message_query = """
@@ -240,6 +253,7 @@ def get_chat_messages(chat_id):
             
         # Ensure all fields are serializable
         for message in result:
+            message['content'] = decrypt_message(message['content'])
             if 'created_at' in message and message['created_at']:
                 message['created_at'] = message['created_at'].strftime('%Y-%m-%d %H:%M:%S')
         
