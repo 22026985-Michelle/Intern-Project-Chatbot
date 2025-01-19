@@ -121,43 +121,26 @@ def create_user(email, password, username):  # Add username parameter
     
 def create_new_chat(user_id):
     """Create a new chat session for a user"""
-    connection = None
     try:
-        connection = get_db_connection()
-        if not connection:
-            logger.error("Failed to connect to database")
-            return None
-
-        cursor = connection.cursor(dictionary=True)
-        
         # Check and cleanup old chats if needed
         count_query = "SELECT COUNT(*) as chat_count FROM chats WHERE user_id = %s"
-        cursor.execute(count_query, (user_id,))
-        count_result = cursor.fetchone()
+        result = execute_query(count_query, (user_id,))
         
-        if count_result and count_result['chat_count'] >= 5:
+        if result and result[0]['chat_count'] >= 5:
             cleanup_old_chats(user_id, keep_count=4)
         
-        # Insert new chat
+        # Insert new chat with default title
         insert_query = """
         INSERT INTO chats (user_id, title, created_at, updated_at)
         VALUES (%s, %s, NOW(), NOW())
         """
-        cursor.execute(insert_query, (user_id, 'New Chat'))
-        chat_id = cursor.lastrowid
+        chat_id = execute_query(insert_query, (user_id, "New Chat"))
         
-        connection.commit()
         return chat_id
         
-    except Error as e:
+    except Exception as e:
         logger.error(f"Error in create_new_chat: {str(e)}")
-        if connection:
-            connection.rollback()
         return None
-    finally:
-        if connection and connection.is_connected():
-            cursor.close()
-            connection.close()
 
 def add_message(chat_id, content, is_user=True):
     """Add a message to a chat session"""
@@ -307,13 +290,14 @@ def get_user_by_email(email):
     return result[0] if result else None
 
 def update_chat_title(chat_id, title):
-    """Update chat title in database"""
+    """Update chat title"""
     try:
-        query = "UPDATE chats SET title = %s WHERE chat_id = %s"
-        return execute_query(query, (title, chat_id))
+        update_query = "UPDATE chats SET title = %s WHERE chat_id = %s"
+        execute_query(update_query, (title, chat_id))
+        return True
     except Exception as e:
         logger.error(f"Error updating chat title: {str(e)}")
-        return None
+        return False
     
 def update_chat_section(chat_id, section):
     """Update chat section in database"""

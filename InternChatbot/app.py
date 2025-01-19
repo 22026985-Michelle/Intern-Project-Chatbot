@@ -169,18 +169,9 @@ def chat():
         if not client:
             return jsonify({"error": "Anthropic client not initialized"}), 500
 
-        # Check if this is a file upload or regular message
-        is_file_upload = request.files and request.files.get('file')
-        
-        if is_file_upload:
-            file = request.files['file']
-            message = request.form.get('message', '')
-            chat_id = request.form.get('chat_id')
-        else:
-            data = request.get_json()
-            message = data.get('message', '')
-            chat_id = data.get('chat_id')
-            file = None
+        data = request.get_json()
+        message = data.get('message', '')
+        chat_id = data.get('chat_id')
 
         # Create new chat if no chat_id provided
         if not chat_id:
@@ -195,26 +186,48 @@ def chat():
             if not chat_id:
                 return jsonify({"error": "Failed to create chat"}), 500
 
-        # Handle convert format request
-        if message and "convert" in message.lower():
-            result = handle_format_request(message, chat_id, file)
-            return jsonify({"response": result.get("message") if result.get("status") != "success" else result.get("result")})
+            # Generate and update title for first message
+            title = generate_chat_title(message)
+            update_chat_title(chat_id, title)
 
-        # Regular chat processing
+        # Store user message
+        add_message(chat_id, message, is_user=True)
+
+        # Get Claude's response based on previous context
+        messages_query = """
+        SELECT content, is_user 
+        FROM messages 
+        WHERE chat_id = %s 
+        ORDER BY created_at ASC
+        """
+        previous_messages = execute_query(messages_query, (chat_id,))
+        
+        # Build message history for context
+        message_history = []
+        for msg in previous_messages:
+            role = "user" if msg['is_user'] else "assistant"
+            message_history.append({"role": role, "content": msg['content']})
+
+        # Add current message
+        message_history.append({"role": "user", "content": message})
+
+        # Get response
         response = client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=1000,
             temperature=0,
-            messages=[{"role": "user", "content": message}]
+            messages=message_history
         )
         
         bot_response = response.content[0].text
         
-        # Store messages
-        add_message(chat_id, message, is_user=True)
+        # Store bot response
         add_message(chat_id, bot_response, is_user=False)
         
-        return jsonify({"response": bot_response, "chat_id": chat_id})
+        return jsonify({
+            "response": bot_response, 
+            "chat_id": chat_id
+        })
 
     except Exception as e:
         logger.error(f"Error in chat endpoint: {str(e)}")
@@ -422,31 +435,21 @@ def get_chat_messages(chat_id):
         app.logger.error(f"Error getting chat messages: {str(e)}")
         return jsonify({"error": str(e)}), 500
     
-@app.route('/api/generate-title', methods=['POST'])
-@login_required
-def generate_chat_title():
+def generate_chat_title(message):
     try:
-        data = request.get_json()
-        message = data.get('message', '')
-        
-        # Use Claude to generate a concise title
+        # Use Claude to generate title
         response = client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=50,
             temperature=0,
-            system="Generate a very short, concise title (3-6 words) for a chat based on the first message. Make it descriptive but brief.",
-            messages=[{
-                "role": "user",
-                "content": f"Create a brief title for a chat that starts with this message: {message}"
-            }]
+            system="Generate a very concise chat title (2-4 words) based on the first message.",
+            messages=[{"role": "user", "content": f"Create a brief title for: {message}"}]
         )
-        
         title = response.content[0].text.strip()
-        return jsonify({"title": title})
-        
+        return title
     except Exception as e:
-        app.logger.error(f"Error generating title: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Error generating title: {str(e)}")
+        return "New Chat"
 
 @app.route('/api/chat/<int:chat_id>/title', methods=['PUT'])
 @login_required
