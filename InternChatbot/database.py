@@ -331,45 +331,51 @@ def update_chat_section(chat_id, section):
 def handle_format_request(message, chat_id, file=None):
     """Handle data format conversion requests"""
     try:
+        # Case 1: No data provided
+        if not file and not (message and len(message.split('\n')) > 1):
+            return {
+                "status": "need_data",
+                "message": "Please provide the data you would want to convert and add a supporting JSON file "
+                          "(if excel file is input and vice versa) to help me format the output correctly."
+            }
+
         file_handler = FileHandler()
         
-        # Case 1: Handling copy-pasted text
+        # Case 2: Copy-pasted text with data
         if not file and message:
-            # Process the text data
-            data = parse_text_data(message)
-            if not data:
+            # Check if it contains actual data (more than just the convert request)
+            if len(message.split('\n')) > 1:
+                formatted_text = format_text_with_indentation(message)
                 return {
-                    "status": "error",
-                    "message": "Unable to parse the provided data. Please ensure it's properly formatted."
+                    "status": "success",
+                    "result": formatted_text,
+                    "format": "json"
                 }
             
-            # If no reference format provided, respond asking for it
-            return {
-                "status": "need_reference",
-                "message": "Please provide a JSON file as reference for the output format."
-            }
-            
-        # Case 2: Handling file upload
+        # Case 3: File upload
         elif file:
             filename = file.filename
             ext = os.path.splitext(filename)[1].lower()
             
             if ext in ['.xlsx', '.xls', '.csv']:
-                # For Excel/CSV files, need reference format
                 return {
                     "status": "need_reference",
-                    "message": "Please provide a JSON file as reference for the output format."
+                    "message": "Please provide a JSON file to help me format the output correctly."
                 }
             elif ext in ['.json', '.txt']:
-                # If it's a JSON reference file, use it to process previous data
-                reference_format = json.load(file)
-                # Process previous data with this reference format
-                # This would be handled in the chat route
-                return {
-                    "status": "reference_received",
-                    "reference_format": reference_format
-                }
-        
+                try:
+                    # Process the JSON reference format
+                    reference_format = json.load(file)
+                    return {
+                        "status": "reference_received",
+                        "reference_format": reference_format
+                    }
+                except json.JSONDecodeError:
+                    return {
+                        "status": "error",
+                        "message": "The provided file is not valid JSON. Please check the format."
+                    }
+
         return {
             "status": "error",
             "message": "Please provide either data to convert or a file to process."
@@ -381,6 +387,38 @@ def handle_format_request(message, chat_id, file=None):
             "status": "error",
             "message": f"Error processing request: {str(e)}"
         }
+
+    except Exception as e:
+        logger.error(f"Error in format conversion: {str(e)}")
+        return {
+            "status": "error",
+            "message": f"Error processing request: {str(e)}"
+        }
+
+def format_text_with_indentation(text):
+    """Format text as properly indented JSON"""
+    try:
+        # Convert text to structured data
+        data = convert_text_to_structured_data(text)
+        # Return properly indented JSON
+        return json.dumps(data, indent=2)
+    except Exception as e:
+        logger.error(f"Error formatting text: {str(e)}")
+        return None
+
+def convert_text_to_structured_data(text):
+    """Convert raw text input to structured data format"""
+    # Add your text parsing logic here
+    # This should return a dictionary that matches your desired JSON structure
+    return {
+        "ChildInfo": {
+            "IdentityNumber": "",
+            "IdentityType": "",
+            "YearOfBirth": "",
+            "TypeOfCitizenship": ""
+        },
+        # ... rest of the structure
+    }
 
 def parse_text_data(text):
     """Parse copy-pasted text data into structured format"""

@@ -155,51 +155,51 @@ def chat():
         if not client:
             return jsonify({"error": "Anthropic client not initialized"}), 500
 
-        data = request.get_json()
-        message = data.get('message', '')
-        chat_id = data.get('chat_id')
+        message = request.form.get('message', '')
         file = request.files.get('file')
+        chat_id = request.form.get('chat_id')
         
-        # Store the current context in session for reference format handling
-        if "convert" in message.lower() and "format" in message.lower():
-            session['awaiting_reference'] = True
-            session['original_data'] = message if not file else file.read()
+        if not chat_id:
+            # Create new chat if no chat_id provided
+            user_email = session.get('user_email')
+            user_query = "SELECT user_id FROM users WHERE email = %s"
+            user_result = execute_query(user_query, (user_email,))
+            if not user_result:
+                return jsonify({"error": "User not found"}), 404
             
-            # Initial response asking for reference format
-            return jsonify({
-                "response": "Please provide a JSON file to help me format the output correctly."
-            })
-            
-        # Handle reference format submission
-        if file and session.get('awaiting_reference'):
-            if not file.filename.endswith(('.json', '.txt')):
-                return jsonify({
-                    "response": "Please provide a JSON file as reference format."
-                })
-                
-            # Process the original data with the reference format
-            file_handler = FileHandler()
-            original_data = session.get('original_data')
-            reference_format = json.load(file)
-            
-            # Process and format the data
-            if isinstance(original_data, str):
-                # Case 1: Copy-pasted text
-                result = file_handler.process_data(original_data, reference_format)
-            else:
-                # Case 2: File upload
-                result = file_handler.process_file(original_data, reference_format)
-            
-            # Clear session data
-            session.pop('awaiting_reference', None)
-            session.pop('original_data', None)
-            
-            # Return formatted result
-            return jsonify({
-                "response": f"Here's your data in JSON format:\n\n{result}"
-            })
+            user_id = user_result[0]['user_id']
+            chat_id = create_new_chat(user_id)
+            if not chat_id:
+                return jsonify({"error": "Failed to create chat"}), 500
 
-        # Normal chat processing continues here...
+        # Handle format conversion request
+        if "convert" in message.lower() and "format" in message.lower():
+            result = handle_format_request(message, chat_id, file)
+            
+            if result["status"] == "need_data":
+                response_text = result["message"]
+            elif result["status"] == "success":
+                # Ensure proper formatting with indentation
+                if isinstance(result["result"], dict):
+                    response_text = (
+                        "Here's your data in JSON format:\n\n"
+                        f"```json\n{json.dumps(result['result'], indent=2)}\n```"
+                    )
+                else:
+                    response_text = (
+                        "Here's your data in JSON format:\n\n"
+                        f"```json\n{result['result']}\n```"
+                    )
+            else:
+                response_text = result.get("message", "An error occurred during processing")
+
+            # Store the interaction in the database
+            add_message(chat_id, message, is_user=True)
+            add_message(chat_id, response_text, is_user=False)
+
+            return jsonify({"response": response_text})
+
+        # Normal chat processing
         response = client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=1000,
@@ -212,7 +212,7 @@ def chat():
         
         bot_response = response.content[0].text
         
-        # Store messages in database
+        # Store messages
         add_message(chat_id, message, is_user=True)
         add_message(chat_id, bot_response, is_user=False)
         

@@ -834,21 +834,95 @@ HTML_TEMPLATE = '''
             }
 
             bindEvents() {
-                document.getElementById('newChatButton').addEventListener('click', () => this.handleNewChat());
-                
-                document.getElementById('sendButton').addEventListener('click', () => this.sendMessage());
-                document.getElementById('userInput').addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault();
-                        this.sendMessage();
-                    }
-                });
-
-                const fileButton = document.getElementById('fileButton');
                 const fileInput = document.getElementById('fileInput');
-                if (fileButton && fileInput) {
-                    fileButton.addEventListener('click', () => fileInput.click());
-                    fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
+                const sendButton = document.getElementById('sendButton');
+                const userInput = document.getElementById('userInput');
+
+                if (fileInput) {
+                    fileInput.addEventListener('change', (e) => {
+                        if (!this.currentChatId) {
+                            // Create new chat if none exists
+                            this.createNewChat().then(() => {
+                                this.handleFileUpload(e);
+                            });
+                        } else {
+                            this.handleFileUpload(e);
+                        }
+                    });
+                }
+
+                if (userInput) {
+                    userInput.addEventListener('keydown', (e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            if (!this.currentChatId) {
+                                // Create new chat if none exists
+                                this.createNewChat().then(() => {
+                                    this.sendMessage();
+                                });
+                            } else {
+                                this.sendMessage();
+                            }
+                        }
+                    });
+                }
+
+                if (sendButton) {
+                    sendButton.addEventListener('click', () => {
+                        if (!this.currentChatId) {
+                            // Create new chat if none exists
+                            this.createNewChat().then(() => {
+                                this.sendMessage();
+                            });
+                        } else {
+                            this.sendMessage();
+                        }
+                    });
+                }
+            }
+
+            async handleFileUpload(e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const formData = new FormData();
+                formData.append('file', file);
+                formData.append('chat_id', this.currentChatId);
+                
+                const message = document.getElementById('userInput').value.trim();
+                if (message) {
+                    formData.append('message', message);
+                }
+
+                try {
+                    const response = await fetch('/api/chat', {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'include'
+                    });
+
+                    const data = await response.json();
+                    
+                    if (data.response) {
+                        this.addMessageToUI(message || `Uploaded file: ${file.name}`, true);
+                        this.addMessageToUI(data.response, false);
+                        document.getElementById('userInput').value = '';
+                        this.clearFileInput();
+                    }
+                } catch (error) {
+                    console.error('Error uploading file:', error);
+                }
+            }
+
+            clearFileInput() {
+                const fileInput = document.getElementById('fileInput');
+                if (fileInput) {
+                    fileInput.value = '';
+                }
+                const filePreview = document.getElementById('filePreview');
+                if (filePreview) {
+                    filePreview.innerHTML = '';
+                    filePreview.classList.remove('active');
                 }
             }
 
@@ -1507,36 +1581,6 @@ HTML_TEMPLATE = '''
                     greetingText.textContent = 'Having a late night?';
                 }
             }
-
-            function handleFileUpload(file, chatId) {
-                const formData = new FormData();
-                formData.append('file', file);
-                formData.append('chat_id', chatId);
-                formData.append('target_format', 'json'); // or 'table'
-
-                fetch('/api/process-file', {
-                    method: 'POST',
-                    body: formData,
-                    credentials: 'include'
-                })
-                .then(response => response.json())
-                .then(data => {
-                    if (data.status === 'success') {
-                        // Update chat interface with the processed result
-                        addMessageToUI(data.result, false);
-                    } else {
-                        console.error('Error:', data.error);
-                    }
-                })
-                .catch(error => console.error('Error:', error));
-            }
-
-            document.getElementById('fileInput').addEventListener('change', (e) => {
-                const file = e.target.files[0];
-                if (file) {
-                    handleFileUpload(file, currentChatId);
-                }
-            });
             
             setGreeting();
             setInterval(setGreeting, 60000);
