@@ -456,3 +456,50 @@ class FileHandler:
         WHERE user_id = %s
         """
         return execute_query(query, (user_id,))
+    
+    def handle_format_request(message, chat_id, file=None, reference_format=None):
+        """Handle data format conversion requests"""
+        
+        # If no specific format is mentioned, ask for reference format if converting to JSON
+        if "json" not in message.lower() and "table" not in message.lower():
+            if file and (file.filename.endswith('.xlsx') or file.filename.endswith('.xls') or file.filename.endswith('.csv')):
+                return {
+                    "status": "need_reference",
+                    "message": "Please provide a JSON file to help me format the output correctly. "
+                            "This will ensure I structure the data according to your needs."
+                }
+            elif file and (file.filename.endswith('.json') or file.filename.endswith('.txt')):
+                target_format = 'table'
+            else:
+                target_format = 'json'
+        else:
+            # If format is specified in message
+            target_format = 'json' if 'json' in message.lower() else 'table'
+
+        if not file:
+            return {
+                "status": "error",
+                "message": "Please provide a file to convert."
+            }
+
+        try:
+            file_handler = FileHandler()
+            result = file_handler.process_file(
+                file=file,
+                chat_id=chat_id,
+                target_format=target_format,
+                reference_format=reference_format
+            )
+
+            return {
+                "status": "success",
+                "result": result,
+                "format": target_format
+            }
+
+        except Exception as e:
+            logger.error(f"Error in format conversion: {str(e)}")
+            return {
+                "status": "error",
+                "message": f"Error processing file: {str(e)}"
+            }

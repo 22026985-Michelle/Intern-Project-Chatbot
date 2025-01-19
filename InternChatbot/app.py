@@ -156,52 +156,57 @@ def chat():
             return jsonify({"error": "Anthropic client not initialized"}), 500
 
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-            
-        message = data.get('message')
+        message = data.get('message', '')
         chat_id = data.get('chat_id')
+        file = request.files.get('file')
         
-        if not message or not chat_id:
-            return jsonify({"error": "Message and chat_id are required"}), 400
+        # Check if this is a format conversion request
+        if "convert" in message.lower() and "format" in message.lower():
+            # If file is present
+            if file:
+                conversion_result = handle_format_request(message, chat_id, file)
+                if conversion_result["status"] == "need_reference":
+                    # Ask user for reference format
+                    return jsonify({
+                        "response": conversion_result["message"]
+                    })
+                elif conversion_result["status"] == "success":
+                    # Return converted data
+                    return jsonify({
+                        "response": f"Here's your data in the requested format:\n\n{conversion_result['result']}"
+                    })
+                else:
+                    return jsonify({
+                        "response": f"Error: {conversion_result.get('message', 'Unknown error occurred')}"
+                    })
+            else:
+                # If no file is attached but it's a conversion request
+                return jsonify({
+                    "response": "Please provide a file to convert. You can attach it using the paperclip icon."
+                })
 
-        app.logger.info(f"Processing message for chat {chat_id}")
-
-        # Add user message to database
-        success = add_message(chat_id, message, is_user=True)
-        if not success:
-            return jsonify({"error": "Failed to save user message"}), 500
-
-        # Get bot response
-        try:
-            response = client.messages.create(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=1000,
-                temperature=0,
-                system="You are the Intern Assistant Chatbot, a helpful AI designed to assist interns and junior employees with their tasks. Be friendly and professional.",
-                messages=[{
-                    "role": "user",
-                    "content": message
-                }]
-            )
-            bot_response = response.content[0].text
-        except Exception as e:
-            app.logger.error(f"Error getting bot response: {str(e)}")
-            return jsonify({"error": "Failed to get bot response"}), 500
-
-        # Store bot response in database
-        success = add_message(chat_id, bot_response, is_user=False)
-        if not success:
-            return jsonify({"error": "Failed to save bot response"}), 500
-
-        # Update chat timestamp
-        update_query = "UPDATE chats SET updated_at = NOW() WHERE chat_id = %s"
-        execute_query(update_query, (chat_id,))
-
+        # Normal chat processing continues here...
+        response = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=1000,
+            temperature=0,
+            system="You are the Intern Assistant Chatbot, a helpful AI designed to assist interns and junior employees with their tasks. Be friendly and professional.",
+            messages=[{
+                "role": "user",
+                "content": message
+            }]
+        )
+        
+        bot_response = response.content[0].text
+        
+        # Store messages in database
+        add_message(chat_id, message, is_user=True)
+        add_message(chat_id, bot_response, is_user=False)
+        
         return jsonify({"response": bot_response})
 
     except Exception as e:
-        app.logger.error(f"Error in chat endpoint: {str(e)}")
+        logger.error(f"Error in chat endpoint: {str(e)}")
         return jsonify({"error": str(e)}), 500
     
 @app.route('/api/get-profile')
@@ -602,4 +607,26 @@ def get_file_history():
 
     except Exception as e:
         app.logger.error(f"Error getting file history: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+    
+
+@app.route('/api/convert-format', methods=['POST'])
+@login_required
+def convert_format():
+    try:
+        message = request.form.get('message', '')
+        file = request.files.get('file')
+        chat_id = request.form.get('chat_id')
+        reference_format = request.form.get('reference_format')
+
+        result = handle_format_request(message, chat_id, file, reference_format)
+        
+        if result["status"] == "need_reference":
+            # Store the original file temporarily for when reference format is provided
+            store_temp_file(chat_id, file)
+            
+        return jsonify(result)
+
+    except Exception as e:
+        logger.error(f"Error in convert_format endpoint: {str(e)}")
         return jsonify({"error": str(e)}), 500
