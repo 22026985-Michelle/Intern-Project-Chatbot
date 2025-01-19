@@ -164,6 +164,8 @@ def logout():
     session.clear()
     return redirect('/login')
 
+# app.py changes - Update the chat route:
+
 @app.route('/api/chat', methods=['POST'])
 @login_required
 def chat():
@@ -175,7 +177,7 @@ def chat():
         message = data.get('message', '')
         chat_id = data.get('chat_id')
 
-        # Create new chat if no chat_id provided
+        # Create new chat if no chat_id provided and generate title
         if not chat_id:
             user_email = session.get('user_email')
             user_query = "SELECT user_id FROM users WHERE email = %s"
@@ -188,13 +190,62 @@ def chat():
             if not chat_id:
                 return jsonify({"error": "Failed to create chat"}), 500
 
-            # Set title based on first message
-            if message.lower().startswith('please help me convert'):
-                update_chat_title(chat_id, "Data Format Conversion")
-            else:
-                title = generate_chat_title(message)
+            # Generate title based on first message
+            try:
+                title_response = client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=50,
+                    temperature=0,
+                    system="Generate a very concise chat title (2-4 words) based on the first message.",
+                    messages=[{"role": "user", "content": f"Create a brief title for: {message}"}]
+                )
+                title = title_response.content[0].text.strip()
                 update_chat_title(chat_id, title)
+            except Exception as e:
+                logger.error(f"Error generating title: {str(e)}")
+                update_chat_title(chat_id, "New Chat")
 
+        # Add message to database
+        add_message(chat_id, message, is_user=True)
+
+        # Special handling for JSON formatting requests
+        if message.lower().startswith('please help me to format my json data'):
+            response = format_json_data(message)
+        else:
+            # Regular chat processing
+            response = process_regular_chat(message, chat_id)
+
+        # Store bot response
+        add_message(chat_id, response, is_user=False)
+        
+        return jsonify({
+            "response": response,
+            "chat_id": chat_id
+        })
+
+    except Exception as e:
+        logger.error(f"Error in chat endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+    
+def format_json_data(message):
+    """Handle JSON formatting requests"""
+    try:
+        formatter = DynamicFormatter()
+        # Extract JSON data from the subsequent messages
+        # This is a placeholder - you'll need to implement the actual JSON extraction
+        json_data = extract_json_from_message(message)
+        if json_data:
+            result = formatter.process_data(json_data)
+            return result.get('json', 'Could not format JSON data')
+        return "Please provide the JSON data you'd like to format."
+    except Exception as e:
+        logger.error(f"Error formatting JSON: {str(e)}")
+        return f"Error formatting JSON: {str(e)}"
+    
+
+def process_regular_chat(message, chat_id):
+    """Handle regular chat messages"""
+    try:
         # Get previous messages for context
         messages_query = """
         SELECT content, is_user 
@@ -203,47 +254,37 @@ def chat():
         ORDER BY created_at ASC
         """
         previous_messages = execute_query(messages_query, (chat_id,))
-
-        # Store user message
-        add_message(chat_id, message, is_user=True)
-
-        # Check if this is a conversion request
-        if message.lower().startswith('please help me convert') or \
-           (previous_messages and any('help me convert' in msg['content'].lower() for msg in previous_messages)):
-            # Handle conversion workflow
-            bot_response = handle_conversion_request(
-                message,
-                [{'content': msg['content'], 'is_user': msg['is_user']} 
-                 for msg in previous_messages]
-            )
-        else:
-            # Regular chat processing
-            message_history = []
-            for msg in previous_messages:
-                role = "user" if msg['is_user'] else "assistant"
-                message_history.append({"role": role, "content": msg['content']})
-
-            message_history.append({"role": "user", "content": message})
-
-            response = client.messages.create(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=1000,
-                temperature=0,
-                messages=message_history
-            )
-            bot_response = response.content[0].text.replace('```json', '').replace('```', '')
-
-        # Store bot response
-        add_message(chat_id, bot_response, is_user=False)
         
-        return jsonify({
-            "response": bot_response,
-            "chat_id": chat_id
-        })
+        message_history = []
+        for msg in previous_messages:
+            role = "user" if msg['is_user'] else "assistant"
+            message_history.append({"role": role, "content": msg['content']})
 
+        message_history.append({"role": "user", "content": message})
+
+        response = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=1000,
+            temperature=0,
+            messages=message_history
+        )
+        return response.content[0].text.replace('```json', '').replace('```', '')
     except Exception as e:
-        logger.error(f"Error in chat endpoint: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Error processing chat: {str(e)}")
+        raise
+
+def extract_json_from_message(message):
+    """Extract JSON data from message"""
+    try:
+        # Look for JSON-like content in the message
+        start_idx = message.find('{')
+        end_idx = message.rfind('}')
+        if start_idx != -1 and end_idx != -1:
+            json_str = message[start_idx:end_idx + 1]
+            return json_str
+        return None
+    except Exception:
+        return None
     
 @app.route('/api/get-profile')
 @login_required

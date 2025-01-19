@@ -715,6 +715,7 @@ HTML_TEMPLATE = '''
                         <button class="tool-button" onclick="setMessage('Can you help me check my data for any issues?')">Check data</button>
                         <button class="tool-button" onclick="setMessage('I would like to learn more about NCS.')">Learn more about NCS</button>
                         <button class="tool-button" onclick="setMessage('Can you help me fill in the missing fields?')">Fill in fields</button>
+                        <button class="tool-button" onclick="setMessage('Please help me to format my JSON data')">Format JSON</button>
                     </div>
                 </div>
             </div>
@@ -1207,7 +1208,8 @@ HTML_TEMPLATE = '''
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
                 
-                const escapedContent = this.escapeHtml(content);
+                // Convert newlines in the content to <br> tags
+                const formattedContent = this.escapeHtml(content).replace(/\n/g, '<br>');
                 
                 // Get the user's email first letter for the avatar
                 const userEmail = document.querySelector('.user-email').textContent;
@@ -1225,7 +1227,7 @@ HTML_TEMPLATE = '''
                     <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
                         ${isUser ? userAvatar : botAvatarSvg}
                     </div>
-                    <div class="message-content">${escapedContent}</div>
+                    <div class="message-content">${formattedContent}</div>
                 `;
                 
                 messagesList.appendChild(messageDiv);
