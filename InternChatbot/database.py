@@ -26,6 +26,69 @@ __all__ = [
     'handle_conversion_request'
 ]
 
+class ChatEncryption:
+    def __init__(self, key=None):
+        self.key = key or self._load_or_generate_key()
+        self.cipher = Fernet(self.key)
+
+    def _load_or_generate_key(self):
+        key_file = 'chat_encryption.key'
+        if os.path.exists(key_file):
+            with open(key_file, 'rb') as f:
+                return f.read()
+        key = Fernet.generate_key()
+        with open(key_file, 'wb') as f:
+            f.write(key)
+        return key
+
+    def encrypt_conversation(self, messages):
+        """Encrypt entire conversation as a single unit"""
+        conversation_data = json.dumps(messages)
+        return self.cipher.encrypt(conversation_data.encode())
+
+    def decrypt_conversation(self, encrypted_data):
+        """Decrypt entire conversation"""
+        if not encrypted_data:
+            return []
+        try:
+            decrypted_data = self.cipher.decrypt(encrypted_data)
+            return json.loads(decrypted_data)
+        except Exception as e:
+            logging.error(f"Decryption error: {str(e)}")
+            return []
+        
+def save_conversation(chat_id, messages, encryption):
+    """Save entire conversation encrypted"""
+    try:
+        encrypted_data = encryption.encrypt_conversation(messages)
+        query = """
+        UPDATE chats 
+        SET conversation_data = %s, updated_at = NOW() 
+        WHERE chat_id = %s
+        """
+        execute_query(query, (encrypted_data, chat_id))
+        return True
+    except Exception as e:
+        logging.error(f"Error saving conversation: {str(e)}")
+        return False
+    
+
+def get_conversation(chat_id, encryption):
+    """Retrieve and decrypt entire conversation"""
+    query = """
+    SELECT conversation_data 
+    FROM chats 
+    WHERE chat_id = %s
+    """
+    try:
+        result = execute_query(query, (chat_id,))
+        if not result or not result[0]['conversation_data']:
+            return []
+        return encryption.decrypt_conversation(result[0]['conversation_data'])
+    except Exception as e:
+        logging.error(f"Error retrieving conversation: {str(e)}")
+        return []
+    
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -171,13 +234,27 @@ def add_message(chat_id, content, is_user=True):
             return False
 
         cursor = connection.cursor(dictionary=True)
+        encryption = ChatEncryption()
+        
+        # Prepare message content with metadata
+        message_data = {
+            'content': content,
+            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'metadata': {
+                'version': '1.0',
+                'encryption_type': 'conversation'
+            }
+        }
+        
+        # Encrypt the entire message data
+        encrypted_content = encryption.encrypt_conversation(message_data)
         
         # Add message
         message_query = """
         INSERT INTO messages (chat_id, content, is_user, created_at)
         VALUES (%s, %s, %s, NOW())
         """
-        cursor.execute(message_query, (chat_id, content, is_user))
+        cursor.execute(message_query, (chat_id, encrypted_content, is_user))
         
         # Update chat timestamp
         update_query = """
@@ -190,7 +267,7 @@ def add_message(chat_id, content, is_user=True):
         return True
 
     except Error as e:
-        logger.error(f"Error in add_message: {str(e)}")
+        logging.error(f"Error in add_message: {str(e)}")
         if connection:
             connection.rollback()
         return False
@@ -199,9 +276,9 @@ def add_message(chat_id, content, is_user=True):
             cursor.close()
         if connection and connection.is_connected():
             connection.close()
-    
+
 def get_recent_chats(user_id, limit=5):
-    """Get recent chats for a user"""
+    """Get recent chats with last message"""
     query = """
     SELECT c.chat_id, 
            COALESCE(c.title, 'New Chat') as title,
@@ -219,12 +296,36 @@ def get_recent_chats(user_id, limit=5):
     """
     try:
         result = execute_query(query, (user_id, limit))
-        logger.info(f"Recent chats query result: {result}")
+        
+        if not result:
+            return []
+            
+        encryption = ChatEncryption()
+        # Process each chat
+        for chat in result:
+            try:
+                # Decrypt last message if it exists
+                if chat.get('last_message'):
+                    decrypted_data = encryption.decrypt_conversation(chat['last_message'])
+                    chat['last_message'] = decrypted_data['content'] if decrypted_data else 'Message unavailable'
+                else:
+                    chat['last_message'] = ''
+                    
+                # Format timestamps
+                if 'created_at' in chat and chat['created_at']:
+                    chat['created_at'] = chat['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+                if 'updated_at' in chat and chat['updated_at']:
+                    chat['updated_at'] = chat['updated_at'].strftime('%Y-%m-%d %H:%M:%S')
+                    
+            except Exception as e:
+                logging.error(f"Error processing chat {chat.get('chat_id')}: {str(e)}")
+                chat['last_message'] = 'Message unavailable'
+                
         return result
+        
     except Exception as e:
-        logger.error(f"Error in get_recent_chats: {str(e)}")
+        logging.error(f"Error in get_recent_chats: {str(e)}")
         return []
-
 
 def get_chat_messages(chat_id):
     """Get all messages for a specific chat"""
@@ -238,19 +339,43 @@ def get_chat_messages(chat_id):
     """
     try:
         result = execute_query(query, (chat_id,))
-        logger.info(f"Retrieved {len(result) if result else 0} messages for chat {chat_id}")
+        logging.info(f"Retrieved {len(result) if result else 0} messages for chat {chat_id}")
         
         if not result:
             return []
             
-        # Ensure all fields are serializable
-        for message in result:
-            if 'created_at' in message and message['created_at']:
-                message['created_at'] = message['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+        encryption = ChatEncryption()
+        processed_messages = []
         
-        return result
+        for message in result:
+            try:
+                # Decrypt the content
+                decrypted_data = encryption.decrypt_conversation(message['content'])
+                if decrypted_data:
+                    processed_message = {
+                        'content': decrypted_data['content'],
+                        'is_user': message['is_user'],
+                        'created_at': message['created_at'].strftime('%Y-%m-%d %H:%M:%S'),
+                        'metadata': decrypted_data.get('metadata', {})
+                    }
+                    processed_messages.append(processed_message)
+                else:
+                    logging.error(f"Failed to decrypt message in chat {chat_id}")
+                    
+            except Exception as e:
+                logging.error(f"Error processing message: {str(e)}")
+                # If decryption fails, add error message
+                processed_messages.append({
+                    'content': 'Message unavailable',
+                    'is_user': message['is_user'],
+                    'created_at': message['created_at'].strftime('%Y-%m-%d %H:%M:%S'),
+                    'metadata': {'error': 'decryption_failed'}
+                })
+        
+        return processed_messages
+        
     except Exception as e:
-        logger.error(f"Error getting chat messages: {str(e)}")
+        logging.error(f"Error getting chat messages: {str(e)}")
         return []
 
 def cleanup_old_chats(user_id, keep_count=4):
