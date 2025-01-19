@@ -160,37 +160,50 @@ def chat():
         chat_id = data.get('chat_id')
         file = request.files.get('file')
         
-        # Check if this is a format conversion request
+        # Store the current context in session for reference format handling
         if "convert" in message.lower() and "format" in message.lower():
-            # If file is present
-            if file:
-                conversion_result = handle_format_request(message, chat_id, file)
-                if conversion_result["status"] == "need_reference":
-                    # Ask user for reference format
-                    return jsonify({
-                        "response": conversion_result["message"]
-                    })
-                elif conversion_result["status"] == "success":
-                    # Return converted data
-                    return jsonify({
-                        "response": f"Here's your data in the requested format:\n\n{conversion_result['result']}"
-                    })
-                else:
-                    return jsonify({
-                        "response": f"Error: {conversion_result.get('message', 'Unknown error occurred')}"
-                    })
-            else:
-                # If no file is attached but it's a conversion request
+            session['awaiting_reference'] = True
+            session['original_data'] = message if not file else file.read()
+            
+            # Initial response asking for reference format
+            return jsonify({
+                "response": "Please provide a JSON file to help me format the output correctly."
+            })
+            
+        # Handle reference format submission
+        if file and session.get('awaiting_reference'):
+            if not file.filename.endswith(('.json', '.txt')):
                 return jsonify({
-                    "response": "Please provide a file to convert. You can attach it using the paperclip icon."
+                    "response": "Please provide a JSON file as reference format."
                 })
+                
+            # Process the original data with the reference format
+            file_handler = FileHandler()
+            original_data = session.get('original_data')
+            reference_format = json.load(file)
+            
+            # Process and format the data
+            if isinstance(original_data, str):
+                # Case 1: Copy-pasted text
+                result = file_handler.process_data(original_data, reference_format)
+            else:
+                # Case 2: File upload
+                result = file_handler.process_file(original_data, reference_format)
+            
+            # Clear session data
+            session.pop('awaiting_reference', None)
+            session.pop('original_data', None)
+            
+            # Return formatted result
+            return jsonify({
+                "response": f"Here's your data in JSON format:\n\n{result}"
+            })
 
         # Normal chat processing continues here...
         response = client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=1000,
             temperature=0,
-            system="You are the Intern Assistant Chatbot, a helpful AI designed to assist interns and junior employees with their tasks. Be friendly and professional.",
             messages=[{
                 "role": "user",
                 "content": message
