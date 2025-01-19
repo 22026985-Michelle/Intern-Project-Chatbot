@@ -2,6 +2,7 @@ from flask import Flask, request, jsonify, redirect, send_file, session
 import anthropic
 from datetime import datetime
 import os
+import json
 from functools import wraps
 from template import HTML_TEMPLATE
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -174,14 +175,8 @@ def chat():
             return jsonify({"error": "Anthropic client not initialized"}), 500
 
         data = request.get_json()
-        if not data:
-            return jsonify({"error": "No data provided"}), 400
-
         message = data.get('message', '')
         chat_id = data.get('chat_id')
-
-        if not message:
-            return jsonify({"error": "Message is required"}), 400
 
         # Create new chat if no chat_id provided
         if not chat_id:
@@ -196,7 +191,7 @@ def chat():
             if not chat_id:
                 return jsonify({"error": "Failed to create chat"}), 500
 
-            # Generate title based on first message using Claude
+            # Generate title based on first message
             try:
                 title_response = client.messages.create(
                     model="claude-3-5-sonnet-20241022",
@@ -208,8 +203,7 @@ def chat():
                 update_chat_title(chat_id, title)
             except Exception as e:
                 logger.error(f"Error generating title: {str(e)}")
-                title = "New Chat"
-                update_chat_title(chat_id, title)
+                update_chat_title(chat_id, "New Chat")
 
         # Store user message
         add_message(chat_id, message, is_user=True)
@@ -217,17 +211,23 @@ def chat():
         # Check if this is a JSON formatting request
         if message.lower().startswith('please help me to format my json data'):
             try:
-                # Extract and format JSON
+                # Find JSON content in the message
                 json_start = message.find('{')
                 json_end = message.rfind('}') + 1
+                
                 if json_start >= 0 and json_end > json_start:
                     json_str = message[json_start:json_end]
-                    formatted = json.dumps(json.loads(json_str), indent=2)
-                    bot_response = f"Here's your formatted JSON:\n\n{formatted}"
+                    parsed_json = json.loads(json_str)
+                    formatted_json = json.dumps(parsed_json, indent=2)
+                    bot_response = f"Here's your formatted JSON:\n\n{formatted_json}"
                 else:
-                    bot_response = "Please provide the JSON data you'd like to format."
-            except json.JSONDecodeError:
-                bot_response = "Invalid JSON provided. Please check the format and try again."
+                    bot_response = "Please provide the JSON data you'd like to format. For example:\n{\"key\": \"value\"}"
+                    
+            except json.JSONDecodeError as e:
+                bot_response = f"Invalid JSON format. Please check your JSON syntax: {str(e)}"
+            except Exception as e:
+                logger.error(f"Error formatting JSON: {str(e)}")
+                bot_response = "Error formatting JSON. Please check your input."
         else:
             # Regular chat processing
             message_history = []
@@ -257,8 +257,8 @@ def chat():
         })
 
     except Exception as e:
-        app.logger.error(f"Error in chat endpoint: {str(e)}")
-        return jsonify({"error": "Internal server error", "details": str(e)}), 500
+        logger.error(f"Error in chat endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
     
 def format_json_data(message):
     """Handle JSON formatting requests"""
