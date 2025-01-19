@@ -148,8 +148,27 @@
         const BASE_URL = 'https://internproject-4fq7.onrender.com';
         const loginForm = document.getElementById('loginForm');
         const errorMessage = document.getElementById('errorMessage');
+        const loginButton = loginForm.querySelector('button');
 
         let failedAttempts = 0;
+        const maxAttempts = 3;
+
+        // Add counter display for remaining attempts
+        const attemptsCounter = document.createElement('div');
+        attemptsCounter.style.textAlign = 'center';
+        attemptsCounter.style.marginTop = '0.5rem';
+        attemptsCounter.style.fontSize = '0.875rem';
+        attemptsCounter.style.color = '#1C1C1C';
+        loginForm.appendChild(attemptsCounter);
+
+        function updateAttemptsCounter() {
+            const remainingAttempts = maxAttempts - failedAttempts;
+            if (remainingAttempts > 0) {
+                attemptsCounter.textContent = `${remainingAttempts} more tries remaining`;
+            } else {
+                attemptsCounter.textContent = '';
+            }
+        }
 
         function sanitizeHTML(input) {
             const div = document.createElement('div');
@@ -162,9 +181,9 @@
             
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
-            const loginButton = e.target.querySelector('button');
+            
 
-            if (failedAttempts >= 3) {
+            if (failedAttempts >= maxAttempts) {
                 errorMessage.textContent = sanitizeHTML('Please complete the CAPTCHA before attempting again.');
                 errorMessage.style.display = 'block';
                 return;
@@ -193,7 +212,7 @@
                     errorMessage.textContent = sanitizeHTML(data.error || 'Login failed');
                     errorMessage.style.display = 'block';
 
-                    if (failedAttempts >= 3) {
+                    if (failedAttempts >= maxAttempts) {
                         showCaptcha();
                     }
                     
@@ -203,11 +222,15 @@
                 errorMessage.textContent = sanitizeHTML('An error occurred. Please try again.');
                 errorMessage.style.display = 'block';
 
-                if (failedAttempts >= 3) {
+                if (failedAttempts >= maxAttempts) {
                     showCaptcha();
                 }
             }
+
+            updateAttemptsCounter();
+
         });
+
         function showCaptcha() {
             const captchaContainer = document.createElement('div');
             captchaContainer.id = 'captchaContainer';
@@ -215,14 +238,15 @@
 
             captchaContainer.innerHTML = `
                 <p>Please solve the CAPTCHA to continue:</p>
-                <div id="captchaChallenge" style="margin-bottom: 1rem;">
+                <div id="captchaChallenge" style="margin-bottom: 1rem; display: flex; align-items: center; gap: 1rem;">
                     <span>${generateCaptcha()}</span>
-                    <input type="text" id="captchaInput" placeholder="Enter answer" style="margin-left: 1rem;">
+                    <input type="text" id="captchaInput" placeholder="Enter answer" style="padding: 0.5rem; flex-grow: 1;">
                 </div>
                 <button onclick="validateCaptcha()">Verify CAPTCHA</button>
             `;
 
             loginForm.appendChild(captchaContainer);
+            attemptsCounter.textContent = ''; // Clear the counter when CAPTCHA is displayed
         }
 
         function generateCaptcha() {
@@ -235,16 +259,24 @@
         function validateCaptcha() {
             const captchaInput = document.getElementById('captchaInput').value;
             if (parseInt(captchaInput) === window.captchaAnswer) {
+                // Clear failed attempts, reset form inputs, and remove CAPTCHA
                 failedAttempts = 0;
                 document.getElementById('captchaContainer').remove();
+                document.getElementById('email').value = ''; // Clear email field
+                document.getElementById('password').value = ''; // Clear password field
                 errorMessage.textContent = sanitizeHTML('CAPTCHA verified! Please try logging in again.');
-                errorMessage.style.color = '#10B981';
+                errorMessage.style.color = '#10B981'; // Green for success
                 errorMessage.style.display = 'block';
             } else {
                 errorMessage.textContent = sanitizeHTML('Incorrect CAPTCHA. Please try again.');
                 errorMessage.style.display = 'block';
             }
+
+            updateAttemptsCounter(); // Reset counter after CAPTCHA is solved
         }
+
+        window.addEventListener('DOMContentLoaded', updateAttemptsCounter);
+
     </script>
 </body>
 </html>
