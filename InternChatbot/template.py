@@ -1199,6 +1199,16 @@ HTML_TEMPLATE = '''
                 }
             }
 
+            escapeHtml(unsafe) {
+                if (!unsafe) return '';
+                return unsafe
+                    .replace(/&/g, "&amp;")
+                    .replace(/</g, "&lt;")
+                    .replace(/>/g, "&gt;")
+                    .replace(/"/g, "&quot;")
+                    .replace(/'/g, "&#039;");
+            }
+
             addMessageToUI(content, isUser) {
                 const messagesList = document.getElementById('messagesList');
                 if (!messagesList) return;
@@ -1208,8 +1218,11 @@ HTML_TEMPLATE = '''
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
                 
-                // Convert newlines in the content to <br> tags
-                const formattedContent = this.escapeHtml(content).replace(/\n/g, '<br>');
+                // First escape HTML, then handle newlines
+                let formattedContent = this.escapeHtml(content);
+                
+                // Handle newlines by replacing them with <br> tags
+                formattedContent = formattedContent.split('\n').join('<br>');
                 
                 // Get the user's email first letter for the avatar
                 const userEmail = document.querySelector('.user-email').textContent;
@@ -1234,15 +1247,21 @@ HTML_TEMPLATE = '''
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
 
-            escapeHtml(unsafe) {
-                if (!unsafe) return '';
-                return unsafe
-                    .replace(/&/g, "&amp;")
-                    .replace(/</g, "&lt;")
-                    .replace(/>/g, "&gt;")
-                    .replace(/"/g, "&quot;")
-                    .replace(/'/g, "&#039;");
+            formatJSON(content) {
+                try {
+                    if (typeof content === 'string') {
+                        // Try to parse JSON string
+                        const obj = JSON.parse(content);
+                        return JSON.stringify(obj, null, 2);
+                    }
+                    // If it's already an object
+                    return JSON.stringify(content, null, 2);
+                } catch (e) {
+                    console.error('Error formatting JSON:', e);
+                    return content;
+                }
             }
+
 
             clearMessages() {
                 const messagesList = document.getElementById('messagesList');
