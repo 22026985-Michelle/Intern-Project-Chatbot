@@ -1218,11 +1218,27 @@ HTML_TEMPLATE = '''
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
                 
-                // First escape HTML, then handle newlines
+                // First escape HTML, then handle JSON and newlines
                 let formattedContent = this.escapeHtml(content);
                 
+                // Check if content contains JSON and format it
+                if (formattedContent.includes('{') && formattedContent.includes('}')) {
+                    try {
+                        const jsonStart = formattedContent.indexOf('{');
+                        const jsonEnd = formattedContent.lastIndexOf('}') + 1;
+                        const beforeJson = formattedContent.substring(0, jsonStart);
+                        const jsonPart = formattedContent.substring(jsonStart, jsonEnd);
+                        const afterJson = formattedContent.substring(jsonEnd);
+                        
+                        const formattedJson = this.formatJSON(jsonPart);
+                        formattedContent = beforeJson + formattedJson + afterJson;
+                    } catch (e) {
+                        console.error('Error formatting JSON in message:', e);
+                    }
+                }
+                
                 // Handle newlines by replacing them with <br> tags
-                formattedContent = formattedContent.split('\\n').join('<br>');
+                formattedContent = formattedContent.split('\n').join('<br>');
                 
                 // Get the user's email first letter for the avatar
                 const userEmail = document.querySelector('.user-email').textContent;
@@ -1233,7 +1249,7 @@ HTML_TEMPLATE = '''
                 
                 messageDiv.innerHTML = '<div class="avatar ' + (isUser ? 'user-avatar' : 'bot-avatar') + '">' +
                     (isUser ? userAvatar : botAvatarSvg) +
-                    '</div><div class="message-content">' + formattedContent + '</div>';
+                    '</div><div class="message-content" style="white-space: pre-wrap;">' + formattedContent + '</div>';
                 
                 messagesList.appendChild(messageDiv);
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
@@ -1242,7 +1258,15 @@ HTML_TEMPLATE = '''
             formatJSON(content) {
                 try {
                     if (typeof content === 'string') {
-                        // Try to parse JSON string
+                        // Try to find JSON content within the string
+                        const jsonStart = content.indexOf('{');
+                        const jsonEnd = content.lastIndexOf('}') + 1;
+                        if (jsonStart >= 0 && jsonEnd > jsonStart) {
+                            const jsonStr = content.substring(jsonStart, jsonEnd);
+                            const obj = JSON.parse(jsonStr);
+                            return JSON.stringify(obj, null, 2);
+                        }
+                        // If no JSON found in string, try parsing the whole string
                         const obj = JSON.parse(content);
                         return JSON.stringify(obj, null, 2);
                     }
@@ -1253,7 +1277,6 @@ HTML_TEMPLATE = '''
                     return content;
                 }
             }
-
 
             clearMessages() {
                 const messagesList = document.getElementById('messagesList');

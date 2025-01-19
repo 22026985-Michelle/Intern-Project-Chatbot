@@ -177,7 +177,7 @@ def chat():
         message = data.get('message', '')
         chat_id = data.get('chat_id')
 
-        # Create new chat if no chat_id provided and generate title
+        # Create new chat if no chat_id provided
         if not chat_id:
             user_email = session.get('user_email')
             user_query = "SELECT user_id FROM users WHERE email = %s"
@@ -190,36 +190,63 @@ def chat():
             if not chat_id:
                 return jsonify({"error": "Failed to create chat"}), 500
 
-            # Generate title based on first message
+            # Generate title based on first message using Claude
             try:
                 title_response = client.messages.create(
                     model="claude-3-5-sonnet-20241022",
                     max_tokens=50,
                     temperature=0,
-                    system="Generate a very concise chat title (2-4 words) based on the first message.",
-                    messages=[{"role": "user", "content": f"Create a brief title for: {message}"}]
+                    messages=[{"role": "user", "content": f"Generate a very concise title (2-4 words) that captures the main topic from this message: {message}"}]
                 )
                 title = title_response.content[0].text.strip()
                 update_chat_title(chat_id, title)
             except Exception as e:
                 logger.error(f"Error generating title: {str(e)}")
-                update_chat_title(chat_id, "New Chat")
+                title = "New Chat"
+                update_chat_title(chat_id, title)
 
-        # Add message to database
+        # Store user message
         add_message(chat_id, message, is_user=True)
 
-        # Special handling for JSON formatting requests
+        # Check if this is a JSON formatting request
         if message.lower().startswith('please help me to format my json data'):
-            response = format_json_data(message)
+            try:
+                # Extract and format JSON
+                json_start = message.find('{')
+                json_end = message.rfind('}') + 1
+                if json_start >= 0 and json_end > json_start:
+                    json_str = message[json_start:json_end]
+                    formatted = json.dumps(json.loads(json_str), indent=2)
+                    bot_response = f"Here's your formatted JSON:\n\n{formatted}"
+                else:
+                    bot_response = "Please provide the JSON data you'd like to format."
+            except json.JSONDecodeError:
+                bot_response = "Invalid JSON provided. Please check the format and try again."
         else:
             # Regular chat processing
-            response = process_regular_chat(message, chat_id)
+            message_history = []
+            messages_query = "SELECT content, is_user FROM messages WHERE chat_id = %s ORDER BY created_at ASC"
+            previous_messages = execute_query(messages_query, (chat_id,))
+            
+            for msg in previous_messages:
+                role = "user" if msg['is_user'] else "assistant"
+                message_history.append({"role": role, "content": msg['content']})
+
+            message_history.append({"role": "user", "content": message})
+            
+            response = client.messages.create(
+                model="claude-3-5-sonnet-20241022",
+                max_tokens=1000,
+                temperature=0,
+                messages=message_history
+            )
+            bot_response = response.content[0].text
 
         # Store bot response
-        add_message(chat_id, response, is_user=False)
+        add_message(chat_id, bot_response, is_user=False)
         
         return jsonify({
-            "response": response,
+            "response": bot_response,
             "chat_id": chat_id
         })
 
@@ -500,25 +527,14 @@ def generate_chat_title(message):
         logger.error(f"Error generating title: {str(e)}")
         return "New Chat"
 
-@app.route('/api/chat/<int:chat_id>/title', methods=['PUT'])
-@login_required
-def update_chat_title(chat_id):
+def update_chat_title(chat_id, title):
     try:
-        data = request.get_json()
-        title = data.get('title')
-        
-        if not title:
-            return jsonify({"error": "Title is required"}), 400
-            
-        # Update title in database
         query = "UPDATE chats SET title = %s WHERE chat_id = %s"
         execute_query(query, (title, chat_id))
-        
-        return jsonify({"status": "success"})
-        
+        return True
     except Exception as e:
-        app.logger.error(f"Error updating chat title: {str(e)}")
-        return jsonify({"error": str(e)}), 500
+        logger.error(f"Error updating chat title: {str(e)}")
+        return False
 
 # Update your get_recent_chats function to include titles
 def get_recent_chats(user_id, limit=5):
