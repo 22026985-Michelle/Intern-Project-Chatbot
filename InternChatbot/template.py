@@ -1237,18 +1237,18 @@ HTML_TEMPLATE = '''
                             // Parse and reformat the JSON part
                             const parsedJson = JSON.parse(jsonPart);
                             const formattedJson = JSON.stringify(parsedJson, null, 2)
-                                .replace(/\\n/g, '\n')       // Replace escaped newlines
-                                .replace(/\\/g, '')          // Remove unnecessary escapes
-                                .replace(/"\n/g, '"\n')      // Fix newline formatting
-                                .replace(/\n\s*\n/g, '\n')   // Remove multiple consecutive newlines
-                                .replace(/\\"/g, '"');       // Fix escaped quotes
+                                .replace(/\\n/g, '\n')
+                                .replace(/\\/g, '')
+                                .replace(/"\n/g, '"\n')
+                                .replace(/\n\s*\n/g, '\n')
+                                .replace(/\\"/g, '"');
                             
                             // Wrap JSON in pre and code tags for proper formatting
                             formattedContent = prefixText + 
-                                            '<pre><code>' + 
-                                            this.escapeHtml(formattedJson) + 
-                                            '</code></pre>' + 
-                                            suffixText;
+                                '<pre><code>' + 
+                                this.escapeHtml(formattedJson) + 
+                                '</code></pre>' + 
+                                suffixText;
                         } catch (e) {
                             console.error('Error formatting JSON:', e);
                         }
@@ -1272,7 +1272,7 @@ HTML_TEMPLATE = '''
                 messagesList.appendChild(messageDiv);
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
-
+            
             formatJSON(content) {
                 try {
                     // If it's a string that contains JSON
