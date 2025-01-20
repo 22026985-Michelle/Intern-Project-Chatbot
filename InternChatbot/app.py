@@ -184,16 +184,27 @@ def chat():
             user_query = "SELECT user_id FROM users WHERE email = %s"
             user_result = execute_query(user_query, (user_email,))
             if not user_result:
-                return jsonify({"error": "User  not found"}), 404
+                return jsonify({"error": "User not found"}), 404
             
             user_id = user_result[0]['user_id']
-            chat_id = create_new_chat(user_id)
+            
+            # Generate chat title from first message
+            try:
+                title_response = client.messages.create(
+                    model="claude-3-5-sonnet-20241022",
+                    max_tokens=50,
+                    temperature=0,
+                    system="Generate a very concise chat title (2-4 words) based on the first message.",
+                    messages=[{"role": "user", "content": f"Create a brief title for: {message}"}]
+                )
+                title = title_response.content[0].text.strip()
+            except Exception as e:
+                logger.error(f"Error generating title: {str(e)}")
+                title = "New Chat"
+            
+            chat_id = create_new_chat(user_id, title)
             if not chat_id:
                 return jsonify({"error": "Failed to create chat"}), 500
-
-            # Set chat title based on the first message
-            title = message[:50]  # Limit title length to 50 characters
-            update_chat_title(chat_id, title)
 
         # Store user message
         add_message(chat_id, message, is_user=True)

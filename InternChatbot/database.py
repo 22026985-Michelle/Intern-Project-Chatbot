@@ -211,7 +211,7 @@ def create_user(email, password, username):  # Add username parameter
         logger.error(f"Error creating user: {str(e)}")
         return False, str(e)
     
-def create_new_chat(user_id):
+def create_new_chat(user_id, title="New Chat"):
     """Create a new chat session for a user"""
     try:
         # Check and cleanup old chats if needed
@@ -221,12 +221,12 @@ def create_new_chat(user_id):
         if result and result[0]['chat_count'] >= 5:
             cleanup_old_chats(user_id, keep_count=4)
         
-        # Insert new chat with default title
+        # Insert new chat with provided title
         insert_query = """
         INSERT INTO chats (user_id, title, created_at, updated_at)
         VALUES (%s, %s, NOW(), NOW())
         """
-        chat_id = execute_query(insert_query, (user_id, "New Chat"))
+        chat_id = execute_query(insert_query, (user_id, title))
         
         return chat_id
         

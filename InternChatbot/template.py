@@ -982,7 +982,7 @@ HTML_TEMPLATE = '''
                     this.currentChatId = data.chat_id;
                     this.messageCache.delete(this.currentChatId); // Clear cache for new chat
                     
-                    // Refresh recent chats
+                    // Refresh recent chats to show the new chat
                     await this.loadRecentChats();
                     
                     return data.chat_id;
