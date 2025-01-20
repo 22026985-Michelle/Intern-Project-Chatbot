@@ -642,6 +642,15 @@ HTML_TEMPLATE = '''
             word-wrap: break-word;
             font-family: monospace;
         }
+
+        pre {
+            white-space: pre-wrap; 
+            word-wrap: break-word; 
+            background-color: #f8f8f8; 
+            padding: 10px; 
+            border-radius: 5px; 
+            overflow: auto; 
+        }
     </style>
 </head>
 <body data-theme="light">
@@ -1211,7 +1220,7 @@ HTML_TEMPLATE = '''
                     .replace(/'/g, "&#039;");
             }
 
-            addMessageToUI(content, isUser ) {
+            addMessageToUI(content, isUser) {
                 const messagesList = document.getElementById('messagesList');
                 if (!messagesList) return;
 
@@ -1241,8 +1250,8 @@ HTML_TEMPLATE = '''
                 
                 const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
                 
-                messageDiv.innerHTML = '<div class="avatar ' + (isUser  ? 'user-avatar' : 'bot-avatar') + '">' +
-                    (isUser  ? userAvatar : botAvatarSvg) +
+                messageDiv.innerHTML = '<div class="avatar ' + (isUser ? 'user-avatar' : 'bot-avatar') + '">' +
+                    (isUser ? userAvatar : botAvatarSvg) +
                     '</div><div class="message-content">' + formattedContent + '</div>';
                 
                 messagesList.appendChild(messageDiv);
