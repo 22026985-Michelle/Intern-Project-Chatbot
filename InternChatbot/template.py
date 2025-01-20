@@ -980,10 +980,9 @@ HTML_TEMPLATE = '''
                     const data = await response.json();
 
                     this.currentChatId = data.chat_id;
-                    this.messageCache.delete(this.currentChatId); // Clear cache for new chat
+                    this.messageCache.delete(this.currentChatId);
                     
-                    // Refresh recent chats to show the new chat
-                    await this.loadRecentChats();
+                    // Don't load recent chats here - wait for first message to be sent
                     
                     return data.chat_id;
                 } catch (error) {
@@ -991,7 +990,6 @@ HTML_TEMPLATE = '''
                     throw error;
                 }
             }
-
 
             async loadRecentChats() {
                 try {
@@ -1010,7 +1008,15 @@ HTML_TEMPLATE = '''
                     console.log('Received chat data:', data);
                     
                     if (data.chats) {
-                        this.updateSidebarChats(data.chats);
+                        // Clear and update the sidebar chats
+                        const recentSection = document.getElementById('recentChats');
+                        if (recentSection) {
+                            recentSection.innerHTML = '';
+                            data.chats.forEach(chat => {
+                                const chatElement = this.createChatElement(chat);
+                                recentSection.appendChild(chatElement);
+                            });
+                        }
                     }
                 } catch (error) {
                     console.error('Error loading recent chats:', error);
@@ -1055,10 +1061,15 @@ HTML_TEMPLATE = '''
                 }
 
                 // Add all chats to recents
-                chats.forEach(chat => {
+                for (const chat of chats) {
                     const chatElement = this.createChatElement(chat);
                     recentSection.appendChild(chatElement);
-                });
+                    
+                    // If this is our current chat, mark it as active
+                    if (chat.chat_id === this.currentChatId) {
+                        chatElement.classList.add('active');
+                    }
+                }
             }
 
             createChatElement(chat) {
@@ -1071,8 +1082,8 @@ HTML_TEMPLATE = '''
                     div.classList.add('active');
                 }
 
-                // Remove quotes from title if they exist
-                let displayTitle = chat.title ? chat.title.replace(/^"|"$/g, '') : 'New Chat';
+                // Use the title from the database, removing any quotes
+                const displayTitle = chat.title ? chat.title.replace(/^"|"$/g, '') : 'New Chat';
                 const truncatedTitle = displayTitle.length > 25 ? displayTitle.substring(0, 25) + '...' : displayTitle;
 
                 div.innerHTML = `
@@ -1082,13 +1093,10 @@ HTML_TEMPLATE = '''
                     </div>
                 `;
 
-                // Add click handler for the entire chat item
                 div.addEventListener('click', () => {
-                    console.log('Loading chat:', chat.chat_id);
                     this.loadChat(chat.chat_id);
                 });
 
-                // Add separate click handler for delete button
                 div.querySelector('.delete-button').addEventListener('click', (e) => {
                     e.stopPropagation();
                     this.deleteChat(chat.chat_id);
@@ -1096,7 +1104,6 @@ HTML_TEMPLATE = '''
 
                 return div;
             }
-
     
             handleNewChat() {
                 this.createNewChat().then(() => {
@@ -1113,6 +1120,9 @@ HTML_TEMPLATE = '''
                     if (greeting) {
                         greeting.style.display = 'block';
                     }
+
+                    // Refresh the chat list to show new chat
+                    this.loadRecentChats();
                 }).catch(error => {
                     console.error('Error creating new chat:', error);
                 });
@@ -1173,7 +1183,7 @@ HTML_TEMPLATE = '''
                         body: JSON.stringify({
                             chat_id: this.currentChatId,
                             message: message,
-                            is_new_chat: isNewChat
+                            is_new_chat: isNewChat  // Add this flag
                         })
                     });
 
@@ -1195,6 +1205,8 @@ HTML_TEMPLATE = '''
                     );
 
                     input.value = "";
+
+                    // Refresh chat list after sending message to update titles
                     await this.loadRecentChats();
 
                     const messagesList = document.getElementById("messagesList");
@@ -1208,6 +1220,7 @@ HTML_TEMPLATE = '''
                     alert("Failed to send message. Please try again.");
                 }
             }
+
 
             escapeHtml(unsafe) {
                 if (!unsafe) return '';

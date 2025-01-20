@@ -471,6 +471,7 @@ def get_chat_history():
         user_id = user_result[0]['user_id']
         app.logger.info(f"Fetching chat history for user_id: {user_id}")
 
+        # Get chats with their latest messages and titles
         chats = get_recent_chats(user_id, 5)
         app.logger.info(f"Retrieved chats: {chats}")
 
