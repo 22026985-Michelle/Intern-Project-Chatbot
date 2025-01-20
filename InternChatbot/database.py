@@ -27,33 +27,49 @@ __all__ = [
 ]
 
 class ChatEncryption:
-    def __init__(self, key=None):
-        self.key = key or self._generate_key()
+    def __init__(self):
+        self.key = self._load_or_generate_key()
         self.cipher = Fernet(self.key)
+    
+    def _load_or_generate_key(self):
+        """Load existing key or generate new one"""
+        key_file = 'chat_encryption.key'
+        if os.path.exists(key_file):
+            with open(key_file, 'rb') as f:
+                return f.read()
+        key = Fernet.generate_key()
+        with open(key_file, 'wb') as f:
+            f.write(key)
+        return key
 
-    def _generate_key(self):
-        return Fernet.generate_key()
+    def encrypt_message(self, message_data):
+        """Encrypt message data"""
+        json_data = json.dumps(message_data).encode()
+        return self.cipher.encrypt(json_data)
 
-    def encrypt_conversation(self, messages):
-        """Encrypt entire conversation as a single unit"""
-        conversation_data = json.dumps(messages)
-        return self.cipher.encrypt(conversation_data.encode())
-
-    def decrypt_conversation(self, encrypted_data):
-        """Decrypt entire conversation"""
-        if not encrypted_data:
-            return []
+    def decrypt_message(self, encrypted_data):
+        """Decrypt message data"""
         try:
             decrypted_data = self.cipher.decrypt(encrypted_data)
             return json.loads(decrypted_data)
         except Exception as e:
             logging.error(f"Decryption error: {str(e)}")
-            return []
+            return None
         
-def save_conversation(chat_id, messages, encryption):
+def save_conversation(chat_id, messages, encryption=None):
     """Save entire conversation encrypted"""
+    if encryption is None:
+        encryption = ChatEncryption()
+    
     try:
-        encrypted_data = encryption.encrypt_conversation(messages)
+        # Prepare conversation data with metadata
+        conversation_data = {
+            'messages': messages,
+            'updated_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'version': '1.0'
+        }
+        
+        encrypted_data = encryption.encrypt_message(conversation_data)
         query = """
         UPDATE chats 
         SET conversation_data = %s, updated_at = NOW() 
@@ -64,10 +80,14 @@ def save_conversation(chat_id, messages, encryption):
     except Exception as e:
         logging.error(f"Error saving conversation: {str(e)}")
         return False
+
     
 
-def get_conversation(chat_id, encryption):
+def get_conversation(chat_id, encryption=None):
     """Retrieve and decrypt entire conversation"""
+    if encryption is None:
+        encryption = ChatEncryption()
+        
     query = """
     SELECT conversation_data 
     FROM chats 
@@ -77,11 +97,12 @@ def get_conversation(chat_id, encryption):
         result = execute_query(query, (chat_id,))
         if not result or not result[0]['conversation_data']:
             return []
-        return encryption.decrypt_conversation(result[0]['conversation_data'])
+        
+        decrypted_data = encryption.decrypt_message(result[0]['conversation_data'])
+        return decrypted_data.get('messages', [])
     except Exception as e:
         logging.error(f"Error retrieving conversation: {str(e)}")
         return []
-    
 
 
 logging.basicConfig(level=logging.DEBUG)
@@ -233,14 +254,12 @@ def add_message(chat_id, content, is_user=True):
         message_data = {
             'content': content,
             'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'metadata': {
-                'version': '1.0',
-                'encryption_type': 'conversation'
-            }
+            'version': '1.0'
         }
         
+        
         # Encrypt the entire message data
-        encrypted_content = encryption.encrypt_conversation(message_data)
+        encrypted_content = encryption.encrypt_message(message_data)
         
         # Add message
         message_query = """
@@ -259,7 +278,7 @@ def add_message(chat_id, content, is_user=True):
         connection.commit()
         return True
 
-    except Error as e:
+    except Exception as e:
         logging.error(f"Error in add_message: {str(e)}")
         if connection:
             connection.rollback()
@@ -294,6 +313,8 @@ def get_recent_chats(user_id, limit=5):
             return []
             
         encryption = ChatEncryption()
+        processed_messages = []
+
         # Process each chat
         for chat in result:
             try:
@@ -332,7 +353,6 @@ def get_chat_messages(chat_id):
     """
     try:
         result = execute_query(query, (chat_id,))
-        logging.info(f"Retrieved {len(result) if result else 0} messages for chat {chat_id}")
         
         if not result:
             return []
@@ -343,13 +363,14 @@ def get_chat_messages(chat_id):
         for message in result:
             try:
                 # Decrypt the content
-                decrypted_data = encryption.decrypt_conversation(message['content'])
+                decrypted_data = encryption.decrypt_message(message['content'])
                 if decrypted_data:
                     processed_message = {
                         'content': decrypted_data['content'],
                         'is_user': message['is_user'],
                         'created_at': message['created_at'].strftime('%Y-%m-%d %H:%M:%S'),
-                        'metadata': decrypted_data.get('metadata', {})
+                        'timestamp': decrypted_data.get('timestamp'),
+                        'version': decrypted_data.get('version')
                     }
                     processed_messages.append(processed_message)
                 else:
@@ -362,7 +383,7 @@ def get_chat_messages(chat_id):
                     'content': 'Message unavailable',
                     'is_user': message['is_user'],
                     'created_at': message['created_at'].strftime('%Y-%m-%d %H:%M:%S'),
-                    'metadata': {'error': 'decryption_failed'}
+
                 })
         
         return processed_messages
