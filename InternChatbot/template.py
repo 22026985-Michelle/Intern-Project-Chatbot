@@ -1223,23 +1223,37 @@ HTML_TEMPLATE = '''
                 // First escape HTML
                 let formattedContent = this.escapeHtml(content);
                 
-                // Handle the 'json' prefix and format JSON content
-                if (formattedContent.toLowerCase().includes('here\`s the data converted to json format:')) {
+                // If content contains JSON, format it
+                if (formattedContent.includes('{') && formattedContent.includes('}')) {
                     const jsonStart = formattedContent.indexOf('{');
-                    if (jsonStart !== -1) {
-                        const prefix = formattedContent.substring(0, jsonStart);
-                        const jsonContent = formattedContent.substring(jsonStart);
+                    const jsonEnd = formattedContent.lastIndexOf('}') + 1;
+                    
+                    if (jsonStart >= 0 && jsonEnd > jsonStart) {
+                        const prefixText = formattedContent.substring(0, jsonStart);
+                        const jsonPart = formattedContent.substring(jsonStart, jsonEnd);
+                        const suffixText = formattedContent.substring(jsonEnd);
+                        
                         try {
-                            const formattedJson = this.formatJSON(jsonContent);
-                            formattedContent = prefix + '<pre><code>' + formattedJson + '</code></pre>';
+                            // Parse and reformat the JSON part
+                            const parsedJson = JSON.parse(jsonPart);
+                            const formattedJson = JSON.stringify(parsedJson, null, 2);
+                            
+                            // Wrap JSON in pre and code tags for proper formatting
+                            formattedContent = prefixText + 
+                                             '<pre><code>' + 
+                                             this.escapeHtml(formattedJson) + 
+                                             '</code></pre>' + 
+                                             suffixText;
                         } catch (e) {
-                            console.error('Error formatting JSON in message:', e);
+                            console.error('Error formatting JSON:', e);
                         }
                     }
                 }
-
-                // Handle newlines by replacing them with <br> tags
-                formattedContent = formattedContent.split(`\n`).join('<br>');
+                
+                // Handle regular newlines for non-JSON content
+                if (!formattedContent.includes('<pre>')) {
+                    formattedContent = formattedContent.split('\n').join('<br>');
+                }
                 
                 const userEmail = document.querySelector('.user-email').textContent;
                 const userAvatar = userEmail[0].toUpperCase();
@@ -1258,22 +1272,24 @@ HTML_TEMPLATE = '''
                 try {
                     // If it's a string that contains JSON
                     if (typeof content === 'string') {
-                        // Remove any leading text before the first '{'
+                        // Find JSON content between curly braces
                         const jsonStart = content.indexOf('{');
                         const jsonEnd = content.lastIndexOf('}') + 1;
+                        
                         if (jsonStart >= 0 && jsonEnd > jsonStart) {
-                            const jsonPart = content.substring(jsonStart, jsonEnd);
-                            try {
-                                const parsed = JSON.parse(jsonPart);
-                                return JSON.stringify(parsed, null, 2);
-                            } catch (e) {
-                                // If parsing fails, return the original content
-                                return content;
-                            }
+                            const jsonStr = content.substring(jsonStart, jsonEnd);
+                            const parsedJson = JSON.parse(jsonStr);
+                            
+                            // Ensure consistent formatting
+                            return JSON.stringify(parsedJson, null, 2)
+                                .replace(/\\\\n/g, '\\n')  // Replace escaped newlines with actual newlines
+                                .replace(/\\\\/g, '')      // Remove unnecessary escapes
+                                .replace(/"\\n/g, '"\\n')  // Fix newline formatting after quotes
+                                .replace(/\\n\\s*\\n/g, '\\n'); // Remove multiple consecutive newlines
                         }
                     }
                     
-                    // If it's already parsed JSON
+                    // If it's already an object
                     if (typeof content === 'object') {
                         return JSON.stringify(content, null, 2);
                     }
@@ -1281,7 +1297,7 @@ HTML_TEMPLATE = '''
                     return content;
                 } catch (e) {
                     console.error('Error formatting JSON:', e);
-                    return content; // Return original content if formatting fails
+                    return content;
                 }
             }
 
