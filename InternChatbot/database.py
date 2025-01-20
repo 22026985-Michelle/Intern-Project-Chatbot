@@ -261,25 +261,13 @@ def add_message(chat_id, content, is_user=True):
             return False
 
         cursor = connection.cursor(dictionary=True)
-        encryption = ChatEncryption()
         
-        # Prepare message content with metadata
-        message_data = {
-            'content': content,
-            'timestamp': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
-            'version': '1.0'
-        }
-        
-        
-        # Encrypt the entire message data
-        encrypted_content = encryption.encrypt_message(message_data)
-        
-        # Add message
+        # Store message without encryption
         message_query = """
         INSERT INTO messages (chat_id, content, is_user, created_at)
         VALUES (%s, %s, %s, NOW())
         """
-        cursor.execute(message_query, (chat_id, encrypted_content, is_user))
+        cursor.execute(message_query, (chat_id, content, is_user))
         
         # Update chat timestamp
         update_query = """
@@ -306,10 +294,10 @@ def get_recent_chats(user_id, limit=5):
     """Get recent chats with last message"""
     query = """
     SELECT c.chat_id, 
-           COALESCE(c.title, 'New Chat') as title,
+           c.title,
            c.created_at,
            c.updated_at,
-           (SELECT m.content 
+           (SELECT content 
             FROM messages m 
             WHERE m.chat_id = c.chat_id 
             ORDER BY m.created_at DESC 
@@ -325,28 +313,12 @@ def get_recent_chats(user_id, limit=5):
         if not result:
             return []
             
-        encryption = ChatEncryption()
-        processed_messages = []
-
-        # Process each chat
+        # Process timestamps and format response
         for chat in result:
-            try:
-                # Decrypt last message if it exists
-                if chat.get('last_message'):
-                    decrypted_data = encryption.decrypt_conversation(chat['last_message'])
-                    chat['last_message'] = decrypted_data['content'] if decrypted_data else 'Message unavailable'
-                else:
-                    chat['last_message'] = ''
-                    
-                # Format timestamps
-                if 'created_at' in chat and chat['created_at']:
-                    chat['created_at'] = chat['created_at'].strftime('%Y-%m-%d %H:%M:%S')
-                if 'updated_at' in chat and chat['updated_at']:
-                    chat['updated_at'] = chat['updated_at'].strftime('%Y-%m-%d %H:%M:%S')
-                    
-            except Exception as e:
-                logging.error(f"Error processing chat {chat.get('chat_id')}: {str(e)}")
-                chat['last_message'] = 'Message unavailable'
+            if 'created_at' in chat and chat['created_at']:
+                chat['created_at'] = chat['created_at'].strftime('%Y-%m-%d %H:%M:%S')
+            if 'updated_at' in chat and chat['updated_at']:
+                chat['updated_at'] = chat['updated_at'].strftime('%Y-%m-%d %H:%M:%S')
                 
         return result
         
@@ -357,7 +329,8 @@ def get_recent_chats(user_id, limit=5):
 def get_chat_messages(chat_id):
     """Get all messages for a specific chat"""
     query = """
-    SELECT content, 
+    SELECT message_id, 
+           content, 
            is_user, 
            created_at
     FROM messages
@@ -370,36 +343,16 @@ def get_chat_messages(chat_id):
         if not result:
             return []
             
-        encryption = ChatEncryption()
-        processed_messages = []
-        
+        formatted_messages = []
         for message in result:
-            try:
-                # Decrypt the content
-                decrypted_data = encryption.decrypt_message(message['content'])
-                if decrypted_data:
-                    processed_message = {
-                        'content': decrypted_data['content'],
-                        'is_user': message['is_user'],
-                        'created_at': message['created_at'].strftime('%Y-%m-%d %H:%M:%S'),
-                        'timestamp': decrypted_data.get('timestamp'),
-                        'version': decrypted_data.get('version')
-                    }
-                    processed_messages.append(processed_message)
-                else:
-                    logging.error(f"Failed to decrypt message in chat {chat_id}")
-                    
-            except Exception as e:
-                logging.error(f"Error processing message: {str(e)}")
-                # If decryption fails, add error message
-                processed_messages.append({
-                    'content': 'Message unavailable',
-                    'is_user': message['is_user'],
-                    'created_at': message['created_at'].strftime('%Y-%m-%d %H:%M:%S'),
-
-                })
+            formatted_messages.append({
+                'message_id': message['message_id'],
+                'content': message['content'],
+                'is_user': bool(message['is_user']),
+                'created_at': message['created_at'].strftime('%Y-%m-%d %H:%M:%S') if message['created_at'] else None
+            })
         
-        return processed_messages
+        return formatted_messages
         
     except Exception as e:
         logging.error(f"Error getting chat messages: {str(e)}")

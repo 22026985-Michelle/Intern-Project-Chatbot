@@ -179,18 +179,21 @@ def chat():
         chat_id = data.get('chat_id')
         is_new_chat = data.get('is_new_chat', False)
 
-        # First generate title if it's a new chat
+        logger.info(f"Processing chat message. New chat: {is_new_chat}, Chat ID: {chat_id}")
+
+        # Generate title first if it's a new chat
         title = "New Chat"  # Default title
         if is_new_chat:
             try:
+                # Generate a title using the first message
                 title_response = client.messages.create(
                     model="claude-3-5-sonnet-20241022",
                     max_tokens=50,
                     temperature=0,
                     system="Generate a very concise chat title (2-4 words) based on the first message.",
-                    messages=[{"role": "user", "content": f"Create a brief title for: {message}"}]
+                    messages=[{"role": "user", "content": message}]
                 )
-                title = title_response.content[0].text.strip()
+                title = title_response.content[0].text.strip().replace('"', '')
                 logger.info(f"Generated title: {title}")
             except Exception as e:
                 logger.error(f"Error generating title: {str(e)}")
@@ -211,9 +214,10 @@ def chat():
             logger.info(f"Created new chat with ID: {chat_id} and title: {title}")
 
         # Store user message
-        add_message(chat_id, message, is_user=True)
+        if not add_message(chat_id, message, is_user=True):
+            return jsonify({"error": "Failed to store message"}), 500
 
-        # Get the conversation history
+        # Get conversation history
         messages_query = "SELECT content, is_user FROM messages WHERE chat_id = %s ORDER BY created_at ASC"
         previous_messages = execute_query(messages_query, (chat_id,))
         
@@ -221,9 +225,6 @@ def chat():
         for msg in previous_messages:
             role = "user" if msg['is_user'] else "assistant"
             message_history.append({"role": role, "content": msg['content']})
-
-        # Add current message to history
-        message_history.append({"role": "user", "content": message})
 
         # Send message to Claude
         response = client.messages.create(
@@ -235,8 +236,9 @@ def chat():
         bot_response = response.content[0].text
 
         # Store bot response
-        add_message(chat_id, bot_response, is_user=False)
-        
+        if not add_message(chat_id, bot_response, is_user=False):
+            return jsonify({"error": "Failed to store bot response"}), 500
+
         return jsonify({
             "response": bot_response,
             "chat_id": chat_id
