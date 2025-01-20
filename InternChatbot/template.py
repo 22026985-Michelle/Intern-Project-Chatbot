@@ -1285,6 +1285,36 @@ HTML_TEMPLATE = '''
                 }
             }
 
+            setMessage(message) {
+                const userInput = document.getElementById('userInput');
+                userInput.value = message;
+                userInput.focus();
+                if (message === 'Please help me to format my JSON data') {
+                    this.formatJsonData();
+                }
+            }
+
+            async formatJsonData() {
+                const input = document.getElementById("userInput");
+                const jsonData = input.value.trim();
+                if (!jsonData) return;
+
+                try {
+                    const response = await fetch(`${this.BASE_URL}/api/format-json`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ json_data: jsonData })
+                    });
+
+                    if (!response.ok) throw new Error("Failed to format JSON");
+                    const data = await response.json();
+                    this.addMessageToUI(data.formatted_json, false);
+                } catch (error) {
+                    console.error("Error formatting JSON:", error);
+                    alert("Failed to format JSON. Please try again.");
+                }
+            }
+
             clearMessages() {
                 const messagesList = document.getElementById('messagesList');
                 if (messagesList) {
