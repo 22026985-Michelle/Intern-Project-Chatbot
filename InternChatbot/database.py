@@ -28,19 +28,15 @@ __all__ = [
 
 class ChatEncryption:
     def __init__(self):
-        self.key = self._load_or_generate_key()
+        self.key = self._load_key_from_env()
         self.cipher = Fernet(self.key)
     
-    def _load_or_generate_key(self):
-        """Load existing key or generate new one"""
-        key_file = 'chat_encryption.key'
-        if os.path.exists(key_file):
-            with open(key_file, 'rb') as f:
-                return f.read()
-        key = Fernet.generate_key()
-        with open(key_file, 'wb') as f:
-            f.write(key)
-        return key
+    def _load_key_from_env(self):
+        """Load encryption key from environment variable"""
+        key = os.getenv('ENCRYPTION_KEY')
+        if not key:
+            raise ValueError("ENCRYPTION_KEY is not set in the environment variables.")
+        return key.encode()
 
     def encrypt_message(self, message_data):
         """Encrypt message data"""
