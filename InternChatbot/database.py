@@ -259,7 +259,7 @@ def create_new_chat(user_id, title=None):
             connection.close()
 
 def add_message(chat_id, content, is_user=True):
-    """Add a message to a chat session"""
+    """Add a message to a chat session without encryption"""
     connection = None
     cursor = None
     try:
@@ -269,7 +269,7 @@ def add_message(chat_id, content, is_user=True):
 
         cursor = connection.cursor(dictionary=True)
         
-        # Store message without encryption
+        # Store message directly without encryption
         message_query = """
         INSERT INTO messages (chat_id, content, is_user, created_at)
         VALUES (%s, %s, %s, NOW())
@@ -301,16 +301,17 @@ def get_recent_chats(user_id, limit=5):
     """Get recent chats with last message"""
     query = """
     SELECT c.chat_id, 
-           COALESCE(c.title, 'New Chat') as title,
+           c.title,
            c.created_at,
            c.updated_at,
-           (SELECT m.content 
-            FROM messages m 
-            WHERE m.chat_id = c.chat_id 
-            ORDER BY m.created_at DESC 
-            LIMIT 1) as last_message,
-           c.section
+           m.content as last_message
     FROM chats c
+    LEFT JOIN messages m ON c.chat_id = m.chat_id 
+    AND m.created_at = (
+        SELECT MAX(created_at) 
+        FROM messages 
+        WHERE chat_id = c.chat_id
+    )
     WHERE c.user_id = %s
     ORDER BY c.updated_at DESC
     LIMIT %s
@@ -321,22 +322,13 @@ def get_recent_chats(user_id, limit=5):
         if not result:
             return []
             
-        # Format timestamps and process results
+        # Format timestamps
         for chat in result:
-            # Format all dates consistently
             if chat.get('created_at'):
                 chat['created_at'] = chat['created_at'].strftime('%Y-%m-%d %H:%M:%S')
             if chat.get('updated_at'):
                 chat['updated_at'] = chat['updated_at'].strftime('%Y-%m-%d %H:%M:%S')
-            
-            # Extract title directly
-            chat['title'] = str(chat.get('title', 'New Chat')).strip('"')
-            
-            # Set default section if none
-            if not chat.get('section'):
-                chat['section'] = 'Recents'
                 
-        logger.info(f"Processed chat results: {result}")
         return result
         
     except Exception as e:

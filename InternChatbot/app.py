@@ -179,23 +179,26 @@ def chat():
         chat_id = data.get('chat_id')
         is_first_message = data.get('is_first_message', False)
 
-        logger.info(f"Processing message. First message: {is_first_message}, Chat ID: {chat_id}")
+        logger.info(f"Processing chat message. New chat: {is_first_message}, Chat ID: {chat_id}")
 
-        # If this is a first message, generate a title first
+        # Generate title for new chats
         title = None
-        if is_first_message:
+        if is_first_message or not chat_id:
             try:
-                # Generate title using Claude
+                logger.info("Generating chat title...")
                 title_response = client.messages.create(
                     model="claude-3-5-sonnet-20241022",
                     max_tokens=50,
                     temperature=0,
-                    messages=[
-                        {"role": "system", "content": "Generate a very concise chat title (2-4 words) that captures the essence of this conversation. Title should be descriptive but brief."},
-                        {"role": "user", "content": f"First message: {message}\nGenerate appropriate title:"}
-                    ]
+                    messages=[{
+                        "role": "system",
+                        "content": "Generate a very concise chat title (2-4 words) that captures the essence of this conversation."
+                    }, {
+                        "role": "user",
+                        "content": f"First message: {message}\nGenerate appropriate title:"
+                    }]
                 )
-                title = title_response.content[0].text.strip().replace('"', '')
+                title = title_response.content[0].text.strip()
                 logger.info(f"Generated title: {title}")
             except Exception as e:
                 logger.error(f"Error generating title: {str(e)}")
@@ -210,18 +213,21 @@ def chat():
                 return jsonify({"error": "User not found"}), 404
             
             user_id = user_result[0]['user_id']
-            chat_id = create_new_chat(user_id, title if title else "New Chat")
+            chat_id = create_new_chat(user_id, title)
             if not chat_id:
                 return jsonify({"error": "Failed to create chat"}), 500
 
             logger.info(f"Created new chat with ID: {chat_id} and title: {title}")
         elif title:
-            # Update the title of existing chat
-            logger.info(f"Updating chat {chat_id} with title: {title}")
+            # Update title for existing chat
             update_chat_title(chat_id, title)
+            logger.info(f"Updated chat {chat_id} with title: {title}")
 
         # Store user message
-        add_message(chat_id, message, is_user=True)
+        success = add_message(chat_id, message, is_user=True)
+        if not success:
+            logger.error("Failed to store user message")
+            return jsonify({"error": "Failed to store message"}), 500
 
         # Get conversation history
         messages_query = "SELECT content, is_user FROM messages WHERE chat_id = %s ORDER BY created_at ASC"
@@ -242,11 +248,15 @@ def chat():
         bot_response = response.content[0].text
 
         # Store bot response
-        add_message(chat_id, bot_response, is_user=False)
+        success = add_message(chat_id, bot_response, is_user=False)
+        if not success:
+            logger.error("Failed to store bot response")
+            return jsonify({"error": "Failed to store response"}), 500
 
         return jsonify({
             "response": bot_response,
-            "chat_id": chat_id
+            "chat_id": chat_id,
+            "title": title  # Return the title so frontend can update immediately
         })
 
     except Exception as e:
