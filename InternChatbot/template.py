@@ -1220,7 +1220,7 @@ HTML_TEMPLATE = '''
                     .replace(/'/g, "&#039;");
             }
 
-            addMessageToUI(content, isUser) {
+            addMessageToUI(content, isUser ) {
                 const messagesList = document.getElementById('messagesList');
                 if (!messagesList) return;
 
@@ -1236,7 +1236,7 @@ HTML_TEMPLATE = '''
                 if (formattedContent.startsWith('{') || formattedContent.startsWith('[')) {
                     try {
                         const jsonContent = JSON.parse(formattedContent);
-                        formattedContent = '<pre><code>' + JSON.stringify(jsonContent, null, 2) + '</code></pre>';
+                        formattedContent = '<pre><code>' + JSON.stringify(jsonContent, null, 2) + '</code></pre>'; // Indented JSON
                     } catch (e) {
                         console.error('Error formatting JSON in message:', e);
                     }
@@ -1250,8 +1250,8 @@ HTML_TEMPLATE = '''
                 
                 const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
                 
-                messageDiv.innerHTML = '<div class="avatar ' + (isUser ? 'user-avatar' : 'bot-avatar') + '">' +
-                    (isUser ? userAvatar : botAvatarSvg) +
+                messageDiv.innerHTML = '<div class="avatar ' + (isUser  ? 'user-avatar' : 'bot-avatar') + '">' +
+                    (isUser  ? userAvatar : botAvatarSvg) +
                     '</div><div class="message-content">' + formattedContent + '</div>';
                 
                 messagesList.appendChild(messageDiv);
