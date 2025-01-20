@@ -1220,10 +1220,8 @@ HTML_TEMPLATE = '''
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
                 
-                // First escape HTML
                 let formattedContent = this.escapeHtml(content);
                 
-                // If content contains JSON, format it
                 if (formattedContent.includes('{') && formattedContent.includes('}')) {
                     const jsonStart = formattedContent.indexOf('{');
                     const jsonEnd = formattedContent.lastIndexOf('}') + 1;
@@ -1234,7 +1232,6 @@ HTML_TEMPLATE = '''
                         const suffixText = formattedContent.substring(jsonEnd);
                         
                         try {
-                            // Parse and reformat the JSON part
                             const parsedJson = JSON.parse(jsonPart);
                             const formattedJson = JSON.stringify(parsedJson, null, 2)
                                 .replace(/\\n/g, '\n')
@@ -1243,7 +1240,6 @@ HTML_TEMPLATE = '''
                                 .replace(/\n\s*\n/g, '\n')
                                 .replace(/\\"/g, '"');
                             
-                            // Wrap JSON in pre and code tags for proper formatting
                             formattedContent = prefixText + 
                                 '<pre><code>' + 
                                 this.escapeHtml(formattedJson) + 
@@ -1255,7 +1251,6 @@ HTML_TEMPLATE = '''
                     }
                 }
                 
-                // Handle regular newlines for non-JSON content
                 if (!formattedContent.includes('<pre>')) {
                     formattedContent = formattedContent.replace(/\\n/g, '<br>');
                 }
@@ -1263,7 +1258,10 @@ HTML_TEMPLATE = '''
                 const userEmail = document.querySelector('.user-email').textContent;
                 const userAvatar = userEmail[0].toUpperCase();
 
-                const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
+                const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' + 
+                    '<path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>' + 
+                    '<path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>' + 
+                    '</svg>';
 
                 messageDiv.innerHTML = '<div class="avatar ' + (isUser ? 'user-avatar' : 'bot-avatar') + '">' +
                     (isUser ? userAvatar : botAvatarSvg) +
@@ -1272,7 +1270,7 @@ HTML_TEMPLATE = '''
                 messagesList.appendChild(messageDiv);
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
-            
+
             formatJSON(content) {
                 try {
                     // If it's a string that contains JSON
