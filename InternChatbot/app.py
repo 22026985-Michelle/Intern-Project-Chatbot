@@ -179,32 +179,31 @@ def chat():
         chat_id = data.get('chat_id')
         is_first_message = data.get('is_first_message', False)
 
-        logger.info(f"Processing chat message. New chat: {is_first_message}, Chat ID: {chat_id}")
+        logger.info(f"Processing message - is_first_message: {is_first_message}, chat_id: {chat_id}")
 
         # Generate title for new chats
-        title = None
-        if is_first_message or not chat_id:
+        generated_title = "New Chat"
+        if is_first_message:
             try:
-                logger.info("Generating chat title...")
+                # First, generate the title
                 title_response = client.messages.create(
                     model="claude-3-5-sonnet-20241022",
                     max_tokens=50,
                     temperature=0,
                     messages=[{
                         "role": "system",
-                        "content": "Generate a very concise chat title (2-4 words) that captures the essence of this conversation."
+                        "content": "Generate a very brief, descriptive title (2-4 words) based on the user's message."
                     }, {
                         "role": "user",
-                        "content": f"First message: {message}\nGenerate appropriate title:"
+                        "content": message
                     }]
                 )
-                title = title_response.content[0].text.strip()
-                logger.info(f"Generated title: {title}")
+                generated_title = title_response.content[0].text.strip().replace('"', '')
+                logger.info(f"Generated title: {generated_title}")
             except Exception as e:
                 logger.error(f"Error generating title: {str(e)}")
-                title = "New Chat"
 
-        # Create new chat if needed
+        # Create new chat if no chat_id provided
         if not chat_id:
             user_email = session.get('user_email')
             user_query = "SELECT user_id FROM users WHERE email = %s"
@@ -213,32 +212,32 @@ def chat():
                 return jsonify({"error": "User not found"}), 404
             
             user_id = user_result[0]['user_id']
-            chat_id = create_new_chat(user_id, title)
+            chat_id = create_new_chat(user_id, generated_title)
             if not chat_id:
                 return jsonify({"error": "Failed to create chat"}), 500
 
-            logger.info(f"Created new chat with ID: {chat_id} and title: {title}")
-        elif title:
-            # Update title for existing chat
-            update_chat_title(chat_id, title)
-            logger.info(f"Updated chat {chat_id} with title: {title}")
+            logger.info(f"Created new chat {chat_id} with title: {generated_title}")
+
+        # If it's a first message for an existing chat, update the title
+        elif is_first_message and generated_title != "New Chat":
+            logger.info(f"Updating title for chat {chat_id} to: {generated_title}")
+            update_chat_title(chat_id, generated_title)
 
         # Store user message
-        success = add_message(chat_id, message, is_user=True)
-        if not success:
-            logger.error("Failed to store user message")
+        if not add_message(chat_id, message, is_user=True):
             return jsonify({"error": "Failed to store message"}), 500
 
         # Get conversation history
         messages_query = "SELECT content, is_user FROM messages WHERE chat_id = %s ORDER BY created_at ASC"
         previous_messages = execute_query(messages_query, (chat_id,))
         
+        # Build message history
         message_history = []
         for msg in previous_messages:
             role = "user" if msg['is_user'] else "assistant"
             message_history.append({"role": role, "content": msg['content']})
 
-        # Send message to Claude
+        # Get response from Claude
         response = client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=1000,
@@ -248,15 +247,13 @@ def chat():
         bot_response = response.content[0].text
 
         # Store bot response
-        success = add_message(chat_id, bot_response, is_user=False)
-        if not success:
-            logger.error("Failed to store bot response")
-            return jsonify({"error": "Failed to store response"}), 500
+        if not add_message(chat_id, bot_response, is_user=False):
+            return jsonify({"error": "Failed to store bot response"}), 500
 
         return jsonify({
             "response": bot_response,
             "chat_id": chat_id,
-            "title": title  # Return the title so frontend can update immediately
+            "title": generated_title
         })
 
     except Exception as e:

@@ -1073,7 +1073,7 @@ HTML_TEMPLATE = '''
             }
 
             createChatElement(chat) {
-                console.log('Creating chat element for:', chat);
+                console.log('Creating chat element for:', chat);  // Debug log
                 const div = document.createElement('div');
                 div.className = 'chat-item';
                 div.setAttribute('data-chat-id', chat.chat_id);
@@ -1082,9 +1082,11 @@ HTML_TEMPLATE = '''
                     div.classList.add('active');
                 }
 
-                // Use the title from the database, removing any quotes
-                const displayTitle = chat.title ? chat.title.replace(/^"|"$/g, '') : 'New Chat';
-                const truncatedTitle = displayTitle.length > 25 ? displayTitle.substring(0, 25) + '...' : displayTitle;
+                // Ensure we're using the correct title from the chat object
+                const displayTitle = chat.title || 'New Chat';
+                const truncatedTitle = displayTitle.length > 25 
+                    ? displayTitle.substring(0, 25) + '...' 
+                    : displayTitle;
 
                 div.innerHTML = `
                     <span class="chat-title" title="${displayTitle}">${truncatedTitle}</span>
@@ -1173,34 +1175,37 @@ HTML_TEMPLATE = '''
                 if (!message) return;
 
                 try {
-                    const isNewChat = !this.currentChatId;
-                    console.log('Sending message, isNewChat:', isNewChat); // Debug log
-                    
+                    // Check if this is a first message
+                    const isFirstMessage = !this.currentChatId;
+                    console.log("Sending message with isFirstMessage:", isFirstMessage);  // Debug log
+
                     const response = await fetch(this.BASE_URL + "/api/chat", {
                         method: "POST",
                         credentials: "include",
-                        headers: { "Content-Type": "application/json" },
+                        headers: { 
+                            "Content-Type": "application/json"
+                        },
                         body: JSON.stringify({
                             chat_id: this.currentChatId,
                             message: message,
-                            is_first_message: isNewChat  // Changed flag name to be clearer
+                            is_first_message: isFirstMessage
                         })
                     });
 
                     if (!response.ok) throw new Error("Failed to send message");
                     const data = await response.json();
-                    console.log('Response from server:', data); // Debug log
+                    console.log("Response from server:", data);  // Debug log
 
+                    // Update chat title and ID
                     if (data.chat_id) {
                         this.currentChatId = data.chat_id;
-                        // Wait a moment for the title to be updated before refreshing
-                        await new Promise(resolve => setTimeout(resolve, 100));
-                        await this.loadRecentChats();
                     }
 
+                    // Add messages to UI
                     this.addMessageToUI(message, true);
                     this.addMessageToUI(data.response, false);
 
+                    // Cache messages
                     if (!this.messageCache.has(this.currentChatId)) {
                         this.messageCache.set(this.currentChatId, []);
                     }
@@ -1210,6 +1215,12 @@ HTML_TEMPLATE = '''
                     );
 
                     input.value = "";
+
+                    // Give a moment for the title to be updated in the database
+                    if (isFirstMessage) {
+                        await new Promise(resolve => setTimeout(resolve, 500));
+                    }
+                    await this.loadRecentChats();
 
                 } catch (error) {
                     console.error("Error sending message:", error);
@@ -1349,11 +1360,12 @@ HTML_TEMPLATE = '''
                 }
             }
 
-
             async updateChatTitle(chatId, title) {
                 try {
+                    console.log("Updating chat title:", chatId, title);  // Debug log
                     const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/title`, {
                         method: 'PUT',
+                        credentials: 'include',
                         headers: {
                             'Content-Type': 'application/json'
                         },
@@ -1361,7 +1373,7 @@ HTML_TEMPLATE = '''
                     });
                     
                     if (!response.ok) throw new Error('Failed to update chat title');
-                    await this.loadRecentChats();
+                    await this.loadRecentChats();  // Refresh chat list
                 } catch (error) {
                     console.error('Error updating chat title:', error);
                 }
