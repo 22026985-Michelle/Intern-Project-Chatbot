@@ -1082,8 +1082,8 @@ HTML_TEMPLATE = '''
                     div.classList.add('active');
                 }
 
-                // Remove quotes and use the actual title from database
-                const displayTitle = chat.title || 'New Chat';
+                // Use the title from the database, removing any quotes
+                const displayTitle = chat.title ? chat.title.replace(/^"|"$/g, '') : 'New Chat';
                 const truncatedTitle = displayTitle.length > 25 ? displayTitle.substring(0, 25) + '...' : displayTitle;
 
                 div.innerHTML = `
@@ -1093,13 +1093,10 @@ HTML_TEMPLATE = '''
                     </div>
                 `;
 
-                // Add click handler for the entire chat item
                 div.addEventListener('click', () => {
-                    console.log('Loading chat:', chat.chat_id);
                     this.loadChat(chat.chat_id);
                 });
 
-                // Add separate click handler for delete button
                 div.querySelector('.delete-button').addEventListener('click', (e) => {
                     e.stopPropagation();
                     this.deleteChat(chat.chat_id);
@@ -1107,7 +1104,7 @@ HTML_TEMPLATE = '''
 
                 return div;
             }
-    
+
             handleNewChat() {
                 this.createNewChat().then(() => {
                     // Clear messages and input
@@ -1177,27 +1174,31 @@ HTML_TEMPLATE = '''
 
                 try {
                     const isNewChat = !this.currentChatId;
-                    this.addMessageToUI(message, true);
-
+                    console.log('Sending message, isNewChat:', isNewChat); // Debug log
+                    
                     const response = await fetch(this.BASE_URL + "/api/chat", {
                         method: "POST",
                         credentials: "include",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             chat_id: this.currentChatId,
-                            message: message
+                            message: message,
+                            is_first_message: isNewChat  // Changed flag name to be clearer
                         })
                     });
 
                     if (!response.ok) throw new Error("Failed to send message");
                     const data = await response.json();
+                    console.log('Response from server:', data); // Debug log
 
                     if (data.chat_id) {
                         this.currentChatId = data.chat_id;
-                        // Immediately refresh the chat list to show new title
+                        // Wait a moment for the title to be updated before refreshing
+                        await new Promise(resolve => setTimeout(resolve, 100));
                         await this.loadRecentChats();
                     }
 
+                    this.addMessageToUI(message, true);
                     this.addMessageToUI(data.response, false);
 
                     if (!this.messageCache.has(this.currentChatId)) {
@@ -1210,18 +1211,11 @@ HTML_TEMPLATE = '''
 
                     input.value = "";
 
-                    const messagesList = document.getElementById("messagesList");
-                    if (messagesList) {
-                        messagesList.style.display = "block";
-                        messagesList.scrollTop = messagesList.scrollHeight;
-                    }
-
                 } catch (error) {
                     console.error("Error sending message:", error);
                     alert("Failed to send message. Please try again.");
                 }
             }
-
 
             escapeHtml(unsafe) {
                 if (!unsafe) return '';

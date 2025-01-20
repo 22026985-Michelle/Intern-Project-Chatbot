@@ -177,28 +177,31 @@ def chat():
         data = request.get_json()
         message = data.get('message', '')
         chat_id = data.get('chat_id')
-        is_new_chat = data.get('is_new_chat', False)
+        is_first_message = data.get('is_first_message', False)
 
-        logger.info(f"Processing chat message. New chat: {is_new_chat}, Chat ID: {chat_id}")
+        logger.info(f"Processing message. First message: {is_first_message}, Chat ID: {chat_id}")
 
-        # Generate title first if it's a new chat
-        title = "New Chat"  # Default title
-        if is_new_chat:
+        # If this is a first message, generate a title first
+        title = None
+        if is_first_message:
             try:
-                # Generate a title using the first message
+                # Generate title using Claude
                 title_response = client.messages.create(
                     model="claude-3-5-sonnet-20241022",
                     max_tokens=50,
                     temperature=0,
-                    system="Generate a very concise chat title (2-4 words) based on the first message.",
-                    messages=[{"role": "user", "content": message}]
+                    messages=[
+                        {"role": "system", "content": "Generate a very concise chat title (2-4 words) that captures the essence of this conversation. Title should be descriptive but brief."},
+                        {"role": "user", "content": f"First message: {message}\nGenerate appropriate title:"}
+                    ]
                 )
                 title = title_response.content[0].text.strip().replace('"', '')
                 logger.info(f"Generated title: {title}")
             except Exception as e:
                 logger.error(f"Error generating title: {str(e)}")
+                title = "New Chat"
 
-        # Create new chat if no chat_id provided
+        # Create new chat if needed
         if not chat_id:
             user_email = session.get('user_email')
             user_query = "SELECT user_id FROM users WHERE email = %s"
@@ -207,15 +210,18 @@ def chat():
                 return jsonify({"error": "User not found"}), 404
             
             user_id = user_result[0]['user_id']
-            chat_id = create_new_chat(user_id, title)
+            chat_id = create_new_chat(user_id, title if title else "New Chat")
             if not chat_id:
                 return jsonify({"error": "Failed to create chat"}), 500
 
             logger.info(f"Created new chat with ID: {chat_id} and title: {title}")
+        elif title:
+            # Update the title of existing chat
+            logger.info(f"Updating chat {chat_id} with title: {title}")
+            update_chat_title(chat_id, title)
 
         # Store user message
-        if not add_message(chat_id, message, is_user=True):
-            return jsonify({"error": "Failed to store message"}), 500
+        add_message(chat_id, message, is_user=True)
 
         # Get conversation history
         messages_query = "SELECT content, is_user FROM messages WHERE chat_id = %s ORDER BY created_at ASC"
@@ -236,8 +242,7 @@ def chat():
         bot_response = response.content[0].text
 
         # Store bot response
-        if not add_message(chat_id, bot_response, is_user=False):
-            return jsonify({"error": "Failed to store bot response"}), 500
+        add_message(chat_id, bot_response, is_user=False)
 
         return jsonify({
             "response": bot_response,

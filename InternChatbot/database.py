@@ -211,7 +211,7 @@ def create_user(email, password, username):  # Add username parameter
         logger.error(f"Error creating user: {str(e)}")
         return False, str(e)
     
-def create_new_chat(user_id, title="New Chat"):
+def create_new_chat(user_id, title=None):
     """Create a new chat session for a user"""
     connection = None
     cursor = None
@@ -231,13 +231,20 @@ def create_new_chat(user_id, title="New Chat"):
         if result and result['chat_count'] >= 5:
             cleanup_old_chats(user_id, keep_count=4)
         
+        # Use provided title or default
+        chat_title = title if title else "New Chat"
+        logger.info(f"Creating new chat for user {user_id} with title: {chat_title}")
+        
         # Insert new chat with title
-        insert_query = "INSERT INTO chats (user_id, title, created_at, updated_at) VALUES (%s, %s, NOW(), NOW())"
-        cursor.execute(insert_query, (user_id, title))
+        insert_query = """
+        INSERT INTO chats (user_id, title, created_at, updated_at)
+        VALUES (%s, %s, NOW(), NOW())
+        """
+        cursor.execute(insert_query, (user_id, chat_title))
         connection.commit()
         
         chat_id = cursor.lastrowid
-        logger.info(f"Created new chat with ID {chat_id} and title '{title}'")
+        logger.info(f"Successfully created chat {chat_id} with title '{chat_title}'")
         return chat_id
         
     except Exception as e:
@@ -294,14 +301,15 @@ def get_recent_chats(user_id, limit=5):
     """Get recent chats with last message"""
     query = """
     SELECT c.chat_id, 
-           c.title,
+           COALESCE(c.title, 'New Chat') as title,
            c.created_at,
            c.updated_at,
-           (SELECT content 
+           (SELECT m.content 
             FROM messages m 
             WHERE m.chat_id = c.chat_id 
             ORDER BY m.created_at DESC 
-            LIMIT 1) as last_message
+            LIMIT 1) as last_message,
+           c.section
     FROM chats c
     WHERE c.user_id = %s
     ORDER BY c.updated_at DESC
@@ -313,13 +321,22 @@ def get_recent_chats(user_id, limit=5):
         if not result:
             return []
             
-        # Process timestamps and format response
+        # Format timestamps and process results
         for chat in result:
-            if 'created_at' in chat and chat['created_at']:
+            # Format all dates consistently
+            if chat.get('created_at'):
                 chat['created_at'] = chat['created_at'].strftime('%Y-%m-%d %H:%M:%S')
-            if 'updated_at' in chat and chat['updated_at']:
+            if chat.get('updated_at'):
                 chat['updated_at'] = chat['updated_at'].strftime('%Y-%m-%d %H:%M:%S')
+            
+            # Extract title directly
+            chat['title'] = str(chat.get('title', 'New Chat')).strip('"')
+            
+            # Set default section if none
+            if not chat.get('section'):
+                chat['section'] = 'Recents'
                 
+        logger.info(f"Processed chat results: {result}")
         return result
         
     except Exception as e:
@@ -417,8 +434,21 @@ def get_user_by_email(email):
 def update_chat_title(chat_id, title):
     """Update chat title"""
     try:
-        update_query = "UPDATE chats SET title = %s WHERE chat_id = %s"
-        execute_query(update_query, (title, chat_id))
+        logger.info(f"Updating title for chat {chat_id} to: {title}")
+        
+        # Ensure title is a valid string
+        if not title or not isinstance(title, str):
+            title = "New Chat"
+        
+        # Clean up the title string
+        title = title.strip().strip('"').strip()
+        if not title:
+            title = "New Chat"
+            
+        update_query = "UPDATE chats SET title = %s, updated_at = NOW() WHERE chat_id = %s"
+        result = execute_query(update_query, (title, chat_id))
+        
+        logger.info(f"Title update result: {result}")
         return True
     except Exception as e:
         logger.error(f"Error updating chat title: {str(e)}")
