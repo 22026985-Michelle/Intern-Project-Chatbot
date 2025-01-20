@@ -1082,8 +1082,8 @@ HTML_TEMPLATE = '''
                     div.classList.add('active');
                 }
 
-                // Use the title from the database, removing any quotes
-                const displayTitle = chat.title ? chat.title.replace(/^"|"$/g, '') : 'New Chat';
+                // Remove quotes and use the actual title from database
+                const displayTitle = chat.title || 'New Chat';
                 const truncatedTitle = displayTitle.length > 25 ? displayTitle.substring(0, 25) + '...' : displayTitle;
 
                 div.innerHTML = `
@@ -1093,10 +1093,13 @@ HTML_TEMPLATE = '''
                     </div>
                 `;
 
+                // Add click handler for the entire chat item
                 div.addEventListener('click', () => {
+                    console.log('Loading chat:', chat.chat_id);
                     this.loadChat(chat.chat_id);
                 });
 
+                // Add separate click handler for delete button
                 div.querySelector('.delete-button').addEventListener('click', (e) => {
                     e.stopPropagation();
                     this.deleteChat(chat.chat_id);
@@ -1182,8 +1185,7 @@ HTML_TEMPLATE = '''
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             chat_id: this.currentChatId,
-                            message: message,
-                            is_new_chat: isNewChat  // Add this flag
+                            message: message
                         })
                     });
 
@@ -1192,6 +1194,8 @@ HTML_TEMPLATE = '''
 
                     if (data.chat_id) {
                         this.currentChatId = data.chat_id;
+                        // Immediately refresh the chat list to show new title
+                        await this.loadRecentChats();
                     }
 
                     this.addMessageToUI(data.response, false);
@@ -1205,9 +1209,6 @@ HTML_TEMPLATE = '''
                     );
 
                     input.value = "";
-
-                    // Refresh chat list after sending message to update titles
-                    await this.loadRecentChats();
 
                     const messagesList = document.getElementById("messagesList");
                     if (messagesList) {
