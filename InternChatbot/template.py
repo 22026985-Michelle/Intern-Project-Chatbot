@@ -1252,18 +1252,18 @@ HTML_TEMPLATE = '''
                 
                 // Handle regular newlines for non-JSON content
                 if (!formattedContent.includes('<pre>')) {
-                    formattedContent = formattedContent.split('\n').join('<br>');
+                    formattedContent = formattedContent.replace(/\n/g, '<br>');
                 }
-                
+
                 const userEmail = document.querySelector('.user-email').textContent;
                 const userAvatar = userEmail[0].toUpperCase();
-                
+
                 const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
-                
+
                 messageDiv.innerHTML = '<div class="avatar ' + (isUser ? 'user-avatar' : 'bot-avatar') + '">' +
                     (isUser ? userAvatar : botAvatarSvg) +
                     '</div><div class="message-content">' + formattedContent + '</div>';
-                
+
                 messagesList.appendChild(messageDiv);
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
