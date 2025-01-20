@@ -213,26 +213,43 @@ def create_user(email, password, username):  # Add username parameter
     
 def create_new_chat(user_id, title="New Chat"):
     """Create a new chat session for a user"""
+    connection = None
+    cursor = None
     try:
+        connection = get_db_connection()
+        if not connection:
+            logger.error("Failed to connect to database")
+            return None
+
+        cursor = connection.cursor(dictionary=True)
+        
         # Check and cleanup old chats if needed
         count_query = "SELECT COUNT(*) as chat_count FROM chats WHERE user_id = %s"
-        result = execute_query(count_query, (user_id,))
+        cursor.execute(count_query, (user_id,))
+        result = cursor.fetchone()
         
-        if result and result[0]['chat_count'] >= 5:
+        if result and result['chat_count'] >= 5:
             cleanup_old_chats(user_id, keep_count=4)
         
-        # Insert new chat with provided title
-        insert_query = """
-        INSERT INTO chats (user_id, title, created_at, updated_at)
-        VALUES (%s, %s, NOW(), NOW())
-        """
-        chat_id = execute_query(insert_query, (user_id, title))
+        # Insert new chat with title
+        insert_query = "INSERT INTO chats (user_id, title, created_at, updated_at) VALUES (%s, %s, NOW(), NOW())"
+        cursor.execute(insert_query, (user_id, title))
+        connection.commit()
         
+        chat_id = cursor.lastrowid
+        logger.info(f"Created new chat with ID {chat_id} and title '{title}'")
         return chat_id
         
     except Exception as e:
         logger.error(f"Error in create_new_chat: {str(e)}")
+        if connection:
+            connection.rollback()
         return None
+    finally:
+        if cursor:
+            cursor.close()
+        if connection and connection.is_connected():
+            connection.close()
 
 def add_message(chat_id, content, is_user=True):
     """Add a message to a chat session"""

@@ -1155,17 +1155,15 @@ HTML_TEMPLATE = '''
                     return [];
                 }
             }
-                        
+                    
+
             async sendMessage() {
                 const input = document.getElementById("userInput");
                 const message = input.value.trim();
                 if (!message) return;
 
                 try {
-                    if (!this.currentChatId) {
-                        await this.createNewChat();
-                    }
-
+                    const isNewChat = !this.currentChatId;
                     this.addMessageToUI(message, true);
 
                     const response = await fetch(this.BASE_URL + "/api/chat", {
@@ -1174,7 +1172,8 @@ HTML_TEMPLATE = '''
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({
                             chat_id: this.currentChatId,
-                            message: message
+                            message: message,
+                            is_new_chat: isNewChat
                         })
                     });
 
