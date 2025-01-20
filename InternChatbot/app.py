@@ -184,26 +184,16 @@ def chat():
             user_query = "SELECT user_id FROM users WHERE email = %s"
             user_result = execute_query(user_query, (user_email,))
             if not user_result:
-                return jsonify({"error": "User not found"}), 404
+                return jsonify({"error": "User  not found"}), 404
             
             user_id = user_result[0]['user_id']
             chat_id = create_new_chat(user_id)
             if not chat_id:
                 return jsonify({"error": "Failed to create chat"}), 500
 
-            # Generate title based on first message
-            try:
-                title_response = client.messages.create(
-                    model="claude-3-5-sonnet-20241022",
-                    max_tokens=50,
-                    temperature=0,
-                    messages=[{"role": "user", "content": f"Generate a very concise title (2-4 words) that captures the main topic from this message: {message}"}]
-                )
-                title = title_response.content[0].text.strip()
-                update_chat_title(chat_id, title)
-            except Exception as e:
-                logger.error(f"Error generating title: {str(e)}")
-                update_chat_title(chat_id, "New Chat")
+            # Set chat title based on the first message
+            title = message[:50]  # Limit title length to 50 characters
+            update_chat_title(chat_id, title)
 
         # Store user message
         add_message(chat_id, message, is_user=True)
@@ -258,6 +248,27 @@ def chat():
 
     except Exception as e:
         logger.error(f"Error in chat endpoint: {str(e)}")
+        return jsonify({"error": str(e)}), 500
+    
+@app.route('/api/format-json', methods=['POST'])
+@login_required
+def format_json():
+    try:
+        data = request.get_json()
+        json_data = data.get('json_data')
+
+        if not json_data:
+            return jsonify({"error": "No JSON data provided"}), 400
+
+        # Use the DynamicFormatter to format the JSON
+        formatted_json = formatter.format_json(json_data)
+
+        return jsonify({
+            "formatted_json": formatted_json
+        })
+
+    except Exception as e:
+        logger.error(f"Error formatting JSON: {str(e)}")
         return jsonify({"error": str(e)}), 500
     
 def format_json_data(message):
