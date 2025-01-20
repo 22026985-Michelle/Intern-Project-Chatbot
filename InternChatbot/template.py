@@ -1220,53 +1220,36 @@ HTML_TEMPLATE = '''
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
                 
+                // First escape HTML
                 let formattedContent = this.escapeHtml(content);
                 
-                if (formattedContent.includes('{') && formattedContent.includes('}')) {
+                // Handle the 'json' prefix and format JSON content
+                if (formattedContent.toLowerCase().includes('here\`s the data converted to json format:')) {
                     const jsonStart = formattedContent.indexOf('{');
-                    const jsonEnd = formattedContent.lastIndexOf('}') + 1;
-                    
-                    if (jsonStart >= 0 && jsonEnd > jsonStart) {
-                        const prefixText = formattedContent.substring(0, jsonStart);
-                        const jsonPart = formattedContent.substring(jsonStart, jsonEnd);
-                        const suffixText = formattedContent.substring(jsonEnd);
-                        
+                    if (jsonStart !== -1) {
+                        const prefix = formattedContent.substring(0, jsonStart);
+                        const jsonContent = formattedContent.substring(jsonStart);
                         try {
-                            const parsedJson = JSON.parse(jsonPart);
-                            const formattedJson = JSON.stringify(parsedJson, null, 2)
-                                .replace(/\\n/g, '\n')
-                                .replace(/\\/g, '')
-                                .replace(/"\n/g, '"\n')
-                                .replace(/\n\s*\n/g, '\n')
-                                .replace(/\\"/g, '"');
-                            
-                            formattedContent = prefixText + 
-                                '<pre><code>' + 
-                                this.escapeHtml(formattedJson) + 
-                                '</code></pre>' + 
-                                suffixText;
+                            const formattedJson = this.formatJSON(jsonContent);
+                            formattedContent = prefix + '<pre><code>' + formattedJson + '</code></pre>';
                         } catch (e) {
-                            console.error('Error formatting JSON:', e);
+                            console.error('Error formatting JSON in message:', e);
                         }
                     }
                 }
-                
-                if (!formattedContent.includes('<pre>')) {
-                    formattedContent = formattedContent.replace(/\\n/g, '<br>');
-                }
 
+                // Handle newlines by replacing them with <br> tags
+                formattedContent = formattedContent.split(`\n`).join('<br>');
+                
                 const userEmail = document.querySelector('.user-email').textContent;
                 const userAvatar = userEmail[0].toUpperCase();
-
-                const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">' + 
-                    '<path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>' + 
-                    '<path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>' + 
-                    '</svg>';
-
+                
+                const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
+                
                 messageDiv.innerHTML = '<div class="avatar ' + (isUser ? 'user-avatar' : 'bot-avatar') + '">' +
                     (isUser ? userAvatar : botAvatarSvg) +
                     '</div><div class="message-content">' + formattedContent + '</div>';
-
+                
                 messagesList.appendChild(messageDiv);
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
@@ -1275,24 +1258,22 @@ HTML_TEMPLATE = '''
                 try {
                     // If it's a string that contains JSON
                     if (typeof content === 'string') {
-                        // Find JSON content between curly braces
+                        // Remove any leading text before the first '{'
                         const jsonStart = content.indexOf('{');
                         const jsonEnd = content.lastIndexOf('}') + 1;
-                        
                         if (jsonStart >= 0 && jsonEnd > jsonStart) {
-                            const jsonStr = content.substring(jsonStart, jsonEnd);
-                            const parsedJson = JSON.parse(jsonStr);
-                            
-                            // Ensure consistent formatting
-                            return JSON.stringify(parsedJson, null, 2)
-                                .replace(/\\\\n/g, '\\n')  // Replace escaped newlines with actual newlines
-                                .replace(/\\\\/g, '')      // Remove unnecessary escapes
-                                .replace(/"\\n/g, '"\\n')  // Fix newline formatting after quotes
-                                .replace(/\\n\\s*\\n/g, '\\n'); // Remove multiple consecutive newlines
+                            const jsonPart = content.substring(jsonStart, jsonEnd);
+                            try {
+                                const parsed = JSON.parse(jsonPart);
+                                return JSON.stringify(parsed, null, 2);
+                            } catch (e) {
+                                // If parsing fails, return the original content
+                                return content;
+                            }
                         }
                     }
                     
-                    // If it's already an object
+                    // If it's already parsed JSON
                     if (typeof content === 'object') {
                         return JSON.stringify(content, null, 2);
                     }
@@ -1300,7 +1281,7 @@ HTML_TEMPLATE = '''
                     return content;
                 } catch (e) {
                     console.error('Error formatting JSON:', e);
-                    return content;
+                    return content; // Return original content if formatting fails
                 }
             }
 
