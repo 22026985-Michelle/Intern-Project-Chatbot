@@ -67,7 +67,7 @@ class DynamicFormatter:
             return [self.capitalize_keys(item) for item in obj]
         
         return obj
-
+    
     def format_json(self, data: Union[str, dict], indent: int = 4) -> str:
         """
         Format JSON with proper indentation and capitalized keys.
@@ -86,8 +86,8 @@ class DynamicFormatter:
             
             # Capitalize keys and format
             formatted_data = self.capitalize_keys(data)
-            return json.dumps(formatted_data, indent=indent)
-        
+            return json.dumps(formatted_data, indent=indent)  # Ensure indentation is applied
+            
         except Exception as e:
             logger.error(f"Error formatting JSON: {str(e)}")
             raise

@@ -545,9 +545,10 @@ def generate_chat_title(message):
         return "New Chat"
 
 def update_chat_title(chat_id, title):
+    """Update chat title"""
     try:
-        query = "UPDATE chats SET title = %s WHERE chat_id = %s"
-        execute_query(query, (title, chat_id))
+        update_query = "UPDATE chats SET title = %s WHERE chat_id = %s"
+        execute_query(update_query, (title, chat_id))
         return True
     except Exception as e:
         logger.error(f"Error updating chat title: {str(e)}")
