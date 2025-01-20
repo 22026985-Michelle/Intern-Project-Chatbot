@@ -233,6 +233,8 @@ def create_new_chat(user_id, title=None):
         
         # Use provided title or default
         chat_title = title if title else "New Chat"
+        chat_title = chat_title.strip()[:50]  # Limit title length
+        
         logger.info(f"Creating new chat for user {user_id} with title: {chat_title}")
         
         # Insert new chat with title

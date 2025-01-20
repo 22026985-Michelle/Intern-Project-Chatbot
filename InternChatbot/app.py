@@ -181,28 +181,6 @@ def chat():
 
         logger.info(f"Processing message - is_first_message: {is_first_message}, chat_id: {chat_id}")
 
-        # Generate title for new chats
-        generated_title = "New Chat"
-        if is_first_message:
-            try:
-                # First, generate the title
-                title_response = client.messages.create(
-                    model="claude-3-5-sonnet-20241022",
-                    max_tokens=50,
-                    temperature=0,
-                    messages=[{
-                        "role": "system",
-                        "content": "Generate a very brief, descriptive title (2-4 words) based on the user's message."
-                    }, {
-                        "role": "user",
-                        "content": message
-                    }]
-                )
-                generated_title = title_response.content[0].text.strip().replace('"', '')
-                logger.info(f"Generated title: {generated_title}")
-            except Exception as e:
-                logger.error(f"Error generating title: {str(e)}")
-
         # Create new chat if no chat_id provided
         if not chat_id:
             user_email = session.get('user_email')
@@ -212,16 +190,34 @@ def chat():
                 return jsonify({"error": "User not found"}), 404
             
             user_id = user_result[0]['user_id']
-            chat_id = create_new_chat(user_id, generated_title)
+            
+            # Generate title for the first message
+            title = "New Chat"  # Default title
+            if is_first_message:
+                try:
+                    title_response = client.messages.create(
+                        model="claude-3-5-sonnet-20241022",
+                        max_tokens=50,
+                        temperature=0,
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": "Generate a very brief, descriptive title (2-4 words) based on the user's message. Do not use quotes in the title."
+                            },
+                            {
+                                "role": "user",
+                                "content": message
+                            }
+                        ]
+                    )
+                    title = title_response.content[0].text.strip()
+                    logger.info(f"Generated title: {title}")
+                except Exception as e:
+                    logger.error(f"Error generating title: {str(e)}")
+            
+            chat_id = create_new_chat(user_id, title)
             if not chat_id:
                 return jsonify({"error": "Failed to create chat"}), 500
-
-            logger.info(f"Created new chat {chat_id} with title: {generated_title}")
-
-        # If it's a first message for an existing chat, update the title
-        elif is_first_message and generated_title != "New Chat":
-            logger.info(f"Updating title for chat {chat_id} to: {generated_title}")
-            update_chat_title(chat_id, generated_title)
 
         # Store user message
         if not add_message(chat_id, message, is_user=True):
@@ -250,10 +246,15 @@ def chat():
         if not add_message(chat_id, bot_response, is_user=False):
             return jsonify({"error": "Failed to store bot response"}), 500
 
+        # Get current chat title
+        title_query = "SELECT title FROM chats WHERE chat_id = %s"
+        title_result = execute_query(title_query, (chat_id,))
+        current_title = title_result[0]['title'] if title_result else "New Chat"
+
         return jsonify({
             "response": bot_response,
             "chat_id": chat_id,
-            "title": generated_title
+            "title": current_title
         })
 
     except Exception as e:
