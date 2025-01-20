@@ -1236,14 +1236,19 @@ HTML_TEMPLATE = '''
                         try {
                             // Parse and reformat the JSON part
                             const parsedJson = JSON.parse(jsonPart);
-                            const formattedJson = JSON.stringify(parsedJson, null, 2);
+                            const formattedJson = JSON.stringify(parsedJson, null, 2)
+                                .replace(/\\n/g, '\n')       // Replace escaped newlines
+                                .replace(/\\/g, '')          // Remove unnecessary escapes
+                                .replace(/"\n/g, '"\n')      // Fix newline formatting
+                                .replace(/\n\s*\n/g, '\n')   // Remove multiple consecutive newlines
+                                .replace(/\\"/g, '"');       // Fix escaped quotes
                             
                             // Wrap JSON in pre and code tags for proper formatting
                             formattedContent = prefixText + 
-                                             '<pre><code>' + 
-                                             this.escapeHtml(formattedJson) + 
-                                             '</code></pre>' + 
-                                             suffixText;
+                                            '<pre><code>' + 
+                                            this.escapeHtml(formattedJson) + 
+                                            '</code></pre>' + 
+                                            suffixText;
                         } catch (e) {
                             console.error('Error formatting JSON:', e);
                         }
@@ -1252,7 +1257,7 @@ HTML_TEMPLATE = '''
                 
                 // Handle regular newlines for non-JSON content
                 if (!formattedContent.includes('<pre>')) {
-                    formattedContent = formattedContent.replace(/\n/g, '<br>');
+                    formattedContent = formattedContent.replace(/\\n/g, '<br>');
                 }
 
                 const userEmail = document.querySelector('.user-email').textContent;
