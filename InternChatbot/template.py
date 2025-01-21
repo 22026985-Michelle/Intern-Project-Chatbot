@@ -6,35 +6,6 @@ HTML_TEMPLATE = '''
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NCS Internship AI Chatbot</title>
     <style>
-        .copy-button {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            padding: 8px;
-            border-radius: 6px;
-            background-color: var(--tool-button-bg);
-            color: var(--text-color);
-            border: none;
-            cursor: pointer;
-            opacity: 0;
-            transition: all 0.2s ease;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .message:hover .copy-button {
-            opacity: 1;
-        }
-
-        .copy-button:hover {
-            background-color: var(--tool-button-hover);
-        }
-
-        .copy-button.copied {
-            background-color: #10B981;
-            color: white;
-        }
         /* Theme Variables */
         :root[data-theme="light"] {
             --bg-color: #FFFFFF;
@@ -862,90 +833,6 @@ HTML_TEMPLATE = '''
     </style>
 
     <script>
-        function createMessageElement(content, isUser) {
-            const messageDiv = document.createElement('div');
-            messageDiv.className = 'message';
-            
-            const userEmail = document.querySelector('.user-email').textContent;
-            const userAvatar = userEmail[0].toUpperCase();
-            
-            const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
-
-            let formattedContent = content;
-            try {
-                if (typeof content === 'string' && 
-                    (content.trim().startsWith('{') || content.trim().startsWith('['))) {
-                    const jsonContent = JSON.parse(content);
-                    formattedContent = '<pre><code>' + JSON.stringify(jsonContent, null, 2) + '</code></pre>';
-                }
-            } catch (e) {
-                formattedContent = content.replace(/\n/g, '<br>');
-            }
-
-            if (!isUser) {
-                messageDiv.innerHTML = `
-                    <div class="avatar bot-avatar">
-                        ${botAvatarSvg}
-                    </div>
-                    <div class="message-content">${formattedContent}</div>
-                    <button class="copy-button" onclick="copyMessageContent(this)">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" 
-                                d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3">
-                            </path>
-                        </svg>
-                        <span>Copy</span>
-                    </button>
-                `;
-            } else {
-                messageDiv.innerHTML = `
-                    <div class="avatar user-avatar">
-                        ${userAvatar}
-                    </div>
-                    <div class="message-content">${formattedContent}</div>
-                `;
-            }
-
-            return messageDiv;
-        }
-
-        async function copyMessageContent(button) {
-            const messageContent = button.parentElement.querySelector('.message-content');
-            const textToCopy = messageContent.innerText;
-
-            try {
-                await navigator.clipboard.writeText(textToCopy);
-                
-                // Update button appearance
-                const originalContent = button.innerHTML;
-                button.innerHTML = `
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                    </svg>
-                    <span>Copied!</span>
-                `;
-                button.classList.add('copied');
-                
-                // Reset button after 2 seconds
-                setTimeout(() => {
-                    button.innerHTML = originalContent;
-                    button.classList.remove('copied');
-                }, 2000);
-            } catch (err) {
-                console.error('Failed to copy text:', err);
-            }
-        }
-
-        function addMessageToUI(content, isUser) {
-            const messagesList = document.getElementById('messagesList');
-            if (!messagesList) return;
-
-            messagesList.style.display = 'block';
-            const messageElement = createMessageElement(content, isUser);
-            messagesList.appendChild(messageElement);
-            messageElement.scrollIntoView({ behavior: 'smooth', block: 'end' });
-        }
-
         function renderJsonTable(data) {
             const table = document.createElement('div');
             table.className = 'json-table-container';
@@ -983,7 +870,6 @@ HTML_TEMPLATE = '''
                             const parsed = JSON.parse(jsonPart);
                             return JSON.stringify(parsed, null, 2);
                         } catch (e) {
-                            console.error('Error parsing JSON:', String(e)); // Convert error to string
                             return content;
                         }
                     }
@@ -995,7 +881,7 @@ HTML_TEMPLATE = '''
                 
                 return content;
             } catch (e) {
-                console.error('Error formatting JSON:', String(e)); // Convert error to string
+                console.error('Error formatting JSON:', e);
                 return content;
             }
         }
@@ -1810,4 +1696,3 @@ HTML_TEMPLATE = '''
 </body>
 </html>
 '''
-

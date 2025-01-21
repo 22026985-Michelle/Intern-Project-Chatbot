@@ -167,8 +167,6 @@ def logout():
     session.clear()
     return redirect('/login')
 
-# app.py changes - Update the chat route:
-
 @app.route('/api/chat', methods=['POST'])
 @login_required
 def chat():
