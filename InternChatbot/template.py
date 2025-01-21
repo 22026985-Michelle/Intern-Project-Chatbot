@@ -1579,7 +1579,6 @@ HTML_TEMPLATE = '''
             const profileButton = document.getElementById('profileButton');
             const profileMenu = document.getElementById('profileMenu');
             const appearanceMenu = document.getElementById('appearanceMenu');
-            const settingsLink = document.getElementById('settingsLink');
 
             let isMenuOpen = false;
             let isOverSidebar = false;
@@ -1652,11 +1651,6 @@ HTML_TEMPLATE = '''
                 e.stopPropagation();
                 isMenuOpen = !isMenuOpen;
                 profileMenu.classList.toggle('active', isMenuOpen);
-            });
-
-            settingsLink.addEventListener('click', function(e) {
-                e.stopPropagation();
-                window.location.href = 'https://internproject-4fq7.onrender.com/Settings';
             });
 
             document.addEventListener('click', function(e) {
