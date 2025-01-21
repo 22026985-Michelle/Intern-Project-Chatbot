@@ -101,6 +101,37 @@
             margin-bottom: 1.5rem;
         }
 
+        .profile-menu {
+            position: absolute;
+            bottom: 100%;
+            left: 1rem;
+            right: 1rem;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: 0 2px 10px var(--box-shadow);
+            margin-bottom: 0.5rem;
+            z-index: 1020;  /* Higher than profile button */
+            opacity: 0;
+            pointer-events: none;
+            transform: translateY(10px);
+            transition: opacity 0.2s ease, transform 0.2s ease;
+        }
+
+        .menu-item {
+            width: 100%;
+            padding: 0.75rem 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            background: none;
+            border: none;
+            color: var(--text-color);
+            cursor: pointer;
+            text-align: left;
+            transition: background-color 0.2s ease;
+        }
+
         .profile-pic {
             width: 100px;
             height: 100px;

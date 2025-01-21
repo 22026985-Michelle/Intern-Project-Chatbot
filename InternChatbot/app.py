@@ -161,6 +161,12 @@ def settings_page():
     """Serve the settings page"""
     return send_file('settings.html')
 
+@app.route('/settings')  # Add lowercase route as well
+@login_required
+def settings_page_lowercase():
+    """Serve the settings page (lowercase route)"""
+    return send_file('settings.html')
+
 @app.route('/logout')
 def logout():
     """Handle logout"""

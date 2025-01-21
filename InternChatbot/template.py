@@ -1638,7 +1638,11 @@ HTML_TEMPLATE = '''
             };
 
             // Event Listeners
-            profileButton.addEventListener('click', toggleProfileMenu);
+            profileButton.addEventListener('click', (e) => {
+                e.preventDefault();
+                const menu = document.getElementById('profileMenu');
+                menu.classList.toggle('active');
+            });
 
             document.addEventListener('click', (event) => {
                 const isClickInsideProfile = profileButton.contains(event.target);
@@ -1686,6 +1690,38 @@ HTML_TEMPLATE = '''
             document.getElementById('newChatButton').addEventListener('click', () => {
                 window.chatManager.handleNewChat();
             });
+            document.querySelector('.menu-item[onclick*="Settings"]').addEventListener('click', (e) => {
+                e.preventDefault();
+                window.location.href = 'https://internproject-4fq7.onrender.com/Settings';
+            });
+
+            const settingsButton = document.querySelector('.menu-item[onclick*="Settings"]');
+            if (settingsButton) {
+                settingsButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.location.href = 'https://internproject-4fq7.onrender.com/Settings';
+                });
+            }
+
+            // Handle profile button clicks
+            const profileButton = document.getElementById('profileButton');
+            const profileMenu = document.getElementById('profileMenu');
+            
+            if (profileButton && profileMenu) {
+                profileButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    profileMenu.classList.toggle('active');
+                });
+
+                // Close menu when clicking outside
+                document.addEventListener('click', function(e) {
+                    if (!profileButton.contains(e.target) && !profileMenu.contains(e.target)) {
+                        profileMenu.classList.remove('active');
+                    }
+                });
+            }
         });
     </script>
 </body>
