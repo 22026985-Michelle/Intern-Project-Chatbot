@@ -8,8 +8,7 @@ HTML_TEMPLATE = '''
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-    <script src="https://unpkg.com/lucide-react@0.263.1"></script>
-    <script type="text/babel">
+    <script type="text/babeel">
         // Include ExcelTable component directly
         const ExcelTable = React.memo(() => {
             const [data, setData] = React.useState(null);
@@ -24,8 +23,10 @@ HTML_TEMPLATE = '''
                         setData(parsedJson);
                         setError('');
                     } catch (jsonError) {
+                        // Fix string concatenation
                         const lines = pastedText.split('\n').filter(line => line.trim());
                         const parsedData = {};
+                        
                         lines.forEach(line => {
                             const [key, ...valueParts] = line.split(':');
                             if (key && valueParts.length > 0) {
@@ -33,6 +34,7 @@ HTML_TEMPLATE = '''
                                 parsedData[key.trim()] = value;
                             }
                         });
+                        
                         if (Object.keys(parsedData).length > 0) {
                             setData(parsedData);
                             setError('');
@@ -44,6 +46,38 @@ HTML_TEMPLATE = '''
                     setError('Error processing pasted data. Please check the format.');
                     console.error('Error processing paste:', e);
                 }
+            };
+
+            const copyToClipboard = async () => {
+                if (!data) return;
+                
+                const headers = Object.keys(data);
+                const values = Object.values(data);
+                const tableContent = `${headers.join('\t')}\n${values.join('\t')}`;
+                
+                try {
+                    await navigator.clipboard.writeText(tableContent);
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                } catch (err) {
+                    console.error('Failed to copy:', err);
+                }
+            };
+
+            const downloadCSV = () => {
+                if (!data) return;
+                
+                const headers = Object.keys(data);
+                const values = Object.values(data);
+                const csvContent = 
+                    headers.join(',') + '\n' + 
+                    values.map(value => `"${value}"`).join(',');
+                
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'table_data.csv';
+                link.click();
             };
 
             return (
@@ -60,27 +94,44 @@ HTML_TEMPLATE = '''
                     </div>
 
                     {data && (
-                        <div className="w-full overflow-x-auto border rounded">
-                            <table className="min-w-full">
-                                <thead>
-                                    <tr className="bg-gray-50">
-                                        {Object.keys(data).map((key) => (
-                                            <th key={key} className="border-b border-r px-4 py-2 text-left text-sm font-medium text-gray-900">
-                                                {key}
-                                            </th>
-                                        ))}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        {Object.values(data).map((value, index) => (
-                                            <td key={index} className="border-r px-4 py-2 text-sm text-gray-500">
-                                                {value}
-                                            </td>
-                                        ))}
-                                    </tr>
-                                </tbody>
-                            </table>
+                        <div className="flex flex-col gap-4">
+                            <div className="flex justify-end gap-2">
+                                <button
+                                    onClick={copyToClipboard}
+                                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+                                >
+                                    {copied ? 'Copied!' : 'Copy for Excel'}
+                                </button>
+                                <button
+                                    onClick={downloadCSV}
+                                    className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
+                                >
+                                    Download CSV
+                                </button>
+                            </div>
+
+                            <div className="w-full overflow-x-auto border rounded">
+                                <table className="min-w-full">
+                                    <thead>
+                                        <tr className="bg-gray-50">
+                                            {Object.keys(data).map((key) => (
+                                                <th key={key} className="border-b border-r px-4 py-2 text-left text-sm font-medium text-gray-900">
+                                                    {key}
+                                                </th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <tr>
+                                            {Object.values(data).map((value, index) => (
+                                                <td key={index} className="border-r px-4 py-2 text-sm text-gray-500">
+                                                    {value}
+                                                </td>
+                                            ))}
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
                 </div>
