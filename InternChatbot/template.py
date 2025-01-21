@@ -857,7 +857,7 @@ HTML_TEMPLATE = '''
             
             return table;
         }
-        
+
         function formatJSON(content) {
             try {
                 if (typeof content === 'string') {
