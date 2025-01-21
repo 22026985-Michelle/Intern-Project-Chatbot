@@ -983,6 +983,7 @@ HTML_TEMPLATE = '''
                             const parsed = JSON.parse(jsonPart);
                             return JSON.stringify(parsed, null, 2);
                         } catch (e) {
+                            console.error('Error parsing JSON:', String(e)); // Convert error to string
                             return content;
                         }
                     }
@@ -994,7 +995,7 @@ HTML_TEMPLATE = '''
                 
                 return content;
             } catch (e) {
-                console.error('Error formatting JSON:', e);
+                console.error('Error formatting JSON:', String(e)); // Convert error to string
                 return content;
             }
         }
