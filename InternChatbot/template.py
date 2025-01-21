@@ -1348,8 +1348,8 @@ HTML_TEMPLATE = '''
                         }
                     }
 
-                    // Fix: Replace all newlines with <br> tags regardless of line ending type
-                    formattedContent = formattedContent.replace(/\r?\n/g, '<br>');
+                    // Keep this all on one line to prevent the console from splitting it
+                    formattedContent = formattedContent.replace(/(\r\n|\n|\r)/gm, '<br>');
                     
                     messageDiv.innerHTML = `
                         <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
