@@ -1579,6 +1579,7 @@ HTML_TEMPLATE = '''
             const profileButton = document.getElementById('profileButton');
             const profileMenu = document.getElementById('profileMenu');
             const appearanceMenu = document.getElementById('appearanceMenu');
+            const settingsLink = document.getElementById('settingsLink');
 
             let isMenuOpen = false;
             let isOverSidebar = false;
@@ -1677,11 +1678,6 @@ HTML_TEMPLATE = '''
                 if (!isClickInsideProfile && !isClickInsideMenu && !isClickInsideSidebar && isMenuOpen) {
                     toggleProfileMenu();
                 }
-            });
-
-            sidebarTrigger.addEventListener('mouseenter', () => {
-                isOverSidebar = true;
-                showSidebar();
             });
 
             sidebarTrigger.addEventListener('mouseleave', () => {
