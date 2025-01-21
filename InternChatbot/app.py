@@ -244,12 +244,11 @@ def format_json():
             return jsonify({"error": "No JSON data provided"}), 400
 
         # Use the DynamicFormatter to format the JSON
-        formatted_json = formatter.format_json(json_data)
+        formatted_json = formatter.format_json(json_data, indent=2)  # Specify indent level
 
         return jsonify({
             "formatted_json": formatted_json
         })
-
     except Exception as e:
         logger.error(f"Error formatting JSON: {str(e)}")
         return jsonify({"error": str(e)}), 500
