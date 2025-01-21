@@ -177,30 +177,7 @@ def chat():
 
         data = request.get_json()
         message = data.get('message', '')
-
-        try:
-            if '{' in message and '}' in message:
-                json_start = message.find('{')
-                json_end = message.rfind('}') + 1
-                json_str = message[json_start:json_end]
-                json_data = json.loads(json_str)
-                
-                # Process JSON to table format
-                table_data = process_json_to_table(json_data)
-                
-                if table_data:
-                    return jsonify({
-                        "type": "json_table",
-                        "data": table_data,
-                        "original_json": json_data
-                    })
-        except json.JSONDecodeError:
-            pass
-
         chat_id = data.get('chat_id')
-        is_first_message = data.get('is_first_message', False)
-
-        logger.info(f"Processing message - is_first_message: {is_first_message}, chat_id: {chat_id}")
 
         # Create new chat if no chat_id provided
         if not chat_id:
@@ -208,74 +185,55 @@ def chat():
             user_query = "SELECT user_id FROM users WHERE email = %s"
             user_result = execute_query(user_query, (user_email,))
             if not user_result:
-                return jsonify({"error": "User not found"}), 404
+                return jsonify({"error": "User  not found"}), 404
             
             user_id = user_result[0]['user_id']
-            
-            # Generate title for the first message
-            title = "New Chat"  # Default title
-            if is_first_message:
-                try:
-                    title_response = client.messages.create(
-                        model="claude-3-5-sonnet-20241022",
-                        max_tokens=50,
-                        temperature=0,
-                        messages=[
-                            {
-                                "role": "system",
-                                "content": "Generate a very brief, descriptive title (2-4 words) based on the user's message. Do not use quotes in the title."
-                            },
-                            {
-                                "role": "user",
-                                "content": message
-                            }
-                        ]
-                    )
-                    title = title_response.content[0].text.strip()
-                    logger.info(f"Generated title: {title}")
-                except Exception as e:
-                    logger.error(f"Error generating title: {str(e)}")
-            
-            chat_id = create_new_chat(user_id, title)
+            chat_id = create_new_chat(user_id)
             if not chat_id:
                 return jsonify({"error": "Failed to create chat"}), 500
 
-        # Store user message
-        if not add_message(chat_id, message, is_user=True):
-            return jsonify({"error": "Failed to store message"}), 500
+            # Set chat title based on the first message
+            title = message[:50]  # Limit title length to 50 characters
+            update_chat_title(chat_id, title)
 
-        # Get conversation history
+        # Store user message
+        add_message(chat_id, message, is_user=True)
+
+        # Regular chat processing
+        message_history = []
         messages_query = "SELECT content, is_user FROM messages WHERE chat_id = %s ORDER BY created_at ASC"
         previous_messages = execute_query(messages_query, (chat_id,))
         
-        # Build message history
-        message_history = []
         for msg in previous_messages:
             role = "user" if msg['is_user'] else "assistant"
             message_history.append({"role": role, "content": msg['content']})
 
-        # Get response from Claude
+        message_history.append({"role": "user", "content": message})
+        
         response = client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=1000,
             temperature=0,
             messages=message_history
         )
+        
         bot_response = response.content[0].text
 
+        # Format the bot response if it's JSON
+        if bot_response.startswith('{') or bot_response.startswith('['):
+            try:
+                parsed_json = json.loads(bot_response)  # Parse the JSON
+                formatted_json = json.dumps(parsed_json, indent=2)  # Format with indentation
+                bot_response = formatted_json  # Update the bot response
+            except json.JSONDecodeError:
+                logger.error("Failed to decode JSON from bot response.")
+
         # Store bot response
-        if not add_message(chat_id, bot_response, is_user=False):
-            return jsonify({"error": "Failed to store bot response"}), 500
-
-        # Get current chat title
-        title_query = "SELECT title FROM chats WHERE chat_id = %s"
-        title_result = execute_query(title_query, (chat_id,))
-        current_title = title_result[0]['title'] if title_result else "New Chat"
-
+        add_message(chat_id, bot_response, is_user=False)
+        
         return jsonify({
             "response": bot_response,
-            "chat_id": chat_id,
-            "title": current_title
+            "chat_id": chat_id
         })
 
     except Exception as e:

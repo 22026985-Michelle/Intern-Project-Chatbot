@@ -1319,30 +1319,45 @@ HTML_TEMPLATE = '''
                 const userEmail = document.querySelector('.user-email').textContent;
                 const userAvatar = userEmail[0].toUpperCase();
                 
-                const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
+                const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="# 0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
 
-                // Regular message handling
-                let formattedContent = this.escapeHtml(content);
-                
-                // Format JSON content
-                if (formattedContent.startsWith('{') || formattedContent.startsWith('[')) {
-                    try {
-                        const jsonContent = JSON.parse(formattedContent);
-                        formattedContent = '<pre><code>' + JSON.stringify(jsonContent, null, 2) + '</code></pre>';
-                    } catch (e) {
-                        console.error('Error formatting JSON in message:', e);
+                try {
+                    const parsedContent = typeof content === 'string' ? JSON.parse(content) : content;
+                    
+                    if (parsedContent && parsedContent.type === 'json_table') {
+                        const tableElement = renderJsonTable(parsedContent.data);
+                        messageDiv.innerHTML = `
+                            <div class="avatar ${isUser  ? 'user-avatar' : 'bot-avatar'}">
+                                ${isUser  ? userAvatar : botAvatarSvg}
+                            </div>
+                            <div class="message-content"></div>
+                        `;
+                        messageDiv.querySelector('.message-content').appendChild(tableElement);
+                    } else {
+                        throw new Error('Not a JSON table');
                     }
-                }
+                } catch (e) {
+                    let formattedContent = this.escapeHtml(content);
+                    
+                    if (typeof formattedContent === 'string' && 
+                        (formattedContent.trim().startsWith('{') || formattedContent.trim().startsWith('['))) {
+                        try {
+                            const jsonContent = JSON.parse(formattedContent);
+                            formattedContent = '<pre><code>' + JSON.stringify(jsonContent, null, 2) + '</code></pre>';
+                        } catch (e) {
+                            console.error('Error formatting JSON in message:', e);
+                        }
+                    }
 
-                // Correctly split by newlines
-                formattedContent = formattedContent.split(/\r?\n/).join('<br>');
-                
-                messageDiv.innerHTML = `
-                    <div class="avatar ${isUser  ? 'user-avatar' : 'bot-avatar'}">
-                        ${isUser  ? userAvatar : botAvatarSvg}
-                    </div>
-                    <div class="message-content">${formattedContent}</div>
-                `;
+                    formattedContent = formattedContent.split(/\r?\n/).join('<br>');
+                    
+                    messageDiv.innerHTML = `
+                        <div class="avatar ${isUser  ? 'user-avatar' : 'bot-avatar'}">
+                            ${isUser  ? userAvatar : botAvatarSvg}
+                        </div>
+                        <div class="message-content">${formattedContent}</div>
+                    `;
+                }
 
                 messagesList.appendChild(messageDiv);
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
