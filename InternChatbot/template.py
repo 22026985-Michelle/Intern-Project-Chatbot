@@ -1307,7 +1307,7 @@ HTML_TEMPLATE = '''
                     .replace(/'/g, "&#039;");
             }
 
-            addMessageToUI(content, isUser) {
+            addMessageToUI(content, isUser ) {
                 const messagesList = document.getElementById('messagesList');
                 if (!messagesList) return;
 
@@ -1321,46 +1321,28 @@ HTML_TEMPLATE = '''
                 
                 const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
 
-                try {
-                    // Try to parse content as JSON if it's a string
-                    const parsedContent = typeof content === 'string' ? JSON.parse(content) : content;
-                    
-                    if (parsedContent && parsedContent.type === 'json_table') {
-                        const tableElement = renderJsonTable(parsedContent.data);
-                        messageDiv.innerHTML = `
-                            <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
-                                ${isUser ? userAvatar : botAvatarSvg}
-                            </div>
-                            <div class="message-content"></div>
-                        `;
-                        messageDiv.querySelector('.message-content').appendChild(tableElement);
-                    } else {
-                        throw new Error('Not a JSON table');
+                // Regular message handling
+                let formattedContent = this.escapeHtml(content);
+                
+                // Format JSON content
+                if (formattedContent.startsWith('{') || formattedContent.startsWith('[')) {
+                    try {
+                        const jsonContent = JSON.parse(formattedContent);
+                        formattedContent = '<pre><code>' + JSON.stringify(jsonContent, null, 2) + '</code></pre>';
+                    } catch (e) {
+                        console.error('Error formatting JSON in message:', e);
                     }
-                } catch (e) {
-                    // Regular message handling
-                    let formattedContent = this.escapeHtml(content);
-                    
-                    // Check if content might be JSON
-                    if (typeof formattedContent === 'string' && 
-                        (formattedContent.trim().startsWith('{') || formattedContent.trim().startsWith('['))) {
-                        try {
-                            const jsonContent = JSON.parse(formattedContent);
-                            formattedContent = '<pre><code>' + JSON.stringify(jsonContent, null, 2) + '</code></pre>';
-                        } catch (e) {
-                            console.error('Error formatting JSON in message:', e);
-                        }
-                    }
-
-                    formattedContent = formattedContent.split(/\r?\n/).join('<br>');
-                    
-                    messageDiv.innerHTML = `
-                        <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
-                            ${isUser ? userAvatar : botAvatarSvg}
-                        </div>
-                        <div class="message-content">${formattedContent}</div>
-                    `;
                 }
+
+                // Correctly split by newlines
+                formattedContent = formattedContent.split(/\r?\n/).join('<br>');
+                
+                messageDiv.innerHTML = `
+                    <div class="avatar ${isUser  ? 'user-avatar' : 'bot-avatar'}">
+                        ${isUser  ? userAvatar : botAvatarSvg}
+                    </div>
+                    <div class="message-content">${formattedContent}</div>
+                `;
 
                 messagesList.appendChild(messageDiv);
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
