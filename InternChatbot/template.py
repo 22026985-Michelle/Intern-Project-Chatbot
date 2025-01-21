@@ -8,8 +8,133 @@ HTML_TEMPLATE = '''
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-    <script type="text/babeel">
-        // Include ExcelTable component directly
+    <script type="text/babel">
+        window.setMessage = function(message) {
+            const userInput = document.getElementById('userInput');
+            if (userInput) {
+                userInput.value = message;
+                userInput.focus();
+            }
+        };
+
+        const NRICGenerator = ({ input }) => {
+            // Constants for NRIC generation
+            const threshold = 1968;
+            const checksumArr_ST = ['J', 'Z', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A'];
+            const checksumArr_FG = ['X', 'W', 'U', 'T', 'R', 'Q', 'P', 'N', 'M', 'L', 'K'];
+
+            // Extract parameters from input string
+            const parseInput = (inputStr) => {
+                if (!inputStr || typeof inputStr !== 'string') {
+                    return null;
+                }
+
+                const match = inputStr.match(/Please generate (\d+) of NRICs, issued in (\d{4}) and prefix of ([STGF])/i);
+                if (!match) return null;
+
+                const count = parseInt(match[1]);
+                const year = match[2];
+                const prefix = match[3].toUpperCase();
+
+                // Validate the values
+                if (isNaN(count) || count <= 0 || count > 100) return null;
+                if (parseInt(year) < 1900 || parseInt(year) > 2099) return null;
+                if (!['S', 'T', 'F', 'G'].includes(prefix)) return null;
+
+                return { count, year, prefix };
+            };
+
+            // Generate random series
+            const generateSeries = () => {
+                const randomNumber = () => Math.floor(Math.random() * 10e5);
+                const zeroPad = (number) => ('0000000' + number).slice(-5);
+                return zeroPad(randomNumber());
+            };
+
+            // Calculate checksum
+            const calculateChecksum = (prefix, number) => {
+                const multiplyFactors = [2, 7, 6, 5, 4, 3, 2];
+                let sum = 0;
+                
+                if (prefix === 'T' || prefix === 'G') sum = 4;
+                
+                sum += number
+                    .split('')
+                    .map(s => parseInt(s))
+                    .map((digit, i) => digit * multiplyFactors[i])
+                    .reduce((a, b) => a + b, 0);
+
+                return (prefix === 'S' || prefix === 'T') 
+                    ? checksumArr_ST[sum % 11] 
+                    : checksumArr_FG[sum % 11];
+            };
+
+            // Generate single NRIC
+            const generateNRIC = (prefix, year) => {
+                const series = generateSeries();
+                const getNumberRange = (letter, year) => {
+                    const yearSegment = year.slice(2, 4);
+                    if (parseInt(year) >= threshold) return yearSegment;
+                    
+                    switch (letter) {
+                        case 'S': return parseInt(series) < 5e4 ? '00' : '01';
+                        case 'F': return parseInt(series) < 5e4 ? '02' : '03';
+                        default: return yearSegment;
+                    }
+                };
+                
+                const range = getNumberRange(prefix, year);
+                const number = `${range}${series}`;
+                return `${prefix}${number}${calculateChecksum(prefix, number)}`;
+            };
+
+            // Parse input and generate NRICs
+            const params = parseInput(input);
+            
+            if (!params) {
+                return (
+                    <div className="p-4">
+                        <div className="text-red-500 mb-4">
+                            Invalid input format. Please use the format:
+                        </div>
+                        <div className="bg-gray-100 p-3 rounded text-sm">
+                            Please generate [number] of NRICs, issued in [year] and prefix of [S/T/G/F]
+                        </div>
+                        <div className="mt-2 text-sm text-gray-600">
+                            Example: "Please generate 5 of NRICs, issued in 2024 and prefix of T"
+                        </div>
+                    </div>
+                );
+            }
+
+            // Generate the NRICs
+            const nrics = Array(params.count)
+                .fill(0)
+                .map(() => generateNRIC(params.prefix, params.year));
+
+            return (
+                <div className="p-4">
+                    <div className="mb-4">
+                        <span className="font-semibold">Generated {params.count} NRICs</span>
+                        <span className="text-gray-600"> (Year: {params.year}, Prefix: {params.prefix})</span>
+                    </div>
+                    <div className="space-y-2">
+                        {nrics.map((nric, index) => (
+                            <div key={index} className="p-2 bg-gray-100 rounded flex justify-between items-center">
+                                <span className="font-mono">{nric}</span>
+                                <button 
+                                    onClick={() => navigator.clipboard.writeText(nric)}
+                                    className="text-blue-500 hover:text-blue-700 text-sm"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
+        
         const ExcelTable = React.memo(() => {
             const [data, setData] = React.useState(null);
             const [copied, setCopied] = React.useState(false);
@@ -826,99 +951,7 @@ HTML_TEMPLATE = '''
             border-radius: 5px; 
             overflow: auto; 
         }
-    </style>
-</head>
-<body data-theme="light">
-    <div class="sidebar-trigger"></div>
-    <div class="sidebar">
-        <div class="sidebar-content">
-            <div class="sidebar-header">
-                <button class="new-chat-button" id="newChatButton">
-                    <span>⊕</span>
-                    Start new chat
-                </button>
-            </div>
-            <div class="chat-sections">
-                <div class="section">
-                    <div class="section-title">Recents</div>
-                    <div class="chat-list" id="recentChats"></div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="user-profile" id="userProfile">
-            <button class="profile-button" id="profileButton">
-                <div class="user-avatar">{avatar_letter}</div>
-                <div class="user-email">{email}</div>
-            </button>
-            <div class="profile-menu" id="profileMenu">
-                <button class="menu-item" onclick="window.location.href='https://internproject-4fq7.onrender.com/Settings'">
-                    <span class="menu-icon">⚙️</span>
-                    Settings
-                </button>
-                <button class="menu-item" onclick="toggleAppearanceMenu()">
-                    <span class="menu-icon">🎨</span>
-                    Appearance
-                </button>
-                <div class="appearance-menu" id="appearanceMenu">
-                    <button class="menu-item" onclick="setTheme('light')">
-                        <span class="menu-icon">☀️</span>
-                        Light
-                    </button>
-                    <button class="menu-item" onclick="setTheme('dark')">
-                        <span class="menu-icon">🌙</span>
-                        Dark
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="main-content">
-        <div class="chat-container" id="chatContainer">
-            <div class="greeting">
-                <div class="greeting-logo">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
-                        <path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
-                    </svg>
-                </div>
-                <h1 class="greeting-text">Having a late night?</h1>
-            </div>
 
-            <div id="messagesList"></div>
-            <div id="excelTableContainer"></div>
-        </div>
-
-        <div class="input-container">
-            <div class="input-wrapper">
-                <div class="input-group">
-                    <textarea 
-                        class="input-box" 
-                        placeholder="How can I help you today?"
-                        id="userInput"
-                    ></textarea>
-                    <button id="sendButton" class="send-button">
-                        <span class="send-icon">➤</span>
-                    </button>
-                </div>
-                <div id="filePreview" class="file-preview"></div>
-                <div class="input-footer">
-                    <div class="tools">
-                        <button class="tool-button" onclick="setMessage('Please help me convert the format of my data.')">Convert format of data</button>
-                        <button class="tool-button" onclick="setMessage('Can you help me check my data for any issues?')">Check data</button>
-                        <button class="tool-button" onclick="setMessage('I would like to learn more about NCS.')">Learn more about NCS</button>
-                        <button class="tool-button" onclick="setMessage('Can you help me fill in the missing fields?')">Fill in fields</button>
-                        <button class="tool-button" onclick="setMessage('Please help me to format my JSON data')">Format JSON</button>
-                        <button class="tool-button" onclick="window.setMessage('Please generate _ of NRICs, issued in _ and prefix of _')">Generate NRICs</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-    <style>
         .input-group {
             display: flex;
             gap: 0.5rem;
@@ -1009,125 +1042,100 @@ HTML_TEMPLATE = '''
             font-size: 1.2rem;
         }
     </style>
+</head>
+<body data-theme="light">
+    <div class="sidebar-trigger"></div>
+    <div class="sidebar">
+        <div class="sidebar-content">
+            <div class="sidebar-header">
+                <button class="new-chat-button" id="newChatButton">
+                    <span>⊕</span>
+                    Start new chat
+                </button>
+            </div>
+            <div class="chat-sections">
+                <div class="section">
+                    <div class="section-title">Recents</div>
+                    <div class="chat-list" id="recentChats"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="user-profile" id="userProfile">
+            <button class="profile-button" id="profileButton">
+                <div class="user-avatar">{avatar_letter}</div>
+                <div class="user-email">{email}</div>
+            </button>
+            <div class="profile-menu" id="profileMenu">
+                <button class="menu-item" onclick="window.location.href='https://internproject-4fq7.onrender.com/Settings'">
+                    <span class="menu-icon">⚙️</span>
+                    Settings
+                </button>
+                <button class="menu-item" onclick="toggleAppearanceMenu()">
+                    <span class="menu-icon">🎨</span>
+                    Appearance
+                </button>
+                <div class="appearance-menu" id="appearanceMenu">
+                    <button class="menu-item" onclick="setTheme('light')">
+                        <span class="menu-icon">☀️</span>
+                        Light
+                    </button>
+                    <button class="menu-item" onclick="setTheme('dark')">
+                        <span class="menu-icon">🌙</span>
+                        Dark
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="chat-container" id="chatContainer">
+            <div class="greeting">
+                <div class="greeting-logo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
+                        <path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <h1 class="greeting-text">Having a late night?</h1>
+            </div>
 
-    <script>
-        const NRICGenerator = ({ input }) => {
-            // Constants for NRIC generation
-            const threshold = 1968;
-            const checksumArr_ST = ['J', 'Z', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A'];
-            const checksumArr_FG = ['X', 'W', 'U', 'T', 'R', 'Q', 'P', 'N', 'M', 'L', 'K'];
+            <div id="messagesList"></div>
+            <div id="excelTableContainer"></div>
+        </div>
 
-            // Extract parameters from input string
-            const parseInput = (inputStr) => {
-                if (!inputStr || typeof inputStr !== 'string') {
-                    return null;
-                }
-
-                const match = inputStr.match(/Please generate (\d+) of NRICs, issued in (\d{4}) and prefix of ([STGF])/i);
-                if (!match) return null;
-
-                const count = parseInt(match[1]);
-                const year = match[2];
-                const prefix = match[3].toUpperCase();
-
-                // Validate the values
-                if (isNaN(count) || count <= 0 || count > 100) return null;
-                if (parseInt(year) < 1900 || parseInt(year) > 2099) return null;
-                if (!['S', 'T', 'F', 'G'].includes(prefix)) return null;
-
-                return { count, year, prefix };
-            };
-
-            // Generate random series
-            const generateSeries = () => {
-                const randomNumber = () => Math.floor(Math.random() * 10e5);
-                const zeroPad = (number) => ('0000000' + number).slice(-5);
-                return zeroPad(randomNumber());
-            };
-
-            // Calculate checksum
-            const calculateChecksum = (prefix, number) => {
-                const multiplyFactors = [2, 7, 6, 5, 4, 3, 2];
-                let sum = 0;
-                
-                if (prefix === 'T' || prefix === 'G') sum = 4;
-                
-                sum += number
-                    .split('')
-                    .map(s => parseInt(s))
-                    .map((digit, i) => digit * multiplyFactors[i])
-                    .reduce((a, b) => a + b, 0);
-
-                return (prefix === 'S' || prefix === 'T') 
-                    ? checksumArr_ST[sum % 11] 
-                    : checksumArr_FG[sum % 11];
-            };
-
-            // Generate single NRIC
-            const generateNRIC = (prefix, year) => {
-                const series = generateSeries();
-                const getNumberRange = (letter, year) => {
-                    const yearSegment = year.slice(2, 4);
-                    if (parseInt(year) >= threshold) return yearSegment;
-                    
-                    switch (letter) {
-                        case 'S': return parseInt(series) < 5e4 ? '00' : '01';
-                        case 'F': return parseInt(series) < 5e4 ? '02' : '03';
-                        default: return yearSegment;
-                    }
-                };
-                
-                const range = getNumberRange(prefix, year);
-                const number = `${range}${series}`;
-                return `${prefix}${number}${calculateChecksum(prefix, number)}`;
-            };
-
-            // Parse input and generate NRICs
-            const params = parseInput(input);
-            
-            if (!params) {
-                return (
-                    <div className="p-4">
-                        <div className="text-red-500 mb-4">
-                            Invalid input format. Please use the format:
-                        </div>
-                        <div className="bg-gray-100 p-3 rounded text-sm">
-                            Please generate [number] of NRICs, issued in [year] and prefix of [S/T/G/F]
-                        </div>
-                        <div className="mt-2 text-sm text-gray-600">
-                            Example: "Please generate 5 of NRICs, issued in 2024 and prefix of T"
-                        </div>
-                    </div>
-                );
-            }
-
-            // Generate the NRICs
-            const nrics = Array(params.count)
-                .fill(0)
-                .map(() => generateNRIC(params.prefix, params.year));
-
-            return (
-                <div className="p-4">
-                    <div className="mb-4">
-                        <span className="font-semibold">Generated {params.count} NRICs</span>
-                        <span className="text-gray-600"> (Year: {params.year}, Prefix: {params.prefix})</span>
-                    </div>
-                    <div className="space-y-2">
-                        {nrics.map((nric, index) => (
-                            <div key={index} className="p-2 bg-gray-100 rounded flex justify-between items-center">
-                                <span className="font-mono">{nric}</span>
-                                <button 
-                                    onClick={() => navigator.clipboard.writeText(nric)}
-                                    className="text-blue-500 hover:text-blue-700 text-sm"
-                                >
-                                    Copy
-                                </button>
-                            </div>
-                        ))}
+        <div class="input-container">
+            <div class="input-wrapper">
+                <div class="input-group">
+                    <textarea 
+                        class="input-box" 
+                        placeholder="How can I help you today?"
+                        id="userInput"
+                    ></textarea>
+                    <button id="sendButton" class="send-button">
+                        <span class="send-icon">➤</span>
+                    </button>
+                </div>
+                <div id="filePreview" class="file-preview"></div>
+                <div class="input-footer">
+                    <div class="tools">
+                        <button class="tool-button" onclick="window.setMessage('Please help me convert the format of my data.')">Convert format of data</button>
+                        <button class="tool-button" onclick="window.setMessage('Can you help me check my data for any issues?')">Check data</button>
+                        <button class="tool-button" onclick="window.setMessage('I would like to learn more about NCS.')">Learn more about NCS</button>
+                        <button class="tool-button" onclick="window.setMessage('Can you help me fill in the missing fields?')">Fill in fields</button>
+                        <button class="tool-button" onclick="window.setMessage('Please help me to format my JSON data')">Format JSON</button>
+                        <button class="tool-button" onclick="window.setMessage('Please generate 5 of NRICs, issued in 2024 and prefix of T')">Generate NRICs</button>
                     </div>
                 </div>
-            );
-        };
+            </div>
+        </div>
+    </div>
+
+
+
+
+    <script>
         function renderJsonTable(data) {
             const table = document.createElement('div');
             table.className = 'json-table-container';
@@ -1193,6 +1201,7 @@ HTML_TEMPLATE = '''
             init() {
                 this.bindEvents();
                 this.loadRecentChats();
+                setInterval(() => this.loadRecentChats(), 30000);
             }
 
             bindEvents() {
@@ -1355,14 +1364,17 @@ HTML_TEMPLATE = '''
                     console.log('Received chat data:', data);
                     
                     if (data.chats) {
-                        // Clear and update the sidebar chats
                         const recentSection = document.getElementById('recentChats');
                         if (recentSection) {
                             recentSection.innerHTML = '';
-                            data.chats.forEach(chat => {
-                                const chatElement = this.createChatElement(chat);
-                                recentSection.appendChild(chatElement);
-                            });
+                            if (data.chats.length === 0) {
+                                recentSection.innerHTML = '<div class="chat-item placeholder-text">No recent chats</div>';
+                            } else {
+                                data.chats.forEach(chat => {
+                                    const chatElement = this.createChatElement(chat);
+                                    recentSection.appendChild(chatElement);
+                                });
+                            }
                         }
                     }
                 } catch (error) {
@@ -1528,8 +1540,20 @@ HTML_TEMPLATE = '''
                         const messagesList = document.getElementById('messagesList');
                         const messageDiv = document.createElement('div');
                         messageDiv.className = 'message';
-                        messagesList.appendChild(messageDiv);
                         
+                        // Add the user message first
+                        const userMessageDiv = document.createElement('div');
+                        userMessageDiv.className = 'message';
+                        const userEmail = document.querySelector('.user-email').textContent;
+                        const userAvatar = userEmail[0].toUpperCase();
+                        userMessageDiv.innerHTML = `
+                            <div class="avatar user-avatar">${userAvatar}</div>
+                            <div class="message-content">${message}</div>
+                        `;
+                        messagesList.appendChild(userMessageDiv);
+                        
+                        // Then add the NRIC generator response
+                        messagesList.appendChild(messageDiv);
                         const root = ReactDOM.createRoot(messageDiv);
                         root.render(React.createElement(NRICGenerator, { input: message }));
                         
@@ -2001,9 +2025,6 @@ HTML_TEMPLATE = '''
             // Initialize chat manager
             window.chatManager = new ChatManager();
 
-            document.getElementById('newChatButton').addEventListener('click', () => {
-                window.chatManager.handleNewChat();
-            });
         });
     </script>
 </body>
