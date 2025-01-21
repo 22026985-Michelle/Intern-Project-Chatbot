@@ -245,14 +245,10 @@ HTML_TEMPLATE = '''
         }
 
         .user-profile {
-            position: sticky; 
-            bottom: 0;
-            width: 100%;
-            padding: 1rem;
-            background-color: var(--bg-color);
-            border-top: 1px solid var(--border-color);
             margin-top: auto; 
-            z-index: 1011;
+            padding: 1rem; 
+            border-top: 1px solid var(--border-color);
+            background-color: var(--bg-color);
         }
 
         .user-avatar {
