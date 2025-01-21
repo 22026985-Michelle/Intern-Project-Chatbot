@@ -1352,7 +1352,7 @@ HTML_TEMPLATE = '''
                         }
                     }
 
-                    formattedContent = formattedContent.split('\n').join('<br>');
+                    formattedContent = formattedContent.split(/\r?\n/).join('<br>');
                     
                     messageDiv.innerHTML = `
                         <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
