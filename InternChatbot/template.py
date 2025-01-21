@@ -653,21 +653,20 @@ HTML_TEMPLATE = '''
 </head>
 <body data-theme="light">
     <div class="sidebar-trigger"></div>
-        <div class="sidebar">
-            <div class="sidebar-header">
-                <button class="new-chat-button" id="newChatButton">
-                    <span>⊕</span>
-                    Start new chat
-                </button>
-            </div>
-            <div class="chat-sections">
-                <div class="section">
-                    <div class="section-title">Recents</div>
-                    <div class="chat-list" id="recentChats"></div>
-                </div>
+    <div class="sidebar-trigger"></div>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <button class="new-chat-button" id="newChatButton">
+                <span>⊕</span>
+                Start new chat
+            </button>
+        </div>
+        <div class="chat-sections">
+            <div class="section">
+                <div class="section-title">Recents</div>
+                <div class="chat-list" id="recentChats"></div>
             </div>
         </div>
-        
         <div class="user-profile" id="userProfile">
             <button class="profile-button" id="profileButton">
                 <div class="user-avatar">{avatar_letter}</div>
