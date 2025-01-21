@@ -39,7 +39,7 @@ def handle_nric_request(message):
     """Handle NRIC generation request and return appropriate response"""
     parsed = parse_nric_request(message)
     if not parsed:
-        return "Please use the format: 'Please generate [number] NRICs issued in [year], of prefix [S/T/F/G]'"
+        return "Please use the format: 'Please generate 𝘯𝘶𝘮𝘣𝘦𝘳 NRICs issued in 𝘺𝘦𝘢𝘳, of prefix 𝘚 | 𝘛 | 𝘍 | 𝘎'"
     
     count, year, prefix = parsed
     
@@ -50,8 +50,8 @@ def handle_nric_request(message):
     
     nrics = [generate_nric(prefix, year) for _ in range(count)]
     
+    # Format response with each NRIC on a new line without numbering
     response = f"Generated {count} NRICs with prefix {prefix} for year {year}:\n\n"
-    for i, nric in enumerate(nrics, 1):
-        response += f"{i}. {nric}\n"
+    response += "\n".join(nrics)
         
     return response
