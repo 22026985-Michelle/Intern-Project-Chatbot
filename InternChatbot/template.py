@@ -8,13 +8,99 @@ HTML_TEMPLATE = '''
     <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
     <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-    <script type="text/babel" src="/static/components/ExcelTable.js"></script>
+    <script src="https://unpkg.com/lucide-react@0.263.1"></script>
     <script type="text/babel">
-        const container = document.getElementById('excelTableContainer');
-        if (container) {
-            const root = ReactDOM.createRoot(container);
+        // Include ExcelTable component directly
+        const ExcelTable = React.memo(() => {
+            const [data, setData] = React.useState(null);
+            const [copied, setCopied] = React.useState(false);
+            const [error, setError] = React.useState('');
+
+            const handlePaste = (e) => {
+                try {
+                    const pastedText = e.clipboardData.getData('text');
+                    try {
+                        const parsedJson = JSON.parse(pastedText);
+                        setData(parsedJson);
+                        setError('');
+                    } catch (jsonError) {
+                        const lines = pastedText.split('\n').filter(line => line.trim());
+                        const parsedData = {};
+                        lines.forEach(line => {
+                            const [key, ...valueParts] = line.split(':');
+                            if (key && valueParts.length > 0) {
+                                const value = valueParts.join(':').trim();
+                                parsedData[key.trim()] = value;
+                            }
+                        });
+                        if (Object.keys(parsedData).length > 0) {
+                            setData(parsedData);
+                            setError('');
+                        } else {
+                            setError('Invalid data format. Please paste valid JSON or key:value pairs.');
+                        }
+                    }
+                } catch (e) {
+                    setError('Error processing pasted data. Please check the format.');
+                    console.error('Error processing paste:', e);
+                }
+            };
+
+            return (
+                <div className="space-y-4 p-4">
+                    <div className="mb-4">
+                        <textarea 
+                            className="w-full p-4 border rounded-lg min-h-32 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Paste your JSON or key:value pairs here..."
+                            onPaste={handlePaste}
+                        />
+                        {error && (
+                            <div className="text-red-500 text-sm mt-2">{error}</div>
+                        )}
+                    </div>
+
+                    {data && (
+                        <div className="w-full overflow-x-auto border rounded">
+                            <table className="min-w-full">
+                                <thead>
+                                    <tr className="bg-gray-50">
+                                        {Object.keys(data).map((key) => (
+                                            <th key={key} className="border-b border-r px-4 py-2 text-left text-sm font-medium text-gray-900">
+                                                {key}
+                                            </th>
+                                        ))}
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        {Object.values(data).map((value, index) => (
+                                            <td key={index} className="border-r px-4 py-2 text-sm text-gray-500">
+                                                {value}
+                                            </td>
+                                        ))}
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    )}
+                </div>
+            );
+        });
+
+        // Mount the component
+        if (document.getElementById('excelTableContainer')) {
+            const root = ReactDOM.createRoot(document.getElementById('excelTableContainer'));
             root.render(React.createElement(ExcelTable));
         }
+
+        // Define setMessage globally
+        window.setMessage = function(message) {
+            const userInput = document.getElementById('userInput');
+            if (userInput) {
+                userInput.value = message;
+                userInput.focus();
+            }
+        };
     </script>
     <style>
         /* Theme Variables */
@@ -773,7 +859,7 @@ HTML_TEMPLATE = '''
                         <button class="tool-button" onclick="setMessage('I would like to learn more about NCS.')">Learn more about NCS</button>
                         <button class="tool-button" onclick="setMessage('Can you help me fill in the missing fields?')">Fill in fields</button>
                         <button class="tool-button" onclick="setMessage('Please help me to format my JSON data')">Format JSON</button>
-                        <button class="tool-button" onclick="setMessage('Please generate (number) of NRICs, issued in (year) and prefix of (S/T/F/G)')">Generate NRICs</button>
+                        <button class="tool-button" onclick="window.setMessage('Please generate _ of NRICs, issued in _ and prefix of _')">Generate NRICs</button>
                     </div>
                 </div>
             </div>
