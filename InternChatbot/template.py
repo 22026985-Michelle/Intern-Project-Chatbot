@@ -1254,6 +1254,32 @@ HTML_TEMPLATE = '''
                     .replace(/'/g, "&#039;");
             }
 
+            function renderJsonTable(data) {
+                const table = document.createElement('div');
+                table.className = 'json-table-container';
+                
+                // Create table headers
+                const headers = Object.keys(data);
+                const values = Object.values(data);
+                
+                table.innerHTML = `
+                    <table class="min-w-full border border-gray-300">
+                        <thead>
+                            <tr>
+                                ${headers.map(h => `<th class="border border-gray-300 p-2 bg-gray-100 text-sm">${h}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                ${values.map(v => `<td class="border border-gray-300 p-2 text-center text-sm">${v}</td>`).join('')}
+                            </tr>
+                        </tbody>
+                    </table>
+                `;
+                
+                return table;
+            }
+
             addMessageToUI(content, isUser) {
                 const messagesList = document.getElementById('messagesList');
                 if (!messagesList) return;
@@ -1268,21 +1294,29 @@ HTML_TEMPLATE = '''
                 
                 const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
 
-                if (typeof content === 'object' && content.type === 'json_table') {
-                    const tableElement = renderJsonTable(content.data);
-                    messageDiv.innerHTML = `
-                        <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
-                            ${isUser ? userAvatar : botAvatarSvg}
-                        </div>
-                        <div class="message-content"></div>
-                    `;
-                    messageDiv.querySelector('.message-content').appendChild(tableElement);
-                } else {
+                try {
+                    // Try to parse content as JSON if it's a string
+                    const parsedContent = typeof content === 'string' ? JSON.parse(content) : content;
+                    
+                    if (parsedContent && parsedContent.type === 'json_table') {
+                        const tableElement = renderJsonTable(parsedContent.data);
+                        messageDiv.innerHTML = `
+                            <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
+                                ${isUser ? userAvatar : botAvatarSvg}
+                            </div>
+                            <div class="message-content"></div>
+                        `;
+                        messageDiv.querySelector('.message-content').appendChild(tableElement);
+                    } else {
+                        throw new Error('Not a JSON table');
+                    }
+                } catch (e) {
                     // Regular message handling
                     let formattedContent = this.escapeHtml(content);
                     
-                    // Format JSON content
-                    if (formattedContent.startsWith('{') || formattedContent.startsWith('[')) {
+                    // Check if content might be JSON
+                    if (typeof formattedContent === 'string' && 
+                        (formattedContent.trim().startsWith('{') || formattedContent.trim().startsWith('['))) {
                         try {
                             const jsonContent = JSON.parse(formattedContent);
                             formattedContent = '<pre><code>' + JSON.stringify(jsonContent, null, 2) + '</code></pre>';
@@ -1551,32 +1585,6 @@ HTML_TEMPLATE = '''
             let isOverSidebar = false;
             let sidebarTimeout = null;
 
-            
-            function renderJsonTable(data) {
-                const table = document.createElement('div');
-                table.className = 'json-table-container';
-                
-                // Create table headers
-                const headers = Object.keys(data);
-                const values = Object.values(data);
-                
-                table.innerHTML = `
-                    <table class="min-w-full border border-gray-300">
-                        <thead>
-                            <tr>
-                                ${headers.map(h => `<th class="border border-gray-300 p-2 bg-gray-100 text-sm">${h}</th>`).join('')}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                ${values.map(v => `<td class="border border-gray-300 p-2 text-center text-sm">${v}</td>`).join('')}
-                            </tr>
-                        </tbody>
-                    </table>
-                `;
-                
-                return table;
-            }
 
             // Sidebar Control Functions
             function showSidebar() {
