@@ -335,7 +335,7 @@ HTML_TEMPLATE = '''
         .chat-actions {
             display: flex;
             gap: 0.5rem;
-            opacity: 0;
+            opacity: 1;
             transition: opacity 0.2s ease;
         }
 
