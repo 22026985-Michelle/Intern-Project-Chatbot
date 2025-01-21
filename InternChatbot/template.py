@@ -1307,19 +1307,18 @@ HTML_TEMPLATE = '''
                     .replace(/'/g, "&#039;");
             }
 
-            addMessageToUI(content, isUser ) {
+            addMessageToUI(content, isUser) {
                 const messagesList = document.getElementById('messagesList');
                 if (!messagesList) return;
 
                 messagesList.style.display = 'block';
-
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
                 
                 const userEmail = document.querySelector('.user-email').textContent;
                 const userAvatar = userEmail[0].toUpperCase();
                 
-                const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="# 0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
+                const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
 
                 try {
                     const parsedContent = typeof content === 'string' ? JSON.parse(content) : content;
@@ -1327,8 +1326,8 @@ HTML_TEMPLATE = '''
                     if (parsedContent && parsedContent.type === 'json_table') {
                         const tableElement = renderJsonTable(parsedContent.data);
                         messageDiv.innerHTML = `
-                            <div class="avatar ${isUser  ? 'user-avatar' : 'bot-avatar'}">
-                                ${isUser  ? userAvatar : botAvatarSvg}
+                            <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
+                                ${isUser ? userAvatar : botAvatarSvg}
                             </div>
                             <div class="message-content"></div>
                         `;
@@ -1349,11 +1348,12 @@ HTML_TEMPLATE = '''
                         }
                     }
 
-                    formattedContent = formattedContent.split(/\r?\n/).join('<br>');
+                    // Fix: Replace all newlines with <br> tags regardless of line ending type
+                    formattedContent = formattedContent.replace(/\r?\n/g, '<br>');
                     
                     messageDiv.innerHTML = `
-                        <div class="avatar ${isUser  ? 'user-avatar' : 'bot-avatar'}">
-                            ${isUser  ? userAvatar : botAvatarSvg}
+                        <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
+                            ${isUser ? userAvatar : botAvatarSvg}
                         </div>
                         <div class="message-content">${formattedContent}</div>
                     `;
