@@ -773,6 +773,7 @@ HTML_TEMPLATE = '''
                         <button class="tool-button" onclick="setMessage('I would like to learn more about NCS.')">Learn more about NCS</button>
                         <button class="tool-button" onclick="setMessage('Can you help me fill in the missing fields?')">Fill in fields</button>
                         <button class="tool-button" onclick="setMessage('Please help me to format my JSON data')">Format JSON</button>
+                        <button class="tool-button" onclick="setMessage('Please generate (number) of NRICs, issued in (year) and prefix of (S/T/F/G)')">Generate NRICs</button>
                     </div>
                 </div>
             </div>
@@ -873,6 +874,123 @@ HTML_TEMPLATE = '''
     </style>
 
     <script>
+        const NRICGenerator = ({ input }) => {
+            // Constants for NRIC generation
+            const threshold = 1968;
+            const checksumArr_ST = ['J', 'Z', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A'];
+            const checksumArr_FG = ['X', 'W', 'U', 'T', 'R', 'Q', 'P', 'N', 'M', 'L', 'K'];
+
+            // Extract parameters from input string
+            const parseInput = (inputStr) => {
+                if (!inputStr || typeof inputStr !== 'string') {
+                    return null;
+                }
+
+                const match = inputStr.match(/Please generate (\d+) of NRICs, issued in (\d{4}) and prefix of ([STGF])/i);
+                if (!match) return null;
+
+                const count = parseInt(match[1]);
+                const year = match[2];
+                const prefix = match[3].toUpperCase();
+
+                // Validate the values
+                if (isNaN(count) || count <= 0 || count > 100) return null;
+                if (parseInt(year) < 1900 || parseInt(year) > 2099) return null;
+                if (!['S', 'T', 'F', 'G'].includes(prefix)) return null;
+
+                return { count, year, prefix };
+            };
+
+            // Generate random series
+            const generateSeries = () => {
+                const randomNumber = () => Math.floor(Math.random() * 10e5);
+                const zeroPad = (number) => ('0000000' + number).slice(-5);
+                return zeroPad(randomNumber());
+            };
+
+            // Calculate checksum
+            const calculateChecksum = (prefix, number) => {
+                const multiplyFactors = [2, 7, 6, 5, 4, 3, 2];
+                let sum = 0;
+                
+                if (prefix === 'T' || prefix === 'G') sum = 4;
+                
+                sum += number
+                    .split('')
+                    .map(s => parseInt(s))
+                    .map((digit, i) => digit * multiplyFactors[i])
+                    .reduce((a, b) => a + b, 0);
+
+                return (prefix === 'S' || prefix === 'T') 
+                    ? checksumArr_ST[sum % 11] 
+                    : checksumArr_FG[sum % 11];
+            };
+
+            // Generate single NRIC
+            const generateNRIC = (prefix, year) => {
+                const series = generateSeries();
+                const getNumberRange = (letter, year) => {
+                    const yearSegment = year.slice(2, 4);
+                    if (parseInt(year) >= threshold) return yearSegment;
+                    
+                    switch (letter) {
+                        case 'S': return parseInt(series) < 5e4 ? '00' : '01';
+                        case 'F': return parseInt(series) < 5e4 ? '02' : '03';
+                        default: return yearSegment;
+                    }
+                };
+                
+                const range = getNumberRange(prefix, year);
+                const number = `${range}${series}`;
+                return `${prefix}${number}${calculateChecksum(prefix, number)}`;
+            };
+
+            // Parse input and generate NRICs
+            const params = parseInput(input);
+            
+            if (!params) {
+                return (
+                    <div className="p-4">
+                        <div className="text-red-500 mb-4">
+                            Invalid input format. Please use the format:
+                        </div>
+                        <div className="bg-gray-100 p-3 rounded text-sm">
+                            Please generate [number] of NRICs, issued in [year] and prefix of [S/T/G/F]
+                        </div>
+                        <div className="mt-2 text-sm text-gray-600">
+                            Example: "Please generate 5 of NRICs, issued in 2024 and prefix of T"
+                        </div>
+                    </div>
+                );
+            }
+
+            // Generate the NRICs
+            const nrics = Array(params.count)
+                .fill(0)
+                .map(() => generateNRIC(params.prefix, params.year));
+
+            return (
+                <div className="p-4">
+                    <div className="mb-4">
+                        <span className="font-semibold">Generated {params.count} NRICs</span>
+                        <span className="text-gray-600"> (Year: {params.year}, Prefix: {params.prefix})</span>
+                    </div>
+                    <div className="space-y-2">
+                        {nrics.map((nric, index) => (
+                            <div key={index} className="p-2 bg-gray-100 rounded flex justify-between items-center">
+                                <span className="font-mono">{nric}</span>
+                                <button 
+                                    onClick={() => navigator.clipboard.writeText(nric)}
+                                    className="text-blue-500 hover:text-blue-700 text-sm"
+                                >
+                                    Copy
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
         function renderJsonTable(data) {
             const table = document.createElement('div');
             table.className = 'json-table-container';
@@ -1268,6 +1386,19 @@ HTML_TEMPLATE = '''
                 if (!message) return;
 
                 try {
+                    if (message.toLowerCase().includes('please generate') && message.toLowerCase().includes('nrics')) {
+                        // Render the NRIC generator component
+                        const messagesList = document.getElementById('messagesList');
+                        const messageDiv = document.createElement('div');
+                        messageDiv.className = 'message';
+                        messagesList.appendChild(messageDiv);
+                        
+                        const root = ReactDOM.createRoot(messageDiv);
+                        root.render(React.createElement(NRICGenerator, { input: message }));
+                        
+                        input.value = "";
+                        return;
+                    }
                     // Check if this is a first message
                     const isFirstMessage = !this.currentChatId;
                     console.log("Sending message with isFirstMessage:", isFirstMessage);
