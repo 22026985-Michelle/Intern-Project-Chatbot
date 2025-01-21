@@ -5,279 +5,6 @@ HTML_TEMPLATE = '''
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NCS Internship AI Chatbot</title>
-    <script src="https://unpkg.com/react@18/umd/react.development.js"></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
-    <script type="text/babel">
-        window.setMessage = function(message) {
-            const userInput = document.getElementById('userInput');
-            if (userInput) {
-                userInput.value = message;
-                userInput.focus();
-            }
-        };
-
-        const NRICGenerator = ({ input }) => {
-            // Constants for NRIC generation
-            const threshold = 1968;
-            const checksumArr_ST = ['J', 'Z', 'I', 'H', 'G', 'F', 'E', 'D', 'C', 'B', 'A'];
-            const checksumArr_FG = ['X', 'W', 'U', 'T', 'R', 'Q', 'P', 'N', 'M', 'L', 'K'];
-
-            // Extract parameters from input string
-            const parseInput = (inputStr) => {
-                if (!inputStr || typeof inputStr !== 'string') {
-                    return null;
-                }
-
-                const match = inputStr.match(/Please generate (\d+) of NRICs, issued in (\d{4}) and prefix of ([STGF])/i);
-                if (!match) return null;
-
-                const count = parseInt(match[1]);
-                const year = match[2];
-                const prefix = match[3].toUpperCase();
-
-                // Validate the values
-                if (isNaN(count) || count <= 0 || count > 100) return null;
-                if (parseInt(year) < 1900 || parseInt(year) > 2099) return null;
-                if (!['S', 'T', 'F', 'G'].includes(prefix)) return null;
-
-                return { count, year, prefix };
-            };
-
-            // Generate random series
-            const generateSeries = () => {
-                const randomNumber = () => Math.floor(Math.random() * 10e5);
-                const zeroPad = (number) => ('0000000' + number).slice(-5);
-                return zeroPad(randomNumber());
-            };
-
-            // Calculate checksum
-            const calculateChecksum = (prefix, number) => {
-                const multiplyFactors = [2, 7, 6, 5, 4, 3, 2];
-                let sum = 0;
-                
-                if (prefix === 'T' || prefix === 'G') sum = 4;
-                
-                sum += number
-                    .split('')
-                    .map(s => parseInt(s))
-                    .map((digit, i) => digit * multiplyFactors[i])
-                    .reduce((a, b) => a + b, 0);
-
-                return (prefix === 'S' || prefix === 'T') 
-                    ? checksumArr_ST[sum % 11] 
-                    : checksumArr_FG[sum % 11];
-            };
-
-            // Generate single NRIC
-            const generateNRIC = (prefix, year) => {
-                const series = generateSeries();
-                const getNumberRange = (letter, year) => {
-                    const yearSegment = year.slice(2, 4);
-                    if (parseInt(year) >= threshold) return yearSegment;
-                    
-                    switch (letter) {
-                        case 'S': return parseInt(series) < 5e4 ? '00' : '01';
-                        case 'F': return parseInt(series) < 5e4 ? '02' : '03';
-                        default: return yearSegment;
-                    }
-                };
-                
-                const range = getNumberRange(prefix, year);
-                const number = `${range}${series}`;
-                return `${prefix}${number}${calculateChecksum(prefix, number)}`;
-            };
-
-            // Parse input and generate NRICs
-            const params = parseInput(input);
-            
-            if (!params) {
-                return (
-                    <div className="p-4">
-                        <div className="text-red-500 mb-4">
-                            Invalid input format. Please use the format:
-                        </div>
-                        <div className="bg-gray-100 p-3 rounded text-sm">
-                            Please generate [number] of NRICs, issued in [year] and prefix of [S/T/G/F]
-                        </div>
-                        <div className="mt-2 text-sm text-gray-600">
-                            Example: "Please generate 5 of NRICs, issued in 2024 and prefix of T"
-                        </div>
-                    </div>
-                );
-            }
-
-            // Generate the NRICs
-            const nrics = Array(params.count)
-                .fill(0)
-                .map(() => generateNRIC(params.prefix, params.year));
-
-            return (
-                <div className="p-4">
-                    <div className="mb-4">
-                        <span className="font-semibold">Generated {params.count} NRICs</span>
-                        <span className="text-gray-600"> (Year: {params.year}, Prefix: {params.prefix})</span>
-                    </div>
-                    <div className="space-y-2">
-                        {nrics.map((nric, index) => (
-                            <div key={index} className="p-2 bg-gray-100 rounded flex justify-between items-center">
-                                <span className="font-mono">{nric}</span>
-                                <button 
-                                    onClick={() => navigator.clipboard.writeText(nric)}
-                                    className="text-blue-500 hover:text-blue-700 text-sm"
-                                >
-                                    Copy
-                                </button>
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            );
-        };
-        
-        const ExcelTable = React.memo(() => {
-            const [data, setData] = React.useState(null);
-            const [copied, setCopied] = React.useState(false);
-            const [error, setError] = React.useState('');
-
-            const handlePaste = (e) => {
-                try {
-                    const pastedText = e.clipboardData.getData('text');
-                    try {
-                        const parsedJson = JSON.parse(pastedText);
-                        setData(parsedJson);
-                        setError('');
-                    } catch (jsonError) {
-                        // Fix string concatenation
-                        const lines = pastedText.split('\n').filter(line => line.trim());
-                        const parsedData = {};
-                        
-                        lines.forEach(line => {
-                            const [key, ...valueParts] = line.split(':');
-                            if (key && valueParts.length > 0) {
-                                const value = valueParts.join(':').trim();
-                                parsedData[key.trim()] = value;
-                            }
-                        });
-                        
-                        if (Object.keys(parsedData).length > 0) {
-                            setData(parsedData);
-                            setError('');
-                        } else {
-                            setError('Invalid data format. Please paste valid JSON or key:value pairs.');
-                        }
-                    }
-                } catch (e) {
-                    setError('Error processing pasted data. Please check the format.');
-                    console.error('Error processing paste:', e);
-                }
-            };
-
-            const copyToClipboard = async () => {
-                if (!data) return;
-                
-                const headers = Object.keys(data);
-                const values = Object.values(data);
-                const tableContent = `${headers.join('\t')}\n${values.join('\t')}`;
-                
-                try {
-                    await navigator.clipboard.writeText(tableContent);
-                    setCopied(true);
-                    setTimeout(() => setCopied(false), 2000);
-                } catch (err) {
-                    console.error('Failed to copy:', err);
-                }
-            };
-
-            const downloadCSV = () => {
-                if (!data) return;
-                
-                const headers = Object.keys(data);
-                const values = Object.values(data);
-                const csvContent = 
-                    headers.join(',') + '\n' + 
-                    values.map(value => `"${value}"`).join(',');
-                
-                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-                const link = document.createElement('a');
-                link.href = URL.createObjectURL(blob);
-                link.download = 'table_data.csv';
-                link.click();
-            };
-
-            return (
-                <div className="space-y-4 p-4">
-                    <div className="mb-4">
-                        <textarea 
-                            className="w-full p-4 border rounded-lg min-h-32 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                            placeholder="Paste your JSON or key:value pairs here..."
-                            onPaste={handlePaste}
-                        />
-                        {error && (
-                            <div className="text-red-500 text-sm mt-2">{error}</div>
-                        )}
-                    </div>
-
-                    {data && (
-                        <div className="flex flex-col gap-4">
-                            <div className="flex justify-end gap-2">
-                                <button
-                                    onClick={copyToClipboard}
-                                    className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
-                                >
-                                    {copied ? 'Copied!' : 'Copy for Excel'}
-                                </button>
-                                <button
-                                    onClick={downloadCSV}
-                                    className="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 transition-colors"
-                                >
-                                    Download CSV
-                                </button>
-                            </div>
-
-                            <div className="w-full overflow-x-auto border rounded">
-                                <table className="min-w-full">
-                                    <thead>
-                                        <tr className="bg-gray-50">
-                                            {Object.keys(data).map((key) => (
-                                                <th key={key} className="border-b border-r px-4 py-2 text-left text-sm font-medium text-gray-900">
-                                                    {key}
-                                                </th>
-                                            ))}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <tr>
-                                            {Object.values(data).map((value, index) => (
-                                                <td key={index} className="border-r px-4 py-2 text-sm text-gray-500">
-                                                    {value}
-                                                </td>
-                                            ))}
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        });
-
-        // Mount the component
-        if (document.getElementById('excelTableContainer')) {
-            const root = ReactDOM.createRoot(document.getElementById('excelTableContainer'));
-            root.render(React.createElement(ExcelTable));
-        }
-
-        // Define setMessage globally
-        window.setMessage = function(message) {
-            const userInput = document.getElementById('userInput');
-            if (userInput) {
-                userInput.value = message;
-                userInput.focus();
-            }
-        };
-    </script>
     <style>
         /* Theme Variables */
         :root[data-theme="light"] {
@@ -323,36 +50,7 @@ HTML_TEMPLATE = '''
             --input-container-border: #4B5563;
             --box-shadow: rgba(0, 0, 0, 0.2);
         }
-        .rounded-lg {
-            border-radius: 0.5rem;
-        }
-        .min-h-32 {
-            min-height: 8rem;
-        }
-        .space-y-4 > * + * {
-            margin-top: 1rem;
-        }
-        .gap-2 {
-            gap: 0.5rem;
-        }
-        .text-white {
-            color: white;
-        }
-        .bg-blue-500 {
-            background-color: #3B82F6;
-        }
-        .bg-blue-600:hover {
-            background-color: #2563EB;
-        }
-        .bg-green-500 {
-            background-color: #22C55E;
-        }
-        .bg-green-600:hover {
-            background-color: #16A34A;
-        }
-        .text-red-500 {
-            color: #EF4444;
-        }
+        
 
         .avatar {
             width: 40px;
@@ -951,7 +649,97 @@ HTML_TEMPLATE = '''
             border-radius: 5px; 
             overflow: auto; 
         }
+    </style>
+</head>
+<body data-theme="light">
+    <div class="sidebar-trigger"></div>
+    <div class="sidebar">
+        <div class="sidebar-content">
+            <div class="sidebar-header">
+                <button class="new-chat-button" id="newChatButton">
+                    <span>⊕</span>
+                    Start new chat
+                </button>
+            </div>
+            <div class="chat-sections">
+                <div class="section">
+                    <div class="section-title">Recents</div>
+                    <div class="chat-list" id="recentChats"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="user-profile" id="userProfile">
+            <button class="profile-button" id="profileButton">
+                <div class="user-avatar">{avatar_letter}</div>
+                <div class="user-email">{email}</div>
+            </button>
+            <div class="profile-menu" id="profileMenu">
+                <button class="menu-item" onclick="window.location.href='https://internproject-4fq7.onrender.com/Settings'">
+                    <span class="menu-icon">⚙️</span>
+                    Settings
+                </button>
+                <button class="menu-item" onclick="toggleAppearanceMenu()">
+                    <span class="menu-icon">🎨</span>
+                    Appearance
+                </button>
+                <div class="appearance-menu" id="appearanceMenu">
+                    <button class="menu-item" onclick="setTheme('light')">
+                        <span class="menu-icon">☀️</span>
+                        Light
+                    </button>
+                    <button class="menu-item" onclick="setTheme('dark')">
+                        <span class="menu-icon">🌙</span>
+                        Dark
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="chat-container" id="chatContainer">
+            <div class="greeting">
+                <div class="greeting-logo">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
+                        <path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
+                    </svg>
+                </div>
+                <h1 class="greeting-text">Having a late night?</h1>
+            </div>
 
+            <div id="messagesList"></div>
+        </div>
+
+        <div class="input-container">
+            <div class="input-wrapper">
+                <div class="input-group">
+                    <textarea 
+                        class="input-box" 
+                        placeholder="How can I help you today?"
+                        id="userInput"
+                    ></textarea>
+                    <button id="sendButton" class="send-button">
+                        <span class="send-icon">➤</span>
+                    </button>
+                </div>
+                <div id="filePreview" class="file-preview"></div>
+                <div class="input-footer">
+                    <div class="tools">
+                        <button class="tool-button" onclick="setMessage('Please help me convert the format of my data.')">Convert format of data</button>
+                        <button class="tool-button" onclick="setMessage('Can you help me check my data for any issues?')">Check data</button>
+                        <button class="tool-button" onclick="setMessage('I would like to learn more about NCS.')">Learn more about NCS</button>
+                        <button class="tool-button" onclick="setMessage('Can you help me fill in the missing fields?')">Fill in fields</button>
+                        <button class="tool-button" onclick="setMessage('Please help me to format my JSON data')">Format JSON</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <style>
         .input-group {
             display: flex;
             gap: 0.5rem;
@@ -1042,98 +830,6 @@ HTML_TEMPLATE = '''
             font-size: 1.2rem;
         }
     </style>
-</head>
-<body data-theme="light">
-    <div class="sidebar-trigger"></div>
-    <div class="sidebar">
-        <div class="sidebar-content">
-            <div class="sidebar-header">
-                <button class="new-chat-button" id="newChatButton">
-                    <span>⊕</span>
-                    Start new chat
-                </button>
-            </div>
-            <div class="chat-sections">
-                <div class="section">
-                    <div class="section-title">Recents</div>
-                    <div class="chat-list" id="recentChats"></div>
-                </div>
-            </div>
-        </div>
-        
-        <div class="user-profile" id="userProfile">
-            <button class="profile-button" id="profileButton">
-                <div class="user-avatar">{avatar_letter}</div>
-                <div class="user-email">{email}</div>
-            </button>
-            <div class="profile-menu" id="profileMenu">
-                <button class="menu-item" onclick="window.location.href='https://internproject-4fq7.onrender.com/Settings'">
-                    <span class="menu-icon">⚙️</span>
-                    Settings
-                </button>
-                <button class="menu-item" onclick="toggleAppearanceMenu()">
-                    <span class="menu-icon">🎨</span>
-                    Appearance
-                </button>
-                <div class="appearance-menu" id="appearanceMenu">
-                    <button class="menu-item" onclick="setTheme('light')">
-                        <span class="menu-icon">☀️</span>
-                        Light
-                    </button>
-                    <button class="menu-item" onclick="setTheme('dark')">
-                        <span class="menu-icon">🌙</span>
-                        Dark
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="main-content">
-        <div class="chat-container" id="chatContainer">
-            <div class="greeting">
-                <div class="greeting-logo">
-                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
-                        <path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/>
-                    </svg>
-                </div>
-                <h1 class="greeting-text">Having a late night?</h1>
-            </div>
-
-            <div id="messagesList"></div>
-            <div id="excelTableContainer"></div>
-        </div>
-
-        <div class="input-container">
-            <div class="input-wrapper">
-                <div class="input-group">
-                    <textarea 
-                        class="input-box" 
-                        placeholder="How can I help you today?"
-                        id="userInput"
-                    ></textarea>
-                    <button id="sendButton" class="send-button">
-                        <span class="send-icon">➤</span>
-                    </button>
-                </div>
-                <div id="filePreview" class="file-preview"></div>
-                <div class="input-footer">
-                    <div class="tools">
-                        <button class="tool-button" onclick="window.setMessage('Please help me convert the format of my data.')">Convert format of data</button>
-                        <button class="tool-button" onclick="window.setMessage('Can you help me check my data for any issues?')">Check data</button>
-                        <button class="tool-button" onclick="window.setMessage('I would like to learn more about NCS.')">Learn more about NCS</button>
-                        <button class="tool-button" onclick="window.setMessage('Can you help me fill in the missing fields?')">Fill in fields</button>
-                        <button class="tool-button" onclick="window.setMessage('Please help me to format my JSON data')">Format JSON</button>
-                        <button class="tool-button" onclick="window.setMessage('Please generate 5 of NRICs, issued in 2024 and prefix of T')">Generate NRICs</button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-
-
 
     <script>
         function renderJsonTable(data) {
@@ -1201,7 +897,6 @@ HTML_TEMPLATE = '''
             init() {
                 this.bindEvents();
                 this.loadRecentChats();
-                setInterval(() => this.loadRecentChats(), 30000);
             }
 
             bindEvents() {
@@ -1364,17 +1059,14 @@ HTML_TEMPLATE = '''
                     console.log('Received chat data:', data);
                     
                     if (data.chats) {
+                        // Clear and update the sidebar chats
                         const recentSection = document.getElementById('recentChats');
                         if (recentSection) {
                             recentSection.innerHTML = '';
-                            if (data.chats.length === 0) {
-                                recentSection.innerHTML = '<div class="chat-item placeholder-text">No recent chats</div>';
-                            } else {
-                                data.chats.forEach(chat => {
-                                    const chatElement = this.createChatElement(chat);
-                                    recentSection.appendChild(chatElement);
-                                });
-                            }
+                            data.chats.forEach(chat => {
+                                const chatElement = this.createChatElement(chat);
+                                recentSection.appendChild(chatElement);
+                            });
                         }
                     }
                 } catch (error) {
@@ -1535,31 +1227,6 @@ HTML_TEMPLATE = '''
                 if (!message) return;
 
                 try {
-                    if (message.toLowerCase().includes('please generate') && message.toLowerCase().includes('nrics')) {
-                        // Render the NRIC generator component
-                        const messagesList = document.getElementById('messagesList');
-                        const messageDiv = document.createElement('div');
-                        messageDiv.className = 'message';
-                        
-                        // Add the user message first
-                        const userMessageDiv = document.createElement('div');
-                        userMessageDiv.className = 'message';
-                        const userEmail = document.querySelector('.user-email').textContent;
-                        const userAvatar = userEmail[0].toUpperCase();
-                        userMessageDiv.innerHTML = `
-                            <div class="avatar user-avatar">${userAvatar}</div>
-                            <div class="message-content">${message}</div>
-                        `;
-                        messagesList.appendChild(userMessageDiv);
-                        
-                        // Then add the NRIC generator response
-                        messagesList.appendChild(messageDiv);
-                        const root = ReactDOM.createRoot(messageDiv);
-                        root.render(React.createElement(NRICGenerator, { input: message }));
-                        
-                        input.value = "";
-                        return;
-                    }
                     // Check if this is a first message
                     const isFirstMessage = !this.currentChatId;
                     console.log("Sending message with isFirstMessage:", isFirstMessage);
@@ -1911,11 +1578,6 @@ HTML_TEMPLATE = '''
             let isOverSidebar = false;
             let sidebarTimeout = null;
 
-            if (document.getElementById('excelTableContainer')) {
-                const rootElement = document.getElementById('excelTableContainer');
-                const root = ReactDOM.createRoot(rootElement);
-                root.render(React.createElement(window.ExcelTable));
-            }
 
             // Sidebar Control Functions
             function showSidebar() {
@@ -2025,6 +1687,9 @@ HTML_TEMPLATE = '''
             // Initialize chat manager
             window.chatManager = new ChatManager();
 
+            document.getElementById('newChatButton').addEventListener('click', () => {
+                window.chatManager.handleNewChat();
+            });
         });
     </script>
 </body>
