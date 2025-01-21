@@ -229,25 +229,15 @@ def add_message(chat_id, content, is_user=True):
             connection.close()
 
 def get_recent_chats(user_id, limit=5):
-    """Get recent chats with dynamic titles"""
+    """Get recent chats with last message"""
     query = """
-    SELECT DISTINCT
-        c.chat_id,
-        CASE 
-            WHEN c.title != 'New Chat' AND c.title IS NOT NULL THEN c.title
-            ELSE (
-                SELECT content 
-                FROM messages 
-                WHERE chat_id = c.chat_id AND is_user = 1
-                ORDER BY created_at ASC 
-                LIMIT 1
-            )
-        END as title,
-        c.created_at,
-        c.updated_at,
-        m.content as last_message
+    SELECT c.chat_id, 
+           c.title,
+           c.created_at,
+           c.updated_at,
+           AES_DECRYPT(m.content, %s) AS last_message
     FROM chats c
-    LEFT JOIN messages m ON m.chat_id = c.chat_id 
+    LEFT JOIN messages m ON c.chat_id = m.chat_id 
     AND m.created_at = (
         SELECT MAX(created_at) 
         FROM messages 
@@ -258,7 +248,7 @@ def get_recent_chats(user_id, limit=5):
     LIMIT %s
     """
     try:
-        result = execute_query(query, (user_id, limit))
+        result = execute_query(query, (ENCRYPTION_KEY, user_id, limit))
         
         if not result:
             return []
