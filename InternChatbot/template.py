@@ -1339,7 +1339,7 @@ HTML_TEMPLATE = '''
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
 
-            formatJSON(content) {
+            formatJSON(content) {  
                 try {
                     // If it's a string that contains JSON
                     if (typeof content === 'string') {
@@ -1359,7 +1359,7 @@ HTML_TEMPLATE = '''
                     }
                     
                     // If it's already parsed JSON
-                    if (typeof content === 'object') {
+                    if (typeof content === 'object' && content !== null) {
                         return JSON.stringify(content, null, 2);
                     }
                     
