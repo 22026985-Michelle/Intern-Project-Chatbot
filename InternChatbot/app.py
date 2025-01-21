@@ -9,7 +9,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from dynamic_formatter import DynamicFormatter
 import logging
-logger = logging.getLogger(name)
+logger = logging.getLogger(__name__)
 from database import (
     get_db_connection, 
     execute_query, 
@@ -32,7 +32,6 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 logging.basicConfig(level=logging.DEBUG)
-logger = logging.getLogger(name)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
