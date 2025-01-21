@@ -246,10 +246,12 @@ HTML_TEMPLATE = '''
         }
 
         .user-profile {
+            position: relative;  /* Changed to relative */
             margin-top: auto; 
-            padding: 1rem; 
+            padding: 1rem;
             border-top: 1px solid var(--border-color);
             background-color: var(--bg-color);
+            z-index: 1020;  /* Ensure it's above other elements */
         }
 
         .user-avatar {
@@ -534,6 +536,13 @@ HTML_TEMPLATE = '''
             to { opacity: 1; transform: translateY(0); }
         }
 
+        #settingsLink {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            box-sizing: border-box;
+        }
+
         .profile-button {
             background: none;
             border: none;
@@ -563,7 +572,7 @@ HTML_TEMPLATE = '''
             border-radius: 8px;
             box-shadow: 0 2px 10px var(--box-shadow);
             margin-bottom: 0.5rem;
-            z-index: 1020;  /* Higher than profile button */
+            z-index: 1025;  /* Higher than profile button */
             opacity: 0;
             pointer-events: none;
             transform: translateY(10px);
@@ -1638,8 +1647,27 @@ HTML_TEMPLATE = '''
                 userInput.focus();
             };
 
-            // Event Listeners
-            profileButton.addEventListener('click', toggleProfileMenu);
+            profileButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                isMenuOpen = !isMenuOpen;
+                profileMenu.classList.toggle('active', isMenuOpen);
+            });
+
+            settingsLink.addEventListener('click', function(e) {
+                e.stopPropagation();
+                window.location.href = 'https://internproject-4fq7.onrender.com/Settings';
+            });
+
+            document.addEventListener('click', function(e) {
+                if (!profileMenu.contains(e.target) && !profileButton.contains(e.target)) {
+                    isMenuOpen = false;
+                    profileMenu.classList.remove('active');
+                }
+            });
+
+            profileMenu.addEventListener('click', function(e) {
+                e.stopPropagation();
+            });
 
             document.addEventListener('click', (event) => {
                 const isClickInsideProfile = profileButton.contains(event.target);
