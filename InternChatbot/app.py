@@ -19,7 +19,8 @@ from database import (
     add_message, 
     cleanup_old_chats,
     FileHandler,
-    handle_conversion_request 
+    handle_conversion_request,
+    process_json_to_table
 )
 
 app = Flask(__name__)
@@ -176,6 +177,26 @@ def chat():
 
         data = request.get_json()
         message = data.get('message', '')
+
+        try:
+            if '{' in message and '}' in message:
+                json_start = message.find('{')
+                json_end = message.rfind('}') + 1
+                json_str = message[json_start:json_end]
+                json_data = json.loads(json_str)
+                
+                # Process JSON to table format
+                table_data = process_json_to_table(json_data)
+                
+                if table_data:
+                    return jsonify({
+                        "type": "json_table",
+                        "data": table_data,
+                        "original_json": json_data
+                    })
+        except json.JSONDecodeError:
+            pass
+
         chat_id = data.get('chat_id')
         is_first_message = data.get('is_first_message', False)
 
@@ -700,3 +721,29 @@ def format_data():
     except Exception as e:
         logging.error(f"Error processing request: {str(e)}")
         return jsonify({'error': str(e)}), 500
+    
+
+@app.route('/api/json-to-table', methods=['POST'])
+@login_required
+def json_to_table():
+    try:
+        data = request.get_json()
+        json_data = data.get('json_data')
+        
+        if not json_data:
+            return jsonify({"error": "No JSON data provided"}), 400
+            
+        # Process the JSON data
+        table_data = process_json_to_table(json_data)
+        
+        if not table_data:
+            return jsonify({"error": "Failed to process JSON data"}), 500
+            
+        return jsonify({
+            "status": "success",
+            "data": table_data
+        })
+        
+    except Exception as e:
+        app.logger.error(f"Error converting JSON to table: {str(e)}")
+        return jsonify({"error": str(e)}), 500

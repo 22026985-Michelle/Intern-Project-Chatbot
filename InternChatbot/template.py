@@ -1254,7 +1254,7 @@ HTML_TEMPLATE = '''
                     .replace(/'/g, "&#039;");
             }
 
-            addMessageToUI(content, isUser ) {
+            addMessageToUI(content, isUser) {
                 const messagesList = document.getElementById('messagesList');
                 if (!messagesList) return;
 
@@ -1263,31 +1263,44 @@ HTML_TEMPLATE = '''
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
                 
-                // First escape HTML
-                let formattedContent = this.escapeHtml(content);
-                
-                // Format JSON content
-                if (formattedContent.startsWith('{') || formattedContent.startsWith('[')) {
-                    try {
-                        const jsonContent = JSON.parse(formattedContent);
-                        formattedContent = '<pre><code>' + JSON.stringify(jsonContent, null, 2) + '</code></pre>'; // Indented JSON
-                    } catch (e) {
-                        console.error('Error formatting JSON in message:', e);
-                    }
-                }
-
-                // Handle newlines by replacing them with <br> tags
-                formattedContent = formattedContent.split(`\n`).join('<br>');
-                
                 const userEmail = document.querySelector('.user-email').textContent;
                 const userAvatar = userEmail[0].toUpperCase();
                 
                 const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
-                
-                messageDiv.innerHTML = '<div class="avatar ' + (isUser  ? 'user-avatar' : 'bot-avatar') + '">' +
-                    (isUser  ? userAvatar : botAvatarSvg) +
-                    '</div><div class="message-content">' + formattedContent + '</div>';
-                
+
+                if (typeof content === 'object' && content.type === 'json_table') {
+                    const tableElement = renderJsonTable(content.data);
+                    messageDiv.innerHTML = `
+                        <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
+                            ${isUser ? userAvatar : botAvatarSvg}
+                        </div>
+                        <div class="message-content"></div>
+                    `;
+                    messageDiv.querySelector('.message-content').appendChild(tableElement);
+                } else {
+                    // Regular message handling
+                    let formattedContent = this.escapeHtml(content);
+                    
+                    // Format JSON content
+                    if (formattedContent.startsWith('{') || formattedContent.startsWith('[')) {
+                        try {
+                            const jsonContent = JSON.parse(formattedContent);
+                            formattedContent = '<pre><code>' + JSON.stringify(jsonContent, null, 2) + '</code></pre>';
+                        } catch (e) {
+                            console.error('Error formatting JSON in message:', e);
+                        }
+                    }
+
+                    formattedContent = formattedContent.split('\n').join('<br>');
+                    
+                    messageDiv.innerHTML = `
+                        <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
+                            ${isUser ? userAvatar : botAvatarSvg}
+                        </div>
+                        <div class="message-content">${formattedContent}</div>
+                    `;
+                }
+
                 messagesList.appendChild(messageDiv);
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
@@ -1537,6 +1550,33 @@ HTML_TEMPLATE = '''
             let isMenuOpen = false;
             let isOverSidebar = false;
             let sidebarTimeout = null;
+
+            
+            function renderJsonTable(data) {
+                const table = document.createElement('div');
+                table.className = 'json-table-container';
+                
+                // Create table headers
+                const headers = Object.keys(data);
+                const values = Object.values(data);
+                
+                table.innerHTML = `
+                    <table class="min-w-full border border-gray-300">
+                        <thead>
+                            <tr>
+                                ${headers.map(h => `<th class="border border-gray-300 p-2 bg-gray-100 text-sm">${h}</th>`).join('')}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                ${values.map(v => `<td class="border border-gray-300 p-2 text-center text-sm">${v}</td>`).join('')}
+                            </tr>
+                        </tbody>
+                    </table>
+                `;
+                
+                return table;
+            }
 
             // Sidebar Control Functions
             function showSidebar() {

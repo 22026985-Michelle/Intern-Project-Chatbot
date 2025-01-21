@@ -674,3 +674,29 @@ class FileHandler:
         except Exception as e:
             logger.error(f"Error saving output file: {str(e)}")
             raise
+
+def process_json_to_table(json_data):
+    """Convert JSON to table format"""
+    try:
+        # Flatten the JSON structure
+        flattened_data = {}
+        
+        def flatten_dict(d, parent_key=''):
+            items = {}
+            for k, v in d.items():
+                new_key = f"{parent_key}_{k}" if parent_key else k
+                
+                if isinstance(v, dict):
+                    items.update(flatten_dict(v, new_key))
+                elif isinstance(v, list):
+                    items[new_key] = ', '.join(map(str, v))
+                else:
+                    items[new_key] = str(v) if v is not None else ''
+            return items
+        
+        flattened_data = flatten_dict(json_data)
+        return flattened_data
+        
+    except Exception as e:
+        logging.error(f"Error converting JSON to table: {str(e)}")
+        return None
