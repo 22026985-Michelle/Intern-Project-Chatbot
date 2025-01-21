@@ -655,7 +655,6 @@ HTML_TEMPLATE = '''
     <div class="sidebar-trigger"></div>
     <div class="sidebar">
             <div class="sidebar-header">
-                <h2 id="sidebarTitle">New Chat</h2>
                 <button class="new-chat-button" id="newChatButton">
                     <span>⊕</span>
                     Start new chat
@@ -1129,19 +1128,20 @@ HTML_TEMPLATE = '''
                 const div = document.createElement('div');
                 div.className = 'chat-item';
                 div.setAttribute('data-chat-id', chat.chat_id);
-                
+
                 if (chat.chat_id === this.currentChatId) {
                     div.classList.add('active');
                 }
 
                 // Use the provided title or default
                 const displayTitle = chat.title || 'New Chat';
-                const truncatedTitle = displayTitle.length > 25 
-                    ? displayTitle.substring(0, 25) + '...' 
+                const truncatedTitle = displayTitle.length > 25
+                    ? displayTitle.substring(0, 25) + '...'
                     : displayTitle;
 
                 div.innerHTML = `
                     <span class="chat-title" title="${displayTitle}">${truncatedTitle}</span>
+                    <span class="chat-last-message">${chat.last_message || ''}</span>
                     <div class="chat-actions">
                         <button class="chat-action-button delete-button" title="Delete chat">🗑</button>
                     </div>
@@ -1230,12 +1230,11 @@ HTML_TEMPLATE = '''
                 try {
                     // Check if this is a first message
                     const isFirstMessage = !this.currentChatId;
-                    console.log("Sending message with isFirstMessage:", isFirstMessage);
 
                     const response = await fetch(this.BASE_URL + "/api/chat", {
                         method: "POST",
                         credentials: "include",
-                        headers: { 
+                        headers: {
                             "Content-Type": "application/json"
                         },
                         body: JSON.stringify({
@@ -1247,7 +1246,6 @@ HTML_TEMPLATE = '''
 
                     if (!response.ok) throw new Error("Failed to send message");
                     const data = await response.json();
-                    console.log("Response from server:", data);
 
                     // Update chat ID and UI
                     if (data.chat_id) {
@@ -1258,46 +1256,54 @@ HTML_TEMPLATE = '''
                     this.addMessageToUI(message, true);
                     this.addMessageToUI(data.response, false);
 
-                    // Update chat title in sidebar if this was the first message
+                    // Update chat list in the sidebar
                     if (isFirstMessage && data.title) {
-                        const chatItems = document.querySelectorAll('.chat-item');
-                        chatItems.forEach(item => {
-                            if (item.getAttribute('data-chat-id') === this.currentChatId.toString()) {
-                                const titleSpan = item.querySelector('.chat-title');
-                                if (titleSpan) {
-                                    const displayTitle = data.title.length > 25 ? 
-                                        data.title.substring(0, 25) + '...' : 
-                                        data.title;
-                                    titleSpan.textContent = displayTitle;
-                                    titleSpan.setAttribute('title', data.title);
-                                }
+                        await this.updateSidebarChats([
+                            {
+                                chat_id: data.chat_id,
+                                title: data.title,
+                                created_at: new Date().toISOString(),
+                                updated_at: new Date().toISOString(),
+                                last_message: message
                             }
-                        });
+                        ]);
                     }
-
-                    // Cache messages
-                    if (!this.messageCache.has(this.currentChatId)) {
-                        this.messageCache.set(this.currentChatId, []);
-                    }
-                    this.messageCache.get(this.currentChatId).push(
-                        { content: message, is_user: true },
-                        { content: data.response, is_user: false }
-                    );
 
                     input.value = "";
-
-                    // Refresh the chat list after a short delay
-                    if (isFirstMessage) {
-                        await new Promise(resolve => setTimeout(resolve, 500));
-                        await this.loadRecentChats();
-                    }
-
                 } catch (error) {
                     console.error("Error sending message:", error);
                     alert("Failed to send message. Please try again.");
                 }
             }
 
+            async updateSidebarChats(chats) {
+                console.log('Updating sidebar with chats:', chats);
+                const recentSection = document.getElementById('recentChats');
+
+                if (!recentSection) {
+                    console.error('Could not find recent chats section');
+                    return;
+                }
+
+                // Clear existing content
+                recentSection.innerHTML = '';
+
+                if (!Array.isArray(chats) || chats.length === 0) {
+                    recentSection.innerHTML = '<div class="chat-item placeholder-text">No chats yet</div>';
+                    return;
+                }
+
+                // Add all chats to recents
+                for (const chat of chats) {
+                    const chatElement = this.createChatElement(chat);
+                    recentSection.appendChild(chatElement);
+
+                    // If this is our current chat, mark it as active
+                    if (chat.chat_id === this.currentChatId) {
+                        chatElement.classList.add('active');
+                    }
+                }
+            }
             escapeHtml(unsafe) {
                 if (!unsafe) return '';
                 return unsafe

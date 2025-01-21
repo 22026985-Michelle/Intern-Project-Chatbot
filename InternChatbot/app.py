@@ -191,6 +191,7 @@ def chat():
                     return jsonify({"error": "User not found"}), 404
                 
                 user_id = user_result[0]['user_id']
+                title = generate_chat_title(message)
                 chat_id = create_new_chat(user_id)
                 if not chat_id:
                     return jsonify({"error": "Failed to create chat"}), 500
