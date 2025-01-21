@@ -169,6 +169,25 @@
         passwordMismatchMessage.style.marginBottom = '1rem';
         confirmPasswordInput.parentNode.insertBefore(passwordMismatchMessage, confirmPasswordInput.nextSibling);
 
+        function sanitizeUsername(username) {
+            const usernameRegex = /^[a-zA-Z0-9_]{3,20}$/;
+            return usernameRegex.test(username);
+        }
+
+         // Check if username is valid
+        usernameInput.addEventListener('input', function () {
+            const username = this.value;
+            if (!sanitizeUsername(username)) {
+                errorMessage.textContent = 'Username can only contain alphanumeric characters and underscores, and must be 3-20 characters long.';
+                errorMessage.style.display = 'block';
+                usernameInput.style.borderColor = '#EF4444';
+            } else {
+                errorMessage.textContent = '';
+                errorMessage.style.display = 'none';
+                usernameInput.style.borderColor = '#1F2937';
+            }
+        });
+
         // Check passwords match in real-time
         function checkPasswordMatch() {
             const password = passwordInput.value;
