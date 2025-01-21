@@ -5,6 +5,9 @@ HTML_TEMPLATE = '''
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NCS Internship AI Chatbot</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
     <style>
         /* Theme Variables */
         :root[data-theme="light"] {
@@ -50,7 +53,36 @@ HTML_TEMPLATE = '''
             --input-container-border: #4B5563;
             --box-shadow: rgba(0, 0, 0, 0.2);
         }
-        
+        .rounded-lg {
+            border-radius: 0.5rem;
+        }
+        .min-h-32 {
+            min-height: 8rem;
+        }
+        .space-y-4 > * + * {
+            margin-top: 1rem;
+        }
+        .gap-2 {
+            gap: 0.5rem;
+        }
+        .text-white {
+            color: white;
+        }
+        .bg-blue-500 {
+            background-color: #3B82F6;
+        }
+        .bg-blue-600:hover {
+            background-color: #2563EB;
+        }
+        .bg-green-500 {
+            background-color: #22C55E;
+        }
+        .bg-green-600:hover {
+            background-color: #16A34A;
+        }
+        .text-red-500 {
+            color: #EF4444;
+        }
 
         .avatar {
             width: 40px;
@@ -1574,13 +1606,139 @@ HTML_TEMPLATE = '''
             const profileButton = document.getElementById('profileButton');
             const profileMenu = document.getElementById('profileMenu');
             const appearanceMenu = document.getElementById('appearanceMenu');
-            const root = ReactDOM.createRoot(document.getElementById('excelTableContainer'));
-            root.render(React.createElement(ExcelTable));
 
             let isMenuOpen = false;
             let isOverSidebar = false;
             let sidebarTimeout = null;
 
+            if (document.getElementById('excelTableContainer')) {
+                const root = ReactDOM.createRoot(document.getElementById('excelTableContainer'));
+                root.render(React.createElement(window.ExcelTable));
+            }
+
+            // Add this script tag type="text/babel" for the ExcelTable component
+            const script = document.createElement('script');
+            script.type = 'text/babel';
+            script.textContent = `
+                window.ExcelTable = () => {
+                    const [data, setData] = React.useState(null);
+                    const [copied, setCopied] = React.useState(false);
+                    const [error, setError] = React.useState('');
+
+                    const handlePaste = (e) => {
+                        try {
+                            const pastedText = e.clipboardData.getData('text');
+                            try {
+                                const parsedJson = JSON.parse(pastedText);
+                                setData(parsedJson);
+                                setError('');
+                            } catch (jsonError) {
+                                const lines = pastedText.split('\\n').filter(line => line.trim());
+                                const parsedData = {};
+                                lines.forEach(line => {
+                                    const [key, ...valueParts] = line.split(':');
+                                    if (key && valueParts.length > 0) {
+                                        const value = valueParts.join(':').trim();
+                                        parsedData[key.trim()] = value;
+                                    }
+                                });
+                                if (Object.keys(parsedData).length > 0) {
+                                    setData(parsedData);
+                                    setError('');
+                                } else {
+                                    setError('Invalid data format. Please paste valid JSON or key:value pairs.');
+                                }
+                            }
+                        } catch (e) {
+                            setError('Error processing pasted data. Please check the format.');
+                            console.error('Error processing paste:', e);
+                        }
+                    };
+
+                    const copyToClipboard = () => {
+                        if (!data) return;
+                        const headers = Object.keys(data);
+                        const values = Object.values(data);
+                        const tableContent = headers.join('\\t') + '\\n' + values.join('\\t');
+                        navigator.clipboard.writeText(tableContent).then(() => {
+                            setCopied(true);
+                            setTimeout(() => setCopied(false), 2000);
+                        });
+                    };
+
+                    const downloadCSV = () => {
+                        if (!data) return;
+                        const headers = Object.keys(data);
+                        const values = Object.values(data);
+                        const csvContent = 
+                            headers.join(',') + '\\n' + 
+                            values.map(value => \`"\${value}"\`).join(',');
+                        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = 'table_data.csv';
+                        link.click();
+                    };
+
+                    return (
+                        <div className="space-y-4 p-4">
+                            <div className="mb-4">
+                                <textarea 
+                                    className="w-full p-4 border rounded-lg min-h-32"
+                                    placeholder="Paste your JSON or key:value pairs here..."
+                                    onPaste={handlePaste}
+                                />
+                                {error && (
+                                    <div className="text-red-500 text-sm mt-2">{error}</div>
+                                )}
+                            </div>
+
+                            {data && (
+                                <div className="flex justify-end gap-2 mb-4">
+                                    <button
+                                        onClick={copyToClipboard}
+                                        className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600"
+                                    >
+                                        {copied ? 'Copied!' : 'Copy for Excel'}
+                                    </button>
+                                    <button
+                                        onClick={downloadCSV}
+                                        className="flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
+                                    >
+                                        Download CSV
+                                    </button>
+                                </div>
+                            )}
+
+                            {data && (
+                                <div className="w-full overflow-x-auto border rounded">
+                                    <table className="min-w-full">
+                                        <thead>
+                                            <tr className="bg-gray-50">
+                                                {Object.keys(data).map((key) => (
+                                                    <th key={key} className="border-b border-r px-4 py-2 text-left text-sm font-medium text-gray-900">
+                                                        {key}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <tr>
+                                                {Object.values(data).map((value, index) => (
+                                                    <td key={index} className="border-r px-4 py-2 text-sm text-gray-500">
+                                                        {value}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            )}
+                        </div>
+                    );
+                };
+            `;
+            document.body.appendChild(script);
 
             // Sidebar Control Functions
             function showSidebar() {
