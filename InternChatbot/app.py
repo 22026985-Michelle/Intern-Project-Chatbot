@@ -700,3 +700,9 @@ def format_data():
     except Exception as e:
         logging.error(f"Error processing request: {str(e)}")
         return jsonify({'error': str(e)}), 500
+    
+@app.route('/api/convert-file', methods=['POST'])
+def convert_file():
+    if 'file' not in request.files:
+        return jsonify({"error": "No file part"}), 400
+    return handle_conversion_request(request.files['file'])

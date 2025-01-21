@@ -716,6 +716,16 @@ HTML_TEMPLATE = '''
 
         <div class="input-container">
             <div class="input-wrapper">
+                <div id="fileContainer" class="file-container" style="display: none;">
+                    <div class="file-upload-content">
+                        <div class="file-info">
+                            <span class="file-name"></span>
+                            <button class="remove-file">✕</button>
+                        </div>
+                        <div class="upload-progress"></div>
+                    </div>
+                </div>
+
                 <div class="input-group">
                     <textarea 
                         class="input-box" 
@@ -729,11 +739,12 @@ HTML_TEMPLATE = '''
                 <div id="filePreview" class="file-preview"></div>
                 <div class="input-footer">
                     <div class="tools">
-                        <button class="tool-button" onclick="setMessage('Please help me convert the format of my data.')">Convert format of data</button>
+                        <button class="tool-button" onclick="setMessage('Please help me convert the format of my data by pasting.')">Convert format of data by pasting</button>
                         <button class="tool-button" onclick="setMessage('Can you help me check my data for any issues?')">Check data</button>
                         <button class="tool-button" onclick="setMessage('I would like to learn more about NCS.')">Learn more about NCS</button>
                         <button class="tool-button" onclick="setMessage('Can you help me fill in the missing fields?')">Fill in fields</button>
                         <button class="tool-button" onclick="setMessage('Please help me to format my JSON data')">Format JSON</button>
+                        <button class="tool-button" onclick="setMessage('Please convert my data by file')">Convert format of data by file</button>
                     </div>
                 </div>
             </div>
@@ -831,6 +842,42 @@ HTML_TEMPLATE = '''
         .send-icon {
             font-size: 1.2rem;
         }
+
+        .file-container {
+            background-color: var(--input-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin-bottom: 1rem;
+        }
+
+        .file-upload-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .remove-file {
+            background: none;
+            border: none;
+            color: #EF4444;
+            cursor: pointer;
+            padding: 0.25rem;
+            font-size: 1.2rem;
+        }
+
+        .upload-progress {
+            height: 2px;
+            background-color: var(--send-button-bg);
+            width: 0%;
+            transition: width 0.3s ease;
+        }
     </style>
 
     <script>
@@ -893,6 +940,61 @@ HTML_TEMPLATE = '''
                             this.sendMessage();
                         }
                     });
+                }
+            }
+
+            async handleFileConversion(file) {
+                const fileContainer = document.getElementById('fileContainer');
+                const fileName = fileContainer.querySelector('.file-name');
+                const progress = fileContainer.querySelector('.upload-progress');
+                
+                try {
+                    // Show file container
+                    fileContainer.style.display = 'block';
+                    fileName.textContent = file.name;
+                    
+                    // Create form data
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    // Start upload
+                    progress.style.width = '30%';
+                    
+                    const response = await fetch(this.BASE_URL + '/api/convert-file', {
+                        method: 'POST',
+                        body: formData,
+                        credentials: 'include'
+                    });
+                    
+                    progress.style.width = '90%';
+                    
+                    if (!response.ok) {
+                        throw new Error('File conversion failed');
+                    }
+                    
+                    // Handle successful conversion
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = 'converted_output.json';
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    window.URL.revokeObjectURL(url);
+                    
+                    progress.style.width = '100%';
+                    
+                    // Hide file container after a delay
+                    setTimeout(() => {
+                        fileContainer.style.display = 'none';
+                        progress.style.width = '0%';
+                    }, 1000);
+                    
+                } catch (error) {
+                    console.error('Error converting file:', error);
+                    alert('Failed to convert file. Please try again.');
+                    fileContainer.style.display = 'none';
                 }
             }
 
@@ -1175,6 +1277,26 @@ HTML_TEMPLATE = '''
                 const message = input.value.trim();
                 if (!message) return;
 
+                if (message === 'Please convert my data by file') {
+                    // Create and trigger file input
+                    const fileInput = document.createElement('input');
+                    fileInput.type = 'file';
+                    fileInput.accept = '.xlsx,.xls';
+                    fileInput.style.display = 'none';
+                    document.body.appendChild(fileInput);
+                    
+                    fileInput.onchange = (e) => {
+                        const file = e.target.files[0];
+                        if (file) {
+                            this.handleFileConversion(file);
+                        }
+                        document.body.removeChild(fileInput);
+                    };
+                    
+                    fileInput.click();
+                    input.value = '';
+                    return;
+                }
                 try {
                     // Check if this is a first message
                     const isFirstMessage = !this.currentChatId;
