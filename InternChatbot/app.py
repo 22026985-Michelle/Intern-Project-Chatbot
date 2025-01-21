@@ -22,7 +22,7 @@ from database import (
     handle_conversion_request 
 )
 
-app = Flask(name)
+app = Flask(__name__)
 app.secret_key = os.urandom(24)
 formatter = DynamicFormatter()
 
