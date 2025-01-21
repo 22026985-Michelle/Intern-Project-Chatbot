@@ -710,6 +710,7 @@ HTML_TEMPLATE = '''
             </div>
 
             <div id="messagesList"></div>
+            <div id="excelTableContainer"></div>
         </div>
 
         <div class="input-container">
@@ -1573,6 +1574,8 @@ HTML_TEMPLATE = '''
             const profileButton = document.getElementById('profileButton');
             const profileMenu = document.getElementById('profileMenu');
             const appearanceMenu = document.getElementById('appearanceMenu');
+            const root = ReactDOM.createRoot(document.getElementById('excelTableContainer'));
+            root.render(React.createElement(ExcelTable));
 
             let isMenuOpen = false;
             let isOverSidebar = false;

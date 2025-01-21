@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify, redirect, send_file, session
+from flask import Flask, request, jsonify, redirect, send_file, session, make_response
 import anthropic
 from datetime import datetime
 import os
@@ -22,6 +22,8 @@ from database import (
     handle_conversion_request,
     process_json_to_table
 )
+from io import StringIO
+import csv
 
 app = Flask(__name__)
 app.secret_key = os.urandom(24)
@@ -53,6 +55,37 @@ def login_required(f):
             return redirect('/login')
         return f(*args, **kwargs)
     return decorated_function
+
+@app.route('/api/export-table', methods=['POST'])
+def export_table():
+    """Handle table data export"""
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "No data provided"}), 400
+
+        # Create CSV in memory
+        output = StringIO()
+        writer = csv.writer(output)
+        
+        # Write headers
+        headers = list(data.keys())
+        writer.writerow(headers)
+        
+        # Write values
+        values = list(data.values())
+        writer.writerow(values)
+        
+        # Create response
+        response = make_response(output.getvalue())
+        response.headers['Content-Disposition'] = 'attachment; filename=table_data.csv'
+        response.headers['Content-type'] = 'text/csv'
+        
+        return response
+
+    except Exception as e:
+        app.logger.error(f"Error exporting table: {str(e)}")
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/')
 @login_required
