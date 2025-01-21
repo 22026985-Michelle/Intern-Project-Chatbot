@@ -15,7 +15,8 @@ from io import StringIO
 from cryptography.fernet import Fernet
 import base64
 
-ENCRYPTION_KEY = "g11P15eEqdxMLt7I3IIVKOtVuR+gw9qbYnkPwSDCqTs="
+ENCRYPTED_KEY = "g11P15eEqdxMLt7I3IIVKOtVuR+gw9qbYnkPwSDCqTs="
+ENCRYPTION_KEY = base64.b64decode(ENCRYPTED_KEY)
 
 __all__ = [
     'get_db_connection',
