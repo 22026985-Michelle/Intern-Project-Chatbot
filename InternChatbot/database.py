@@ -203,9 +203,9 @@ def add_message(chat_id, content, is_user=True):
         # Store message directly without encryption
         message_query = """
         INSERT INTO messages (chat_id, content, is_user, created_at)
-        VALUES (%s, %s, %s, NOW())
+        VALUES (%s, AES_ENCRYPT(%s, %s), %s, NOW())
         """
-        cursor.execute(message_query, (chat_id, content, is_user))
+        cursor.execute(message_query, (chat_id, content, ENCRYPTION_KEY, is_user))
         
         # Update chat timestamp
         update_query = """
@@ -275,7 +275,7 @@ def get_chat_messages(chat_id):
     """Get all messages for a specific chat"""
     query = """
     SELECT message_id, 
-           content, 
+           AES_DECRYPT(content, %s) AS content, 
            is_user, 
            created_at
     FROM messages
@@ -283,7 +283,7 @@ def get_chat_messages(chat_id):
     ORDER BY created_at ASC
     """
     try:
-        result = execute_query(query, (chat_id,))
+        result = execute_query(query, (ENCRYPTION_KEY, chat_id))
         
         if not result:
             return []
@@ -292,7 +292,7 @@ def get_chat_messages(chat_id):
         for message in result:
             formatted_messages.append({
                 'message_id': message['message_id'],
-                'content': message['content'],
+                'content': message['content'].decode('utf-8') if message['content'] else None,
                 'is_user': bool(message['is_user']),
                 'created_at': message['created_at'].strftime('%Y-%m-%d %H:%M:%S') if message['created_at'] else None
             })
