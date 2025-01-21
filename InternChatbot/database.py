@@ -610,79 +610,67 @@ def parse_text_data(text):
 
 class FileHandler:
     def __init__(self):
-        self.allowed_extensions = {'xlsx', 'xls'}
-
-    def allowed_file(self, filename):
-        return '.' in filename and filename.rsplit('.', 1)[1].lower() in self.allowed_extensions
-
-    def handle_excel_conversion(self, file):
+        self.supported_formats = {
+            'excel': ['.xlsx', '.xls'],
+            'csv': ['.csv'],
+            'json': ['.json', '.txt']
+        }
+        
+    def process_data(self, data, reference_format=None):
+        """Process data according to reference format"""
         try:
-            # Load the Excel file and strip extra spaces
-            df = pd.read_excel(file)
-            df.columns = df.columns.str.strip()
+            if reference_format:
+                formatted_data = self._apply_reference_format(data, reference_format)
+                return json.dumps(formatted_data, indent=2)
+            return json.dumps(data, indent=2)
+        except Exception as e:
+            logger.error(f"Error processing data: {str(e)}")
+            raise
 
-            # Process date columns
-            date_columns = [
-                'Enrolment Date', 'Year of birth of Applicant', 'Year of birth of the child',
-                'FM Start Date of enrolment', 'CCFA Start Date', 'CCFA End Date'
-            ]
+    def process_file(self, file, reference_format=None):
+        """Process uploaded file"""
+        try:
+            filename = file.filename
+            ext = os.path.splitext(filename)[1].lower()
             
-            # Change date format
-            for col in date_columns:
-                if col in df.columns:
-                    df[col] = pd.to_datetime(df[col], format='%d/%m/%Y', errors='coerce').dt.strftime('%Y%m%d')
+            # Read and process file
+            if ext in self.supported_formats['excel']:
+                df = pd.read_excel(file)
+                data = df.to_dict(orient='records')
+            elif ext in self.supported_formats['csv']:
+                df = pd.read_csv(file)
+                data = df.to_dict(orient='records')
+            else:
+                raise ValueError(f"Unsupported file format: {ext}")
 
-            # Update working status mapping
-            def map_working_status(status):
-                status_map = {
-                    "Salaried Employee": "WEP",
-                    "Self Employed": "WSP",
-                    "Salaried Employee & Self Employed": "WEPWSP"
-                }
-                return status_map.get(status, "NW")
+            return self.process_data(data, reference_format)
 
-            if 'Main Applicant working status' in df.columns:
-                df['Main Applicant working status'] = df['Main Applicant working status'].apply(map_working_status)
+        except Exception as e:
+            logger.error(f"Error processing file: {str(e)}")
+            raise
+            
+    def _apply_reference_format(self, data, reference_format):
+        """Apply reference JSON format structure to the data"""
+        if isinstance(reference_format, str):
+            reference_format = json.loads(reference_format)
+            
+        formatted_data = {}
+        for key, value in reference_format.items():
+            if isinstance(value, dict):
+                formatted_data[key] = self._apply_reference_format(data, value)
+            else:
+                formatted_data[key] = data.get(key, "")
+        return formatted_data
 
-            # Replace missing values with blanks
-            df = df.fillna("")
-
-            # Convert to JSON structure
-            json_data = []
-            for num, (_, row) in enumerate(df.iterrows(), start=1):
-                # Your existing JSON structure building code here
-                row_json = {
-                    f"Row {num} TC00{num}  ChildInfo": {
-                        "Gender": row.get("Gender", ""),
-                        "DateOfBirth": row.get("Year of birth of the child", ""),
-                        # ... rest of your JSON structure
-                    }
-                }
-                json_data.append(row_json)
-
-            # Create memory file
-            json_file = io.BytesIO()
-            json_file.write(json.dumps(json_data, indent=4).encode('utf-8'))
-            json_file.seek(0)
-
-            return json_file
-
-def handle_conversion_request(file):
-    file_handler = FileHandler()
-    
-    if not file or file.filename == '':
-        return jsonify({"error": "No file provided"}), 400
-        
-    if not file_handler.allowed_file(file.filename):
-        return jsonify({"error": "Invalid file format"}), 400
-        
-    try:
-        json_file = file_handler.handle_excel_conversion(file)
-        return send_file(
-            json_file,
-            as_attachment=True,
-            download_name='converted_output.json',
-            mimetype='application/json'
-        )
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+    def save_output_file(self, data, output_format='.txt'):
+        """Save processed data to a file"""
+        try:
+            if output_format == '.txt':
+                # Save JSON to text file
+                filename = f"converted_data_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                with open(filename, 'w') as f:
+                    json.dump(data, f, indent=2)
+                return filename
+        except Exception as e:
+            logger.error(f"Error saving output file: {str(e)}")
+            raise

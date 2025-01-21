@@ -1,5 +1,3 @@
-# template.py
-
 HTML_TEMPLATE = '''
 <!DOCTYPE html>
 <html lang="en">
@@ -52,7 +50,6 @@ HTML_TEMPLATE = '''
             --input-container-border: #4B5563;
             --box-shadow: rgba(0, 0, 0, 0.2);
         }
-        
 
         .avatar {
             width: 40px;
@@ -80,8 +77,7 @@ HTML_TEMPLATE = '''
             width: 100%;
             height: 100%;
         }
-        
-        
+
         /* Global Styles */
         * {
             margin: 0;
@@ -204,7 +200,6 @@ HTML_TEMPLATE = '''
             transition: opacity 0.2s ease;
         }
 
-            
         .chat-action-button:hover {
             opacity: 1;
         }
@@ -341,13 +336,13 @@ HTML_TEMPLATE = '''
             transition: opacity 0.2s ease;
         }
 
-        /* Input Container Styles */
+        /* Input Container Styles /
         .input-container {
             position: fixed;
             bottom: 0;
             right: 0;
-            width: 100%;  /* Remove the calculation */
-            margin-left: 0;  /* Remove margin */
+            width: 100%;  / Remove the calculation /
+            margin-left: 0;  / Remove margin */
             background-color: var(--input-container-bg);
             border-top: 2px solid var(--input-container-border);
             z-index: 1000;
@@ -670,7 +665,7 @@ HTML_TEMPLATE = '''
                 </div>
             </div>
         </div>
-        
+
         <div class="user-profile" id="userProfile">
             <button class="profile-button" id="profileButton">
                 <div class="user-avatar">{avatar_letter}</div>
@@ -698,7 +693,7 @@ HTML_TEMPLATE = '''
             </div>
         </div>
     </div>
-    
+
     <div class="main-content">
         <div class="chat-container" id="chatContainer">
             <div class="greeting">
@@ -716,16 +711,6 @@ HTML_TEMPLATE = '''
 
         <div class="input-container">
             <div class="input-wrapper">
-                <div id="fileContainer" class="file-container" style="display: none;">
-                    <div class="file-upload-content">
-                        <div class="file-info">
-                            <span class="file-name"></span>
-                            <button class="remove-file">✕</button>
-                        </div>
-                        <div class="upload-progress"></div>
-                    </div>
-                </div>
-
                 <div class="input-group">
                     <textarea 
                         class="input-box" 
@@ -739,18 +724,16 @@ HTML_TEMPLATE = '''
                 <div id="filePreview" class="file-preview"></div>
                 <div class="input-footer">
                     <div class="tools">
-                        <button class="tool-button" onclick="setMessage('Please help me convert the format of my data by pasting.')">Convert format of data by pasting</button>
+                        <button class="tool-button" onclick="setMessage('Please help me convert the format of my data.')">Convert format of data</button>
                         <button class="tool-button" onclick="setMessage('Can you help me check my data for any issues?')">Check data</button>
                         <button class="tool-button" onclick="setMessage('I would like to learn more about NCS.')">Learn more about NCS</button>
                         <button class="tool-button" onclick="setMessage('Can you help me fill in the missing fields?')">Fill in fields</button>
                         <button class="tool-button" onclick="setMessage('Please help me to format my JSON data')">Format JSON</button>
-                        <button class="tool-button" onclick="setMessage('Please convert my data by file')">Convert format of data by file</button>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-
 
     <style>
         .input-group {
@@ -815,7 +798,7 @@ HTML_TEMPLATE = '''
             padding-left: 1.5rem;
             margin: 0.5rem 0;
         }
-        
+
         .send-button {
             background-color: #0099FF;
             color: white;
@@ -841,42 +824,6 @@ HTML_TEMPLATE = '''
 
         .send-icon {
             font-size: 1.2rem;
-        }
-
-        .file-container {
-            background-color: var(--input-bg);
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 0.75rem;
-            margin-bottom: 1rem;
-        }
-
-        .file-upload-content {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .file-info {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-
-        .remove-file {
-            background: none;
-            border: none;
-            color: #EF4444;
-            cursor: pointer;
-            padding: 0.25rem;
-            font-size: 1.2rem;
-        }
-
-        .upload-progress {
-            height: 2px;
-            background-color: var(--send-button-bg);
-            width: 0%;
-            transition: width 0.3s ease;
         }
     </style>
 
@@ -943,61 +890,6 @@ HTML_TEMPLATE = '''
                 }
             }
 
-            async handleFileConversion(file) {
-                const fileContainer = document.getElementById('fileContainer');
-                const fileName = fileContainer.querySelector('.file-name');
-                const progress = fileContainer.querySelector('.upload-progress');
-                
-                try {
-                    // Show file container
-                    fileContainer.style.display = 'block';
-                    fileName.textContent = file.name;
-                    
-                    // Create form data
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    
-                    // Start upload
-                    progress.style.width = '30%';
-                    
-                    const response = await fetch(this.BASE_URL + '/api/convert-file', {
-                        method: 'POST',
-                        body: formData,
-                        credentials: 'include'
-                    });
-                    
-                    progress.style.width = '90%';
-                    
-                    if (!response.ok) {
-                        throw new Error('File conversion failed');
-                    }
-                    
-                    // Handle successful conversion
-                    const blob = await response.blob();
-                    const url = window.URL.createObjectURL(blob);
-                    const a = document.createElement('a');
-                    a.href = url;
-                    a.download = 'converted_output.json';
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
-                    window.URL.revokeObjectURL(url);
-                    
-                    progress.style.width = '100%';
-                    
-                    // Hide file container after a delay
-                    setTimeout(() => {
-                        fileContainer.style.display = 'none';
-                        progress.style.width = '0%';
-                    }, 1000);
-                    
-                } catch (error) {
-                    console.error('Error converting file:', error);
-                    alert('Failed to convert file. Please try again.');
-                    fileContainer.style.display = 'none';
-                }
-            }
-
             async handleFileUpload(e) {
                 const file = e.target.files[0];
                 if (!file) return;
@@ -1010,7 +902,7 @@ HTML_TEMPLATE = '''
                     const formData = new FormData();
                     formData.append("file", file);
                     formData.append("chat_id", this.currentChatId);
-                    
+
                     const message = document.getElementById("userInput").value.trim();
                     if (message) {
                         formData.append("message", message);
@@ -1024,7 +916,7 @@ HTML_TEMPLATE = '''
 
                     if (!response.ok) throw new Error("Failed to upload file");
                     const data = await response.json();
-                    
+
                     if (data.response) {
                         this.addMessageToUI(message || "Uploaded file: " + file.name, true);
                         this.addMessageToUI(data.response, false);
@@ -1069,10 +961,9 @@ HTML_TEMPLATE = '''
                 }
             }
 
-
             async createNewChat() {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/create-chat`, {
+                    const response = await fetch(${this.BASE_URL}/api/create-chat, {
                         method: 'POST',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' }
@@ -1083,9 +974,9 @@ HTML_TEMPLATE = '''
 
                     this.currentChatId = data.chat_id;
                     this.messageCache.delete(this.currentChatId);
-                    
+
                     // Don't load recent chats here - wait for first message to be sent
-                    
+
                     return data.chat_id;
                 } catch (error) {
                     console.error('Error in createNewChat:', error);
@@ -1096,7 +987,7 @@ HTML_TEMPLATE = '''
             async loadRecentChats() {
                 try {
                     console.log('Fetching recent chats...');
-                    const response = await fetch(`${this.BASE_URL}/api/chat-history`, {
+                    const response = await fetch(${this.BASE_URL}/api/chat-history, {
                         method: 'GET',
                         credentials: 'include',
                         headers: { 'Content-Type': 'application/json' }
@@ -1105,10 +996,10 @@ HTML_TEMPLATE = '''
                     if (!response.ok) {
                         throw new Error('Failed to fetch chat history');
                     }
-                    
+
                     const data = await response.json();
                     console.log('Received chat data:', data);
-                    
+
                     if (data.chats) {
                         // Clear and update the sidebar chats
                         const recentSection = document.getElementById('recentChats');
@@ -1134,7 +1025,7 @@ HTML_TEMPLATE = '''
                 recentSection.innerHTML = ''; // Clear existing chats
 
                 if (chats.length === 0) {
-                    recentSection.innerHTML = `<div class="chat-item placeholder-text">No recent chats yet</div>`;
+                    recentSection.innerHTML = <div class="chat-item placeholder-text">No recent chats yet</div>;
                     return;
                 }
 
@@ -1144,11 +1035,10 @@ HTML_TEMPLATE = '''
                 });
             }
 
-
             async updateSidebarChats(chats) {
                 console.log('Updating sidebar with chats:', chats);
                 const recentSection = document.getElementById('recentChats');
-                
+
                 if (!recentSection) {
                     console.error('Could not find recent chats section');
                     return;
@@ -1166,7 +1056,7 @@ HTML_TEMPLATE = '''
                 for (const chat of chats) {
                     const chatElement = this.createChatElement(chat);
                     recentSection.appendChild(chatElement);
-                    
+
                     // If this is our current chat, mark it as active
                     if (chat.chat_id === this.currentChatId) {
                         chatElement.classList.add('active');
@@ -1179,7 +1069,7 @@ HTML_TEMPLATE = '''
                 const div = document.createElement('div');
                 div.className = 'chat-item';
                 div.setAttribute('data-chat-id', chat.chat_id);
-                
+
                 if (chat.chat_id === this.currentChatId) {
                     div.classList.add('active');
                 }
@@ -1190,12 +1080,12 @@ HTML_TEMPLATE = '''
                     ? displayTitle.substring(0, 25) + '...' 
                     : displayTitle;
 
-                div.innerHTML = `
+                div.innerHTML = 
                     <span class="chat-title" title="${displayTitle}">${truncatedTitle}</span>
                     <div class="chat-actions">
                         <button class="chat-action-button delete-button" title="Delete chat">🗑</button>
                     </div>
-                `;
+                ;
 
                 // Add click handlers
                 div.addEventListener('click', () => {
@@ -1209,17 +1099,17 @@ HTML_TEMPLATE = '''
 
                 return div;
             }
-            
+
             handleNewChat() {
                 this.createNewChat().then(() => {
                     // Clear messages and input
                     this.clearMessages();
                     document.getElementById('userInput').value = '';
-                    
+
                     // Remove active state from all chat items
                     const chatItems = document.querySelectorAll('.chat-item');
                     chatItems.forEach(item => item.classList.remove('active'));
-                    
+
                     // Show greeting
                     const greeting = document.querySelector('.greeting');
                     if (greeting) {
@@ -1247,7 +1137,7 @@ HTML_TEMPLATE = '''
 
             async moveToRecents(chatId) {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/section`, {
+                    const response = await fetch(${this.BASE_URL}/api/chat/${chatId}/section, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
                         credentials: 'include',
@@ -1261,7 +1151,7 @@ HTML_TEMPLATE = '''
 
             async getRecentChats() {
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/chat-history`);
+                    const response = await fetch(${this.BASE_URL}/api/chat-history);
                     if (!response.ok) throw new Error('Failed to fetch chats');
                     const data = await response.json();
                     return data.chats || [];
@@ -1270,33 +1160,12 @@ HTML_TEMPLATE = '''
                     return [];
                 }
             }
-                    
 
             async sendMessage() {
                 const input = document.getElementById("userInput");
                 const message = input.value.trim();
                 if (!message) return;
 
-                if (message === 'Please convert my data by file') {
-                    // Create and trigger file input
-                    const fileInput = document.createElement('input');
-                    fileInput.type = 'file';
-                    fileInput.accept = '.xlsx,.xls';
-                    fileInput.style.display = 'none';
-                    document.body.appendChild(fileInput);
-                    
-                    fileInput.onchange = (e) => {
-                        const file = e.target.files[0];
-                        if (file) {
-                            this.handleFileConversion(file);
-                        }
-                        document.body.removeChild(fileInput);
-                    };
-                    
-                    fileInput.click();
-                    input.value = '';
-                    return;
-                }
                 try {
                     // Check if this is a first message
                     const isFirstMessage = !this.currentChatId;
@@ -1386,10 +1255,10 @@ HTML_TEMPLATE = '''
 
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
-                
+
                 // First escape HTML
                 let formattedContent = this.escapeHtml(content);
-                
+
                 // Format JSON content
                 if (formattedContent.startsWith('{') || formattedContent.startsWith('[')) {
                     try {
@@ -1401,17 +1270,17 @@ HTML_TEMPLATE = '''
                 }
 
                 // Handle newlines by replacing them with <br> tags
-                formattedContent = formattedContent.split(`\n`).join('<br>');
-                
+                formattedContent = formattedContent.split(\n).join('<br>');
+
                 const userEmail = document.querySelector('.user-email').textContent;
                 const userAvatar = userEmail[0].toUpperCase();
-                
+
                 const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
-                
+
                 messageDiv.innerHTML = '<div class="avatar ' + (isUser  ? 'user-avatar' : 'bot-avatar') + '">' +
                     (isUser  ? userAvatar : botAvatarSvg) +
                     '</div><div class="message-content">' + formattedContent + '</div>';
-                
+
                 messagesList.appendChild(messageDiv);
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
@@ -1434,12 +1303,12 @@ HTML_TEMPLATE = '''
                             }
                         }
                     }
-                    
+
                     // If it's already parsed JSON
                     if (typeof content === 'object') {
                         return JSON.stringify(content, null, 2);
                     }
-                    
+
                     return content;
                 } catch (e) {
                     console.error('Error formatting JSON:', e);
@@ -1462,7 +1331,7 @@ HTML_TEMPLATE = '''
                 if (!jsonData) return;
 
                 try {
-                    const response = await fetch(`${this.BASE_URL}/api/format-json`, {
+                    const response = await fetch(${this.BASE_URL}/api/format-json, {
                         method: "POST",
                         headers: { "Content-Type": "application/json" },
                         body: JSON.stringify({ json_data: jsonData })
@@ -1503,7 +1372,7 @@ HTML_TEMPLATE = '''
             async updateChatTitle(chatId, title) {
                 try {
                     console.log("Updating chat title:", chatId, title);  // Debug log
-                    const response = await fetch(`${this.BASE_URL}/api/chat/${chatId}/title`, {
+                    const response = await fetch(${this.BASE_URL}/api/chat/${chatId}/title, {
                         method: 'PUT',
                         credentials: 'include',
                         headers: {
@@ -1511,7 +1380,7 @@ HTML_TEMPLATE = '''
                         },
                         body: JSON.stringify({ title })
                     });
-                    
+
                     if (!response.ok) throw new Error('Failed to update chat title');
                     await this.loadRecentChats();  // Refresh chat list
                 } catch (error) {
@@ -1545,7 +1414,7 @@ HTML_TEMPLATE = '''
                 try {
                     console.log("Loading chat:", chatId);
                     this.currentChatId = chatId;
-                    
+
                     const greeting = document.querySelector(".greeting");
                     if (greeting) {
                         greeting.style.display = "none";
@@ -1568,7 +1437,7 @@ HTML_TEMPLATE = '''
                         if (!response.ok) {
                             throw new Error("Failed to load chat messages");
                         }
-                        
+
                         const data = await response.json();
                         messages = data.messages;
                         this.messageCache.set(chatId, messages);
@@ -1602,7 +1471,7 @@ HTML_TEMPLATE = '''
                 nowSection.innerHTML = ''; // Clear the current "Now" section content
 
                 if (chats.length === 0) {
-                    nowSection.innerHTML = `<div class="chat-item placeholder-text">No active chats yet</div>`;
+                    nowSection.innerHTML = <div class="chat-item placeholder-text">No active chats yet</div>;
                     return;
                 }
 
@@ -1619,19 +1488,19 @@ HTML_TEMPLATE = '''
                 const filePreview = document.getElementById('filePreview');
                 if (!filePreview) return;
 
-                filePreview.innerHTML = `
+                filePreview.innerHTML = 
                     <div class="file-preview-content">
                         <span>📄 ${file.name}</span>
                         <span class="file-remove" onclick="window.chatManager.removeFile()">✕</span>
                     </div>
-                `;
+                ;
                 filePreview.classList.add('active');
             }
 
             removeFile() {
                 const fileInput = document.getElementById('fileInput');
                 const filePreview = document.getElementById('filePreview');
-                
+
                 if (fileInput) fileInput.value = '';
                 if (filePreview) {
                     filePreview.innerHTML = '';
@@ -1683,7 +1552,7 @@ HTML_TEMPLATE = '''
                     event.stopPropagation();
                 }
                 isMenuOpen = !isMenuOpen;
-                
+
                 if (isMenuOpen) {
                     showSidebar();
                     profileMenu.classList.add('active');
@@ -1706,11 +1575,11 @@ HTML_TEMPLATE = '''
             window.toggleAppearanceMenu = function() {
                 appearanceMenu.classList.toggle('active');
             };
-            
+
             window.setTheme = function(theme) {
                 body.setAttribute('data-theme', theme);
                 localStorage.setItem('theme', theme);
-                
+
                 isMenuOpen = false;
                 profileMenu.classList.remove('active');
                 appearanceMenu.classList.remove('active');
@@ -1752,7 +1621,7 @@ HTML_TEMPLATE = '''
             // Initialize theme and greeting
             let currentTheme = localStorage.getItem('theme') || 'light';
             updateTheme(currentTheme);
-            
+
             function setGreeting() {
                 const hour = new Date().getHours();
                 if (hour >= 5 && hour < 12) {
@@ -1763,7 +1632,7 @@ HTML_TEMPLATE = '''
                     greetingText.textContent = 'Having a late night?';
                 }
             }
-            
+
             setGreeting();
             setInterval(setGreeting, 60000);
 
