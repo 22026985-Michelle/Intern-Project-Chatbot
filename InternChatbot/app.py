@@ -196,8 +196,8 @@ def chat():
                     return jsonify({"error": "Failed to create chat"}), 500
 
                 # Set chat title
-                title = message[:50]
-                update_chat_title(chat_id, title)
+                title = generate_chat_title(message)
+                chat_id = create_new_chat(user_id, title)
 
             # Store messages
             add_message(chat_id, message, is_user=True)
@@ -205,7 +205,8 @@ def chat():
             
             return jsonify({
                 "response": response,
-                "chat_id": chat_id
+                "chat_id": chat_id,
+                "title": title
             })
 
         # Handle regular chat messages
@@ -551,7 +552,7 @@ def get_chat_messages(chat_id):
     
 def generate_chat_title(message):
     try:
-        # Use Claude to generate title
+        # Use Claude to generate a concise title based on the first message
         response = client.messages.create(
             model="claude-3-5-sonnet-20241022",
             max_tokens=50,
@@ -564,7 +565,7 @@ def generate_chat_title(message):
     except Exception as e:
         logger.error(f"Error generating title: {str(e)}")
         return "New Chat"
-
+    
 def update_chat_title(chat_id, title):
     """Update chat title"""
     try:

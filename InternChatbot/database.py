@@ -167,11 +167,10 @@ def create_new_chat(user_id, title=None):
         INSERT INTO chats (user_id, title, created_at, updated_at)
         VALUES (%s, %s, NOW(), NOW())
         """
-        cursor.execute(insert_query, (user_id, chat_title))
+        cursor.execute(insert_query, (user_id, title))
         connection.commit()
-        
         chat_id = cursor.lastrowid
-        logger.info(f"Successfully created chat {chat_id} with title '{chat_title}'")
+        logger.info(f"Successfully created chat {chat_id} with title '{title}'")
         return chat_id
         
     except Exception as e:

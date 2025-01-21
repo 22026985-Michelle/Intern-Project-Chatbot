@@ -52,6 +52,6 @@ def handle_nric_request(message):
     
     # Format response with each NRIC on a new line without numbering
     response = f"Generated {count} NRICs with prefix {prefix} for year {year}:\n\n"
-    response += "\n\n".join(nrics)
+    response += "\n".join(nrics)
         
     return response

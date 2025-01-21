@@ -654,8 +654,8 @@ HTML_TEMPLATE = '''
 <body data-theme="light">
     <div class="sidebar-trigger"></div>
     <div class="sidebar">
-        <div class="sidebar-content">
             <div class="sidebar-header">
+                <h2 id="sidebarTitle">New Chat</h2>
                 <button class="new-chat-button" id="newChatButton">
                     <span>⊕</span>
                     Start new chat
