@@ -230,7 +230,7 @@
 <body>
     <div class="settings-container">
         <div class="back-button-container">
-            <button onclick="goBack()" class="back-button">
+            <button onclick="window.location.href='/'" class="back-button">
                 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                     <path d="M19 12H5M12 19l-7-7 7-7"/>
                 </svg>
@@ -486,6 +486,16 @@
                 if (data.profilePicture) {
                     const img = document.createElement('img');
                     img.src = data.profilePicture;
+                    
+                    // Add error handling for the image
+                    img.onerror = function() {
+                        // If image fails to load, show the letter avatar instead
+                        this.remove();
+                        letterDiv.textContent = data.email[0].toUpperCase();
+                        letterDiv.style.display = 'flex';
+                        document.getElementById('previewContainer').classList.remove('active');
+                    };
+                    
                     profilePic.insertBefore(img, letterDiv);
                     letterDiv.style.display = 'none';
                     document.getElementById('previewContainer').classList.add('active');
@@ -495,6 +505,10 @@
                 }
             } catch (error) {
                 console.error('Error:', error);
+                // Show letter avatar as fallback
+                const letterDiv = document.querySelector('.profile-pic-letter');
+                letterDiv.textContent = document.getElementById('email').value[0].toUpperCase() || 'U';
+                letterDiv.style.display = 'flex';
             }
         });
     </script>
