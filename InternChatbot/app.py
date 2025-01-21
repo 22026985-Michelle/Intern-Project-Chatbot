@@ -25,7 +25,7 @@ from database import (
 from io import StringIO
 import csv
 
-app = Flask(__name__)
+app = Flask(__name__, static_url_path='/static', static_folder='static')
 app.secret_key = os.urandom(24)
 formatter = DynamicFormatter()
 
@@ -739,4 +739,3 @@ def json_to_table():
         app.logger.error(f"Error converting JSON to table: {str(e)}")
         return jsonify({"error": str(e)}), 500
     
-app = Flask(__name__, static_url_path='/static', static_folder='static')
