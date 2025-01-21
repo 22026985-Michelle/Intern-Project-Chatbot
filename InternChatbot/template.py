@@ -1620,11 +1620,6 @@ HTML_TEMPLATE = '''
                 }
             }
 
-            // Theme Functions
-            function updateTheme(theme) {
-                body.setAttribute('data-theme', theme);
-                localStorage.setItem('theme', theme);
-            }
 
             // Global Functions
             window.toggleAppearanceMenu = function() {
