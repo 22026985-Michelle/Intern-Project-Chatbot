@@ -663,7 +663,6 @@ HTML_TEMPLATE = '''
 </head>
 <body data-theme="light">
     <div class="sidebar-trigger"></div>
-    <div class="sidebar-trigger"></div>
     <div class="sidebar">
         <div class="sidebar-header">
             <button class="new-chat-button" id="newChatButton">
@@ -1694,12 +1693,26 @@ HTML_TEMPLATE = '''
                 }
             });
 
-            sidebarTrigger.addEventListener('mouseleave', () => {
-                isOverSidebar = false;
-                if (!isMenuOpen) {
-                    sidebarTimeout = setTimeout(hideSidebar, 300);
-                }
-            });
+            // Add event listeners to each trigger if they exist
+            if (sidebarTriggers.length > 0) {
+                sidebarTriggers.forEach(trigger => {
+                    trigger.addEventListener('mouseleave', () => {
+                        isOverSidebar = false;
+                        if (!isMenuOpen) {
+                            sidebarTimeout = setTimeout(hideSidebar, 300);
+                        }
+                    });
+                    
+                    // Optionally, add mouseenter event for better control
+                    trigger.addEventListener('mouseenter', () => {
+                        isOverSidebar = true;
+                        if (sidebarTimeout) {
+                            clearTimeout(sidebarTimeout);
+                            sidebarTimeout = null;
+                        }
+                    });
+                });
+            }
 
             // Initialize theme and greeting
             let currentTheme = localStorage.getItem('theme') || 'light';
