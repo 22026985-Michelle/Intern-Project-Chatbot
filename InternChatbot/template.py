@@ -1647,37 +1647,39 @@ HTML_TEMPLATE = '''
                 userInput.value = message;
                 userInput.focus();
             };
+            document.addEventListener('click', (event) => {
+                const isClickInsideProfile = profileButton && profileButton.contains(event.target);
+                const isClickInsideMenu = profileMenu && profileMenu.contains(event.target);
+                const isClickInsideSidebar = sidebar && sidebar.contains(event.target);
 
-            profileButton.addEventListener('click', function(e) {
-                e.stopPropagation();
-                isMenuOpen = !isMenuOpen;
-                profileMenu.classList.toggle('active', isMenuOpen);
+                if (!isClickInsideProfile && !isClickInsideMenu && !isClickInsideSidebar) {
+                    // Close menu if it's open
+                    if (isMenuOpen) {
+                        isMenuOpen = false;
+                        profileMenu.classList.remove('active');
+                        appearanceMenu.classList.remove('active');
+                        if (!isOverSidebar) {
+                            hideSidebar();
+                        }
+                    }
+                }
             });
+
+            if (profileButton) {
+                profileButton.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    isMenuOpen = !isMenuOpen;
+                    profileMenu.classList.toggle('active', isMenuOpen);
+                });
+            }
 
             settingsLink.addEventListener('click', function(e) {
                 e.stopPropagation();
                 window.location.href = 'https://internproject-4fq7.onrender.com/Settings';
             });
 
-            document.addEventListener('click', function(e) {
-                if (!profileMenu.contains(e.target) && !profileButton.contains(e.target)) {
-                    isMenuOpen = false;
-                    profileMenu.classList.remove('active');
-                }
-            });
-
             profileMenu.addEventListener('click', function(e) {
                 e.stopPropagation();
-            });
-
-            document.addEventListener('click', (event) => {
-                const isClickInsideProfile = profileButton.contains(event.target);
-                const isClickInsideMenu = profileMenu.contains(event.target);
-                const isClickInsideSidebar = sidebar.contains(event.target);
-
-                if (!isClickInsideProfile && !isClickInsideMenu && !isClickInsideSidebar && isMenuOpen) {
-                    toggleProfileMenu();
-                }
             });
 
             sidebarTrigger.addEventListener('mouseleave', () => {
