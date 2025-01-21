@@ -229,25 +229,30 @@ def add_message(chat_id, content, is_user=True):
             connection.close()
 
 def get_recent_chats(user_id, limit=5):
-    """Get recent chats with title and last message"""
+    """Get recent chats with dynamic titles"""
     query = """
-    SELECT 
+    SELECT DISTINCT
         c.chat_id,
-        COALESCE(c.title, 
-            (SELECT content 
-             FROM messages 
-             WHERE chat_id = c.chat_id AND is_user = 1 
-             ORDER BY created_at ASC 
-             LIMIT 1)
-        ) as title,
+        CASE 
+            WHEN c.title != 'New Chat' AND c.title IS NOT NULL THEN c.title
+            ELSE (
+                SELECT content 
+                FROM messages 
+                WHERE chat_id = c.chat_id AND is_user = 1
+                ORDER BY created_at ASC 
+                LIMIT 1
+            )
+        END as title,
         c.created_at,
         c.updated_at,
-        (SELECT content 
-         FROM messages 
-         WHERE chat_id = c.chat_id
-         ORDER BY created_at DESC 
-         LIMIT 1) as last_message
+        m.content as last_message
     FROM chats c
+    LEFT JOIN messages m ON m.chat_id = c.chat_id 
+    AND m.created_at = (
+        SELECT MAX(created_at) 
+        FROM messages 
+        WHERE chat_id = c.chat_id
+    )
     WHERE c.user_id = %s
     ORDER BY c.updated_at DESC
     LIMIT %s
@@ -270,7 +275,7 @@ def get_recent_chats(user_id, limit=5):
     except Exception as e:
         logging.error(f"Error in get_recent_chats: {str(e)}")
         return []
-
+    
 def get_chat_messages(chat_id):
     """Get all messages for a specific chat"""
     query = """
