@@ -732,6 +732,7 @@ HTML_TEMPLATE = '''
                         <button class="tool-button" onclick="setMessage('I would like to learn more about NCS.')">Learn more about NCS</button>
                         <button class="tool-button" onclick="setMessage('Can you help me fill in the missing fields?')">Fill in fields</button>
                         <button class="tool-button" onclick="setMessage('Please help me to format my JSON data')">Format JSON</button>
+                        <button class="tool-button" onclick="setMessage('Please generate [number] NRICs issued in [year], of prefix [S/T/F/G]')">Generate NRICs</button>
                     </div>
                 </div>
             </div>
