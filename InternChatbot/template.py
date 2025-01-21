@@ -8,6 +8,121 @@ HTML_TEMPLATE = '''
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js"></script>
+    <script type="text/babel">
+        const ExcelTable = () => {
+            const [data, setData] = React.useState(null);
+            const [copied, setCopied] = React.useState(false);
+            const [error, setError] = React.useState('');
+
+            const handlePaste = (e) => {
+                try {
+                    const pastedText = e.clipboardData.getData('text');
+                    try {
+                        const parsedJson = JSON.parse(pastedText);
+                        setData(parsedJson);
+                        setError('');
+                    } catch (jsonError) {
+                        const lines = pastedText.split('\n').filter(line => line.trim());
+                        const parsedData = {};
+                        lines.forEach(line => {
+                            const [key, ...valueParts] = line.split(':');
+                            if (key && valueParts.length > 0) {
+                                const value = valueParts.join(':').trim();
+                                parsedData[key.trim()] = value;
+                            }
+                        });
+                        if (Object.keys(parsedData).length > 0) {
+                            setData(parsedData);
+                            setError('');
+                        } else {
+                            setError('Invalid data format. Please paste valid JSON or key:value pairs.');
+                        }
+                    }
+                } catch (e) {
+                    setError('Error processing pasted data. Please check the format.');
+                    console.error('Error processing paste:', e);
+                }
+            };
+
+            const copyToClipboard = () => {
+                if (!data) return;
+                const headers = Object.keys(data);
+                const values = Object.values(data);
+                const tableContent = headers.join('\t') + '\n' + values.join('\t');
+                navigator.clipboard.writeText(tableContent).then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                });
+            };
+
+            const downloadCSV = () => {
+                if (!data) return;
+                const headers = Object.keys(data);
+                const values = Object.values(data);
+                const csvContent = 
+                    headers.join(',') + '\n' + 
+                    values.map(value => `"${value}"`).join(',');
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = 'table_data.csv';
+                link.click();
+            };
+
+            return React.createElement('div', { className: 'space-y-4 p-4' },
+                React.createElement('div', { className: 'mb-4' },
+                    React.createElement('textarea', {
+                        className: 'w-full p-4 border rounded-lg min-h-32',
+                        placeholder: 'Paste your JSON or key:value pairs here...',
+                        onPaste: handlePaste
+                    }),
+                    error && React.createElement('div', {
+                        className: 'text-red-500 text-sm mt-2'
+                    }, error)
+                ),
+                data && React.createElement('div', {
+                    className: 'flex justify-end gap-2 mb-4'
+                },
+                    React.createElement('button', {
+                        onClick: copyToClipboard,
+                        className: 'flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600'
+                    }, copied ? 'Copied!' : 'Copy for Excel'),
+                    React.createElement('button', {
+                        onClick: downloadCSV,
+                        className: 'flex items-center gap-2 px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600'
+                    }, 'Download CSV')
+                ),
+                data && React.createElement('div', {
+                    className: 'w-full overflow-x-auto border rounded'
+                },
+                    React.createElement('table', { className: 'min-w-full' },
+                        React.createElement('thead', null,
+                            React.createElement('tr', { className: 'bg-gray-50' },
+                                Object.keys(data).map(key =>
+                                    React.createElement('th', {
+                                        key: key,
+                                        className: 'border-b border-r px-4 py-2 text-left text-sm font-medium text-gray-900'
+                                    }, key)
+                                )
+                            )
+                        ),
+                        React.createElement('tbody', null,
+                            React.createElement('tr', null,
+                                Object.values(data).map((value, index) =>
+                                    React.createElement('td', {
+                                        key: index,
+                                        className: 'border-r px-4 py-2 text-sm text-gray-500'
+                                    }, value)
+                                )
+                            )
+                        )
+                    )
+                )
+            );
+        };
+
+        window.ExcelTable = ExcelTable;
+    </script>
     <style>
         /* Theme Variables */
         :root[data-theme="light"] {
@@ -1614,7 +1729,7 @@ HTML_TEMPLATE = '''
             if (document.getElementById('excelTableContainer')) {
                 const rootElement = document.getElementById('excelTableContainer');
                 const root = ReactDOM.createRoot(rootElement);
-                root.render(React.createElement(ExcelTable));
+                root.render(React.createElement(window.ExcelTable));
             }
 
             // Add this script tag type="text/babel" for the ExcelTable component
