@@ -203,9 +203,9 @@ def add_message(chat_id, content, is_user=True):
         # Store message directly without encryption
         message_query = """
         INSERT INTO messages (chat_id, content, is_user, created_at)
-        VALUES (%s, %s, %s, NOW())
+        VALUES (%s, AES_ENCRYPT(%s, %s), %s, NOW())
         """
-        cursor.execute(message_query, (chat_id, content, is_user))
+        cursor.execute(message_query, (chat_id, content, ENCRYPTION_KEY, is_user))
         
         # Update chat timestamp
         update_query = """
@@ -229,25 +229,15 @@ def add_message(chat_id, content, is_user=True):
             connection.close()
 
 def get_recent_chats(user_id, limit=5):
-    """Get recent chats with dynamic titles"""
+    """Get recent chats with last message"""
     query = """
-    SELECT DISTINCT
-        c.chat_id,
-        CASE 
-            WHEN c.title != 'New Chat' AND c.title IS NOT NULL THEN c.title
-            ELSE (
-                SELECT content 
-                FROM messages 
-                WHERE chat_id = c.chat_id AND is_user = 1
-                ORDER BY created_at ASC 
-                LIMIT 1
-            )
-        END as title,
-        c.created_at,
-        c.updated_at,
-        m.content as last_message
+    SELECT c.chat_id, 
+           c.title,
+           c.created_at,
+           c.updated_at,
+           AES_DECRYPT(m.content, %s) AS last_message
     FROM chats c
-    LEFT JOIN messages m ON m.chat_id = c.chat_id 
+    LEFT JOIN messages m ON c.chat_id = m.chat_id 
     AND m.created_at = (
         SELECT MAX(created_at) 
         FROM messages 
@@ -258,7 +248,7 @@ def get_recent_chats(user_id, limit=5):
     LIMIT %s
     """
     try:
-        result = execute_query(query, (user_id, limit))
+        result = execute_query(query, (ENCRYPTION_KEY, user_id, limit))
         
         if not result:
             return []
@@ -280,7 +270,7 @@ def get_chat_messages(chat_id):
     """Get all messages for a specific chat"""
     query = """
     SELECT message_id, 
-           content, 
+           AES_DECRYPT(content, %s) AS content, 
            is_user, 
            created_at
     FROM messages
@@ -288,7 +278,7 @@ def get_chat_messages(chat_id):
     ORDER BY created_at ASC
     """
     try:
-        result = execute_query(query, (chat_id,))
+        result = execute_query(query, (ENCRYPTION_KEY, chat_id))
         
         if not result:
             return []
@@ -297,7 +287,7 @@ def get_chat_messages(chat_id):
         for message in result:
             formatted_messages.append({
                 'message_id': message['message_id'],
-                'content': message['content'],
+                'content': message['content'].decode('utf-8') if message['content'] else None,
                 'is_user': bool(message['is_user']),
                 'created_at': message['created_at'].strftime('%Y-%m-%d %H:%M:%S') if message['created_at'] else None
             })
