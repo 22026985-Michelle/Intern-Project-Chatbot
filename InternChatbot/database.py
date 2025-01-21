@@ -157,8 +157,10 @@ def create_new_chat(user_id, title=None):
             cleanup_old_chats(user_id, keep_count=4)
         
         # Use provided title or default
-        chat_title = title if title else "New Chat"
-        chat_title = chat_title.strip()[:50]  # Limit title length
+        if title:
+            chat_title = title.strip()[:50]  # Limit title length
+        else:
+            chat_title = "New Chat"
         
         logger.info(f"Creating new chat for user {user_id} with title: {chat_title}")
         
@@ -167,10 +169,11 @@ def create_new_chat(user_id, title=None):
         INSERT INTO chats (user_id, title, created_at, updated_at)
         VALUES (%s, %s, NOW(), NOW())
         """
-        cursor.execute(insert_query, (user_id, title))
+        cursor.execute(insert_query, (user_id, chat_title))
         connection.commit()
+        
         chat_id = cursor.lastrowid
-        logger.info(f"Successfully created chat {chat_id} with title '{title}'")
+        logger.info(f"Successfully created chat {chat_id} with title '{chat_title}'")
         return chat_id
         
     except Exception as e:
