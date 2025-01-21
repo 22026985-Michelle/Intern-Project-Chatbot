@@ -15,8 +15,6 @@ from io import StringIO
 from cryptography.fernet import Fernet
 import base64
 
-ENCRYPTED_KEY = "g11P15eEqdxMLt7I3IIVKOtVuR+gw9qbYnkPwSDCqTs="
-ENCRYPTION_KEY = base64.b64decode(ENCRYPTED_KEY)
 
 __all__ = [
     'get_db_connection',
@@ -200,16 +198,13 @@ def add_message(chat_id, content, is_user=True):
             return False
 
         cursor = connection.cursor(dictionary=True)
-
-        if isinstance(content, str):
-            content = content.encode('utf-8')
         
         # Store message directly without encryption
         message_query = """
         INSERT INTO messages (chat_id, content, is_user, created_at)
-        VALUES (%s, AES_ENCRYPT(%s, %s), %s, NOW())
+        VALUES (%s, %s, %s, NOW())
         """
-        cursor.execute(message_query, (chat_id, content, ENCRYPTION_KEY, is_user))
+        cursor.execute(message_query, (chat_id, content, is_user))
         
         # Update chat timestamp
         update_query = """
@@ -239,17 +234,17 @@ def get_recent_chats(user_id, limit=5):
         c.chat_id,
         CASE 
             WHEN c.title != 'New Chat' AND c.title IS NOT NULL THEN c.title
-            ELSE CAST(AES_DECRYPT((
+            ELSE (
                 SELECT content 
                 FROM messages 
                 WHERE chat_id = c.chat_id AND is_user = 1
                 ORDER BY created_at ASC 
                 LIMIT 1
-            ), %s) AS CHAR CHARACTER SET utf8mb4)
+            )
         END as title,
         c.created_at,
         c.updated_at,
-        CAST(AES_DECRYPT(m.content, %s) AS CHAR CHARACTER SET utf8mb4) as last_message
+        m.content as last_message
     FROM chats c
     LEFT JOIN messages m ON m.chat_id = c.chat_id 
     AND m.created_at = (
@@ -262,7 +257,7 @@ def get_recent_chats(user_id, limit=5):
     LIMIT %s
     """
     try:
-        result = execute_query(query, (ENCRYPTION_KEY, ENCRYPTION_KEY, user_id, limit))
+        result = execute_query(query, (user_id, limit))
         
         if not result:
             return []
@@ -281,18 +276,16 @@ def get_recent_chats(user_id, limit=5):
         return []
     
 def get_chat_messages(chat_id):
-    """Get all messages for a specific chat with proper decryption"""
+    """Get all messages for a specific chat"""
     query = """
-    SELECT 
-        message_id, 
-        CAST(AES_DECRYPT(content, %s) AS CHAR CHARACTER SET utf8mb4) AS content,
-        is_user, 
-        created_at
+    SELECT message_id, 
+           content, 
+           is_user, 
+           created_at
     FROM messages
     WHERE chat_id = %s
     ORDER BY created_at ASC
     """
-
     try:
         result = execute_query(query, (chat_id,))
         
@@ -303,7 +296,7 @@ def get_chat_messages(chat_id):
         for message in result:
             formatted_messages.append({
                 'message_id': message['message_id'],
-                'content': message['content'] if message['content'] else None,
+                'content': message['content'],
                 'is_user': bool(message['is_user']),
                 'created_at': message['created_at'].strftime('%Y-%m-%d %H:%M:%S') if message['created_at'] else None
             })
