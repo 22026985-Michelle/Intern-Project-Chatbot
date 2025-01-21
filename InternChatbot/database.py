@@ -545,6 +545,8 @@ def convert_format(text, source_format):
         if source_format == 'json':
             # Convert JSON to tabular using pandas
             data = json.loads(text)
+            # Flatten nested JSON structure
+            flattened_data = []
             
             def flatten_dict(d, parent_key=''):
                 items = []
@@ -553,19 +555,23 @@ def convert_format(text, source_format):
                     if isinstance(v, dict):
                         items.extend(flatten_dict(v, new_key).items())
                     elif isinstance(v, list):
-                        items.append((new_key, json.dumps(v, indent=2, ensure_ascii=False)))
+                        items.append((new_key, ','.join(map(str, v))))
                     else:
                         items.append((new_key, v))
                 return dict(items)
             
             if isinstance(data, dict):
-                flattened_data = [flatten_dict(data)]
+                flattened_data.append(flatten_dict(data))
             else:
-                flattened_data = [flatten_dict(item) for item in data]
+                for item in data:
+                    flattened_data.append(flatten_dict(item))
             
-            # Convert to pandas DataFrame and format output
+            # Convert to pandas DataFrame
             df = pd.DataFrame(flattened_data)
+            
+            # Format DataFrame as markdown table
             return df.to_markdown(index=False)
+
         else:
             # Convert tabular to JSON with proper formatting
             lines = [line.strip() for line in text.split('\n') if line.strip()]
@@ -584,20 +590,16 @@ def convert_format(text, source_format):
                         current_section = section
                         if current_section not in data:
                             data[current_section] = {}
-                    try:
-                        # Try to parse value as JSON if it looks like JSON
-                        if value.strip().startswith('{') or value.strip().startswith('['):
-                            data[current_section][field] = json.loads(value)
-                        else:
-                            data[current_section][field] = value
-                    except json.JSONDecodeError:
-                        data[current_section][field] = value
+                    data[current_section][field] = value
                 else:
                     data[header] = value
             
             # Format JSON with proper indentation
-            return json.dumps(data, indent=2, ensure_ascii=False)
+            formatted_json = json.dumps(data, indent=2, ensure_ascii=False)
             
+            # Add newlines for better readability
+            return formatted_json
+
     except Exception as e:
         logger.error(f"Error converting format: {str(e)}")
         return f"Error converting format: {str(e)}"
@@ -687,7 +689,7 @@ class FileHandler:
             raise
 
 def process_json_to_table(json_data):
-    """Convert JSON to table format with proper indentation"""
+    """Convert JSON to table format"""
     try:
         # Flatten the JSON structure
         flattened_data = {}
@@ -700,16 +702,13 @@ def process_json_to_table(json_data):
                 if isinstance(v, dict):
                     items.update(flatten_dict(v, new_key))
                 elif isinstance(v, list):
-                    items[new_key] = json.dumps(v, indent=2, ensure_ascii=False)
+                    items[new_key] = ', '.join(map(str, v))
                 else:
                     items[new_key] = str(v) if v is not None else ''
             return items
         
-        if isinstance(json_data, str):
-            json_data = json.loads(json_data)
-            
         flattened_data = flatten_dict(json_data)
-        return json.dumps(flattened_data, indent=2, ensure_ascii=False)
+        return flattened_data
         
     except Exception as e:
         logging.error(f"Error converting JSON to table: {str(e)}")

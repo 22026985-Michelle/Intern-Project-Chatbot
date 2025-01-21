@@ -896,6 +896,33 @@ HTML_TEMPLATE = '''
 
         // Chat Manager Class
         class ChatManager {
+            formatJSON(content) {
+                try {
+                    // If content is a string that looks like JSON
+                    if (typeof content === 'string') {
+                        const trimmed = content.trim();
+                        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+                            try {
+                                const parsed = JSON.parse(trimmed);
+                                return JSON.stringify(parsed, null, 2); // Use 2 spaces for indentation
+                            } catch (e) {
+                                // If parsing fails, return original content
+                                return content;
+                            }
+                        }
+                    }
+                    
+                    // If content is already an object
+                    if (typeof content === 'object' && content !== null) {
+                        return JSON.stringify(content, null, 2);
+                    }
+                    
+                    return content;
+                } catch (e) {
+                    console.error('Error formatting JSON:', e);
+                    return content;
+                }
+            }
             constructor() {
                 this.currentChatId = null;
                 this.BASE_URL = 'https://internproject-4fq7.onrender.com';
@@ -1327,34 +1354,19 @@ HTML_TEMPLATE = '''
                 const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
 
                 try {
-                    const parsedContent = typeof content === 'string' ? JSON.parse(content) : content;
-                    
-                    if (parsedContent && parsedContent.type === 'json_table') {
-                        const tableElement = renderJsonTable(parsedContent.data);
-                        messageDiv.innerHTML = `
-                            <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
-                                ${isUser ? userAvatar : botAvatarSvg}
-                            </div>
-                            <div class="message-content"></div>
-                        `;
-                        messageDiv.querySelector('.message-content').appendChild(tableElement);
-                    } else {
-                        throw new Error('Not a JSON table');
-                    }
-                } catch (e) {
                     let formattedContent = this.escapeHtml(content);
                     
+                    // Check if the content looks like JSON
                     if (typeof formattedContent === 'string' && 
                         (formattedContent.trim().startsWith('{') || formattedContent.trim().startsWith('['))) {
                         try {
                             const jsonContent = JSON.parse(formattedContent);
-                            formattedContent = '<pre><code>' + JSON.stringify(jsonContent, null, 2) + '</code></pre>';
+                            formattedContent = '<pre><code>' + this.formatJSON(jsonContent) + '</code></pre>';
                         } catch (e) {
                             console.error('Error formatting JSON in message:', e);
                         }
                     }
 
-                    // Keep this all on one line to prevent the console from splitting it
                     formattedContent = formattedContent.replace(String.raw`\n`, '<br>');
                     
                     messageDiv.innerHTML = `
@@ -1363,6 +1375,8 @@ HTML_TEMPLATE = '''
                         </div>
                         <div class="message-content">${formattedContent}</div>
                     `;
+                } catch (e) {
+                    console.error('Error processing message:', e);
                 }
 
                 messagesList.appendChild(messageDiv);
@@ -1620,6 +1634,11 @@ HTML_TEMPLATE = '''
                 }
             }
 
+            // Theme Functions
+            function updateTheme(theme) {
+                body.setAttribute('data-theme', theme);
+                localStorage.setItem('theme', theme);
+            }
 
             // Global Functions
             window.toggleAppearanceMenu = function() {
@@ -1642,39 +1661,37 @@ HTML_TEMPLATE = '''
                 userInput.value = message;
                 userInput.focus();
             };
-            document.addEventListener('click', (event) => {
-                const isClickInsideProfile = profileButton && profileButton.contains(event.target);
-                const isClickInsideMenu = profileMenu && profileMenu.contains(event.target);
-                const isClickInsideSidebar = sidebar && sidebar.contains(event.target);
 
-                if (!isClickInsideProfile && !isClickInsideMenu && !isClickInsideSidebar) {
-                    // Close menu if it's open
-                    if (isMenuOpen) {
-                        isMenuOpen = false;
-                        profileMenu.classList.remove('active');
-                        appearanceMenu.classList.remove('active');
-                        if (!isOverSidebar) {
-                            hideSidebar();
-                        }
-                    }
-                }
+            profileButton.addEventListener('click', function(e) {
+                e.stopPropagation();
+                isMenuOpen = !isMenuOpen;
+                profileMenu.classList.toggle('active', isMenuOpen);
             });
-
-            if (profileButton) {
-                profileButton.addEventListener('click', function(e) {
-                    e.stopPropagation();
-                    isMenuOpen = !isMenuOpen;
-                    profileMenu.classList.toggle('active', isMenuOpen);
-                });
-            }
 
             settingsLink.addEventListener('click', function(e) {
                 e.stopPropagation();
                 window.location.href = 'https://internproject-4fq7.onrender.com/Settings';
             });
 
+            document.addEventListener('click', function(e) {
+                if (!profileMenu.contains(e.target) && !profileButton.contains(e.target)) {
+                    isMenuOpen = false;
+                    profileMenu.classList.remove('active');
+                }
+            });
+
             profileMenu.addEventListener('click', function(e) {
                 e.stopPropagation();
+            });
+
+            document.addEventListener('click', (event) => {
+                const isClickInsideProfile = profileButton.contains(event.target);
+                const isClickInsideMenu = profileMenu.contains(event.target);
+                const isClickInsideSidebar = sidebar.contains(event.target);
+
+                if (!isClickInsideProfile && !isClickInsideMenu && !isClickInsideSidebar && isMenuOpen) {
+                    toggleProfileMenu();
+                }
             });
 
             sidebarTrigger.addEventListener('mouseleave', () => {
