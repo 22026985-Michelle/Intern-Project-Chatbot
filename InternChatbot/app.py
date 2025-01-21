@@ -32,6 +32,7 @@ app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16MB max-limit
 ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
 
 logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -46,10 +47,10 @@ except Exception as e:
 
 def login_required(f):
     @wraps(f)
-    def decorated_function(args, **kwargs):
+    def decorated_function(*args, **kwargs):
         if 'user_email' not in session:
             return redirect('/login')
-        return f(args, **kwargs)
+        return f(*args, **kwargs)
     return decorated_function
 
 @app.route('/')
@@ -58,18 +59,18 @@ def home():
     """Serve the main chat interface"""
     current_hour = datetime.now().hour
     greeting = "Good morning" if 5 <= current_hour < 12 else "Good afternoon" if 12 <= current_hour < 18 else "Having a late night?"
-
+    
     # First get the user's email from session
     user_email = session.get('user_email', '')
-
+    
     # Get the first letter of the email for the avatar
     avatar_letter = user_email[0].upper() if user_email else 'U'
-
+    
     # Replace all placeholders in the template
     modified_template = HTML_TEMPLATE.replace('Having a late night?', greeting)
     modified_template = modified_template.replace('{avatar_letter}', avatar_letter)
     modified_template = modified_template.replace('{email}', user_email)
-
+    
     return modified_template
 
 @app.route('/login')
@@ -95,9 +96,9 @@ def api_login():
         # Query the database to get the hashed password
         query = "SELECT user_id, password FROM users WHERE email = %s"
         result = execute_query(query, (email,))
-
+        
         app.logger.info(f"Database query result: {result}")
-
+        
         if result:
             stored_hashed_password = result[0]['password']
             if check_password_hash(stored_hashed_password, password):
@@ -115,14 +116,14 @@ def api_login():
     except Exception as e:
         app.logger.error(f"Error in login endpoint: {str(e)}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
-
+    
 @app.route('/api/signup', methods=['POST'])
 def api_signup():
     try:
         data = request.get_json()
         if not data:
             return jsonify({"error": "No JSON data received"}), 400
-
+            
         email = data.get('email')
         password = data.get('password')
         username = data.get('username')  # Add this line
@@ -131,10 +132,10 @@ def api_signup():
             return jsonify({"error": "Email, password, and username are required"}), 400
 
         app.logger.info(f"Attempting to create user with email: {email}")
-
+        
         # Pass username to create_user
         success, message = create_user(email, password, username)  # Modify this line
-
+        
         if success:
             session['user_email'] = email
             app.logger.info(f"Successfully created user: {email}")
@@ -187,9 +188,9 @@ def chat():
             user_result = execute_query(user_query, (user_email,))
             if not user_result:
                 return jsonify({"error": "User not found"}), 404
-
+            
             user_id = user_result[0]['user_id']
-
+            
             # Generate title for the first message
             title = "New Chat"  # Default title
             if is_first_message:
@@ -213,7 +214,7 @@ def chat():
                     logger.info(f"Generated title: {title}")
                 except Exception as e:
                     logger.error(f"Error generating title: {str(e)}")
-
+            
             chat_id = create_new_chat(user_id, title)
             if not chat_id:
                 return jsonify({"error": "Failed to create chat"}), 500
@@ -225,7 +226,7 @@ def chat():
         # Get conversation history
         messages_query = "SELECT content, is_user FROM messages WHERE chat_id = %s ORDER BY created_at ASC"
         previous_messages = execute_query(messages_query, (chat_id,))
-
+        
         # Build message history
         message_history = []
         for msg in previous_messages:
@@ -259,7 +260,7 @@ def chat():
     except Exception as e:
         logger.error(f"Error in chat endpoint: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
+    
 @app.route('/api/format-json', methods=['POST'])
 @login_required
 def format_json():
@@ -280,7 +281,7 @@ def format_json():
     except Exception as e:
         logger.error(f"Error formatting JSON: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
+    
 def format_json_data(message):
     """Handle JSON formatting requests"""
     try:
@@ -295,6 +296,7 @@ def format_json_data(message):
     except Exception as e:
         logger.error(f"Error formatting JSON: {str(e)}")
         return f"Error formatting JSON: {str(e)}"
+    
 
 def process_regular_chat(message, chat_id):
     """Handle regular chat messages"""
@@ -307,7 +309,7 @@ def process_regular_chat(message, chat_id):
         ORDER BY created_at ASC
         """
         previous_messages = execute_query(messages_query, (chat_id,))
-
+        
         message_history = []
         for msg in previous_messages:
             role = "user" if msg['is_user'] else "assistant"
@@ -321,7 +323,7 @@ def process_regular_chat(message, chat_id):
             temperature=0,
             messages=message_history
         )
-        return response.content[0].text.replace('json', '').replace('', '')
+        return response.content[0].text.replace('```json', '').replace('```', '')
     except Exception as e:
         logger.error(f"Error processing chat: {str(e)}")
         raise
@@ -338,7 +340,7 @@ def extract_json_from_message(message):
         return None
     except Exception:
         return None
-
+    
 @app.route('/api/get-profile')
 @login_required
 def get_profile():
@@ -350,7 +352,7 @@ def get_profile():
 
         query = "SELECT username, email, profile_picture FROM users WHERE email = %s"
         result = execute_query(query, (email,))
-
+        
         if result and result[0]:
             return jsonify({
                 "name": result[0]['username'],
@@ -373,43 +375,43 @@ def update_profile():
 
         updates = []
         params = []
-
+        
         # Handle name update
         if 'name' in request.form:
             updates.append("username = %s")
             params.append(request.form['name'])
-
+        
         # Handle password update
         if request.form.get('newPassword'):
             updates.append("password = %s")
             params.append(generate_password_hash(request.form['newPassword']))
-
+        
         # Handle profile picture upload
         if 'profilePicture' in request.files:
             file = request.files['profilePicture']
             if file and file.filename and allowed_file(file.filename):
                 # Ensure upload directory exists
                 os.makedirs(app.config['UPLOAD_FOLDER'], exist_ok=True)
-
+                
                 # Create unique filename
-                filename = securefilename(f"{email}{file.filename}")
+                filename = secure_filename(f"{email}_{file.filename}")
                 filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-
+                
                 # Save file
                 file.save(filepath)
-
+                
                 # Update database with relative path
                 updates.append("profile_picture = %s")
                 params.append(f"/static/profile_pictures/{filename}")
 
         if not updates:
             return jsonify({"error": "No updates provided"}), 400
-
+            
         params.append(email)
         query = f"UPDATE users SET {', '.join(updates)} WHERE email = %s"
-
+        
         execute_query(query, tuple(params))
-
+        
         return jsonify({"status": "success", "message": "Profile updated successfully"})
     except Exception as e:
         app.logger.error(f"Error updating profile: {str(e)}")
@@ -436,7 +438,7 @@ def create_chat():
         # Get user ID
         user_query = "SELECT user_id FROM users WHERE email = %s"
         user_result = execute_query(user_query, (user_email,))
-
+        
         if not user_result:
             app.logger.error(f"No user found for email: {user_email}")
             return jsonify({"error": "User not found"}), 404
@@ -460,7 +462,7 @@ def create_chat():
         app.logger.error(f"Error creating chat: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
-if __name__ == 'main':
+if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     app.run(host='0.0.0.0', port=port)
 
@@ -495,6 +497,7 @@ def get_chat_history():
         app.logger.error(f"Error in get_chat_history: {str(e)}")
         return jsonify({"error": str(e)}), 500
 
+
 @app.route('/api/chat/<int:chat_id>/messages', methods=['GET'])
 @login_required
 def get_chat_messages(chat_id):
@@ -502,12 +505,12 @@ def get_chat_messages(chat_id):
         user_email = session.get('user_email')
         user_query = "SELECT user_id FROM users WHERE email = %s"
         user_result = execute_query(user_query, (user_email,))
-
+        
         if not user_result:
             return jsonify({"error": "User not found"}), 404
-
+            
         user_id = user_result[0]['user_id']
-
+        
         # Get messages directly
         messages_query = """
         SELECT message_id, chat_id, content, is_user, created_at
@@ -515,10 +518,10 @@ def get_chat_messages(chat_id):
         WHERE chat_id = %s 
         ORDER BY created_at ASC
         """
-
+        
         messages = execute_query(messages_query, (chat_id,))
         formatted_messages = []
-
+        
         if messages:
             for msg in messages:
                 formatted_messages.append({
@@ -527,7 +530,7 @@ def get_chat_messages(chat_id):
                     'is_user': bool(msg['is_user']),
                     'created_at': msg['created_at'].strftime('%Y-%m-%d %H:%M:%S') if msg['created_at'] else None
                 })
-
+                
         return jsonify({
             'status': 'success',
             'messages': formatted_messages
@@ -536,7 +539,7 @@ def get_chat_messages(chat_id):
     except Exception as e:
         app.logger.error(f"Error getting chat messages: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
+    
 def generate_chat_title(message):
     try:
         # Use Claude to generate title
@@ -562,27 +565,27 @@ def update_chat_title(chat_id, title):
     except Exception as e:
         logger.error(f"Error updating chat title: {str(e)}")
         return False
-
+    
 @app.route('/api/chat/<int:chat_id>/title', methods=['PUT'])
 @login_required
 def update_chat_title_endpoint(chat_id):
     try:
         data = request.get_json()
         title = data.get('title')
-
+        
         if not title:
             return jsonify({"error": "Title is required"}), 400
-
+            
         # Update the chat title
         query = "UPDATE chats SET title = %s WHERE chat_id = %s"
         execute_query(query, (title, chat_id))
-
+        
         return jsonify({"status": "success"})
-
+        
     except Exception as e:
         app.logger.error(f"Error updating chat title: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
+    
 @app.route('/api/chat/<int:chat_id>/title', methods=['OPTIONS'])
 def chat_title_options(chat_id):
     response = jsonify({'status': 'ok'})
@@ -618,35 +621,35 @@ def delete_chat(chat_id):
         # Delete chat and its messages
         delete_messages_query = "DELETE FROM messages WHERE chat_id = %s"
         execute_query(delete_messages_query, (chat_id,))
-
+        
         delete_chat_query = "DELETE FROM chats WHERE chat_id = %s"
         execute_query(delete_chat_query, (chat_id,))
-
+        
         return jsonify({"status": "success"})
-
+        
     except Exception as e:
         app.logger.error(f"Error deleting chat: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
+    
 @app.route('/api/chat/<int:chat_id>/section', methods=['PUT'])
 @login_required
 def update_chat_section(chat_id):
     try:
         data = request.get_json()
         section = data.get('section')
-
+        
         if not section:
             return jsonify({"error": "Section is required"}), 400
-
+            
         query = "UPDATE chats SET section = %s WHERE chat_id = %s"
         execute_query(query, (section, chat_id))
-
+        
         return jsonify({"status": "success"})
-
+        
     except Exception as e:
         app.logger.error(f"Error updating chat section: {str(e)}")
         return jsonify({"error": str(e)}), 500
-
+    
 @app.route('/api/move-chat-to-recents/<int:chat_id>', methods=['PUT'])
 @login_required
 def move_chat_to_recents(chat_id):
@@ -658,7 +661,7 @@ def move_chat_to_recents(chat_id):
         return jsonify({"status": "success"})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
-
+    
 @app.route('/api/test-db')
 def test_db():
     try:
@@ -673,6 +676,7 @@ def test_db():
     except Exception as e:
         app.logger.error(f"Database test failed: {str(e)}")
         return jsonify({"status": "error", "message": str(e)}), 500
+    
 
 @app.route('/format', methods=['POST'])
 def format_data():
@@ -680,19 +684,19 @@ def format_data():
         data = request.get_json()
         if not data or 'content' not in data:
             return jsonify({'error': 'No content provided'}), 400
-
+            
         content = data['content']
         if not isinstance(content, (str, dict)):
             return jsonify({'error': 'Invalid content format'}), 400
-
+            
         result = formatter.process_data(content)
-
+        
         return jsonify({
             'status': 'success',
             'formatted_json': result['json'],
             'formatted_tabular': result['tabular']
         })
-
+        
     except Exception as e:
         logging.error(f"Error processing request: {str(e)}")
         return jsonify({'error': str(e)}), 500
