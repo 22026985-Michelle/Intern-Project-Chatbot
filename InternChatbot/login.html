@@ -212,6 +212,8 @@
             const email = document.getElementById('email').value;
             const password = document.getElementById('password').value;
             
+            const loginButton = loginForm.querySelector('button[type="submit"]');
+
 
             if (failedAttempts >= maxAttempts) {
                 errorMessage.textContent = sanitizeHTML('Please complete the CAPTCHA before attempting again.');
@@ -247,6 +249,8 @@
                     errorMessage.style.display = 'block';
 
                     if (failedAttempts >= maxAttempts) {
+                        loginButton.disabled = true;
+                        loginButton.style.opacity = '0.5'; // Make button visually disabled
                         showCaptcha();
                     }
                     
@@ -257,6 +261,8 @@
                 errorMessage.style.display = 'block';
 
                 if (failedAttempts >= maxAttempts) {
+                    loginButton.disabled = true;
+                    loginButton.style.opacity = '0.5'; // Make button visually disabled
                     showCaptcha();
                 }
             }
