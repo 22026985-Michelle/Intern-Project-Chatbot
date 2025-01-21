@@ -588,6 +588,7 @@ HTML_TEMPLATE = '''
             cursor: pointer;
             text-align: left;
             transition: background-color 0.2s ease;
+            text-decoration: none;
         }
 
         .menu-item:hover {
@@ -673,10 +674,10 @@ HTML_TEMPLATE = '''
                 <div class="user-email">{email}</div>
             </button>
             <div class="profile-menu" id="profileMenu">
-                <button class="menu-item" onclick="window.location.href='https://internproject-4fq7.onrender.com/Settings'">
+                <a href="https://internproject-4fq7.onrender.com/Settings" class="menu-item">
                     <span class="menu-icon">⚙️</span>
                     Settings
-                </button>
+                </a>
                 <button class="menu-item" onclick="toggleAppearanceMenu()">
                     <span class="menu-icon">🎨</span>
                     Appearance
