@@ -832,6 +832,32 @@ HTML_TEMPLATE = '''
     </style>
 
     <script>
+        function renderJsonTable(data) {
+            const table = document.createElement('div');
+            table.className = 'json-table-container';
+            
+            // Create table headers
+            const headers = Object.keys(data);
+            const values = Object.values(data);
+            
+            table.innerHTML = `
+                <table class="min-w-full border border-gray-300">
+                    <thead>
+                        <tr>
+                            ${headers.map(h => `<th class="border border-gray-300 p-2 bg-gray-100 text-sm">${h}</th>`).join('')}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            ${values.map(v => `<td class="border border-gray-300 p-2 text-center text-sm">${v}</td>`).join('')}
+                        </tr>
+                    </tbody>
+                </table>
+            `;
+            
+            return table;
+        }
+
         // Chat Manager Class
         class ChatManager {
             constructor() {
@@ -1252,32 +1278,6 @@ HTML_TEMPLATE = '''
                     .replace(/>/g, "&gt;")
                     .replace(/"/g, "&quot;")
                     .replace(/'/g, "&#039;");
-            }
-
-            function renderJsonTable(data) {
-                const table = document.createElement('div');
-                table.className = 'json-table-container';
-                
-                // Create table headers
-                const headers = Object.keys(data);
-                const values = Object.values(data);
-                
-                table.innerHTML = `
-                    <table class="min-w-full border border-gray-300">
-                        <thead>
-                            <tr>
-                                ${headers.map(h => `<th class="border border-gray-300 p-2 bg-gray-100 text-sm">${h}</th>`).join('')}
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                ${values.map(v => `<td class="border border-gray-300 p-2 text-center text-sm">${v}</td>`).join('')}
-                            </tr>
-                        </tbody>
-                    </table>
-                `;
-                
-                return table;
             }
 
             addMessageToUI(content, isUser) {
