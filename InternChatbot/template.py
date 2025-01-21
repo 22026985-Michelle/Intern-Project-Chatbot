@@ -1612,8 +1612,9 @@ HTML_TEMPLATE = '''
             let sidebarTimeout = null;
 
             if (document.getElementById('excelTableContainer')) {
-                const root = ReactDOM.createRoot(document.getElementById('excelTableContainer'));
-                root.render(React.createElement(window.ExcelTable));
+                const rootElement = document.getElementById('excelTableContainer');
+                const root = ReactDOM.createRoot(rootElement);
+                root.render(React.createElement(ExcelTable));
             }
 
             // Add this script tag type="text/babel" for the ExcelTable component
