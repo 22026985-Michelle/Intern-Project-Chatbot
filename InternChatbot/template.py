@@ -1339,11 +1339,9 @@ HTML_TEMPLATE = '''
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
 
-            formatJSON(content) {  
+            formatJSON(content) {
                 try {
-                    // If it's a string that contains JSON
                     if (typeof content === 'string') {
-                        // Remove any leading text before the first '{'
                         const jsonStart = content.indexOf('{');
                         const jsonEnd = content.lastIndexOf('}') + 1;
                         if (jsonStart >= 0 && jsonEnd > jsonStart) {
@@ -1352,13 +1350,11 @@ HTML_TEMPLATE = '''
                                 const parsed = JSON.parse(jsonPart);
                                 return JSON.stringify(parsed, null, 2);
                             } catch (e) {
-                                // If parsing fails, return the original content
                                 return content;
                             }
                         }
                     }
                     
-                    // If it's already parsed JSON
                     if (typeof content === 'object' && content !== null) {
                         return JSON.stringify(content, null, 2);
                     }
@@ -1366,7 +1362,7 @@ HTML_TEMPLATE = '''
                     return content;
                 } catch (e) {
                     console.error('Error formatting JSON:', e);
-                    return content; // Return original content if formatting fails
+                    return content;
                 }
             }
 
