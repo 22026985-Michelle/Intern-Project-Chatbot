@@ -1566,8 +1566,6 @@ HTML_TEMPLATE = '''
             const sidebar = document.querySelector('.sidebar');
             const sidebarTrigger = document.querySelector('.sidebar-trigger');
             const body = document.body;
-            const profileButton = document.getElementById('profileButton');
-            const profileMenu = document.getElementById('profileMenu');
             const appearanceMenu = document.getElementById('appearanceMenu');
 
             let isMenuOpen = false;
@@ -1637,23 +1635,6 @@ HTML_TEMPLATE = '''
                 userInput.focus();
             };
 
-            // Event Listeners
-            profileButton.addEventListener('click', (e) => {
-                e.preventDefault();
-                const menu = document.getElementById('profileMenu');
-                menu.classList.toggle('active');
-            });
-
-            document.addEventListener('click', (event) => {
-                const isClickInsideProfile = profileButton.contains(event.target);
-                const isClickInsideMenu = profileMenu.contains(event.target);
-                const isClickInsideSidebar = sidebar.contains(event.target);
-
-                if (!isClickInsideProfile && !isClickInsideMenu && !isClickInsideSidebar && isMenuOpen) {
-                    toggleProfileMenu();
-                }
-            });
-
             sidebarTrigger.addEventListener('mouseenter', () => {
                 isOverSidebar = true;
                 showSidebar();
@@ -1695,8 +1676,23 @@ HTML_TEMPLATE = '''
                 window.location.href = 'https://internproject-4fq7.onrender.com/Settings';
             });
 
+            // Handle profile button clicks
+            const profileButton = document.getElementById('profileButton');
+            const profileMenu = document.getElementById('profileMenu');
+            
+            if (profileButton) {
+                profileButton.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    profileMenu.classList.toggle('active');
+                    showSidebar(); // Make sure sidebar stays visible when menu is open
+                });
+            }
+
+            // Add click handler for the settings button
             const settingsButton = document.querySelector('.menu-item[onclick*="Settings"]');
             if (settingsButton) {
+                settingsButton.removeAttribute('onclick'); // Remove the inline onclick
                 settingsButton.addEventListener('click', function(e) {
                     e.preventDefault();
                     e.stopPropagation();
@@ -1704,24 +1700,14 @@ HTML_TEMPLATE = '''
                 });
             }
 
-            // Handle profile button clicks
-            const profileButton = document.getElementById('profileButton');
-            const profileMenu = document.getElementById('profileMenu');
-            
-            if (profileButton && profileMenu) {
-                profileButton.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    profileMenu.classList.toggle('active');
-                });
-
-                // Close menu when clicking outside
-                document.addEventListener('click', function(e) {
-                    if (!profileButton.contains(e.target) && !profileMenu.contains(e.target)) {
-                        profileMenu.classList.remove('active');
+            // Close menu when clicking outside
+            document.addEventListener('click', function(e) {
+                if (profileMenu && !profileButton.contains(e.target) && !profileMenu.contains(e.target)) {
+                    profileMenu.classList.remove('active');
+                    if (!isOverSidebar) {
+                        hideSidebar();
                     }
-                });
-            }
+                }
         });
     </script>
 </body>
