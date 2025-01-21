@@ -230,6 +230,7 @@ HTML_TEMPLATE = '''
             overflow: hidden;
             text-overflow: ellipsis;
             margin-right: 0.5rem;
+            max-width: 100px;
         }
 
         .chat-item .chat-title {
