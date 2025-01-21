@@ -48,9 +48,10 @@ def handle_nric_request(message):
     if year < 1900 or year > 2024:
         return "Please use a valid year between 1900 and 2024."
     
+    # Generate the NRICs
     nrics = [generate_nric(prefix, year) for _ in range(count)]
     
-    # Format response with each NRIC on a new line without numbering
+    # Format response with each NRIC on a new line
     response = f"Generated {count} NRICs with prefix {prefix} for year {year}:\n\n"
     response += "\n".join(nrics)
         
