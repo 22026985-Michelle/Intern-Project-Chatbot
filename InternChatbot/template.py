@@ -1123,7 +1123,6 @@ HTML_TEMPLATE = '''
             }
 
             createChatElement(chat) {
-                console.log('Creating chat element for:', chat);
                 const div = document.createElement('div');
                 div.className = 'chat-item';
                 div.setAttribute('data-chat-id', chat.chat_id);
@@ -1132,7 +1131,7 @@ HTML_TEMPLATE = '''
                     div.classList.add('active');
                 }
 
-                // Use the provided title or default
+                // Use title if available, otherwise use truncated first message
                 const displayTitle = chat.title || 'New Chat';
                 const truncatedTitle = displayTitle.length > 25
                     ? displayTitle.substring(0, 25) + '...'
@@ -1140,7 +1139,6 @@ HTML_TEMPLATE = '''
 
                 div.innerHTML = `
                     <span class="chat-title" title="${displayTitle}">${truncatedTitle}</span>
-                    <span class="chat-last-message">${chat.last_message || ''}</span>
                     <div class="chat-actions">
                         <button class="chat-action-button delete-button" title="Delete chat">🗑</button>
                     </div>
@@ -1227,8 +1225,8 @@ HTML_TEMPLATE = '''
                 if (!message) return;
 
                 try {
-                    // Check if this is a first message
-                    const isFirstMessage = !this.currentChatId;
+                    // Determine if this is the first message in a chat
+                    const isFirstMessage = !this.currentChatId || !document.querySelector('.message');
 
                     const response = await fetch(this.BASE_URL + "/api/chat", {
                         method: "POST",
@@ -1246,7 +1244,6 @@ HTML_TEMPLATE = '''
                     if (!response.ok) throw new Error("Failed to send message");
                     const data = await response.json();
 
-                    // Update chat ID and UI
                     if (data.chat_id) {
                         this.currentChatId = data.chat_id;
                     }
@@ -1255,17 +1252,9 @@ HTML_TEMPLATE = '''
                     this.addMessageToUI(message, true);
                     this.addMessageToUI(data.response, false);
 
-                    // Update chat list in the sidebar
-                    if (isFirstMessage && data.title) {
-                        await this.updateSidebarChats([
-                            {
-                                chat_id: data.chat_id,
-                                title: data.title,
-                                created_at: new Date().toISOString(),
-                                updated_at: new Date().toISOString(),
-                                last_message: message
-                            }
-                        ]);
+                    // Refresh the chat list to show updated title
+                    if (isFirstMessage) {
+                        await this.loadRecentChats();
                     }
 
                     input.value = "";
@@ -1274,6 +1263,7 @@ HTML_TEMPLATE = '''
                     alert("Failed to send message. Please try again.");
                 }
             }
+
 
             async updateSidebarChats(chats) {
                 console.log('Updating sidebar with chats:', chats);
