@@ -857,6 +857,33 @@ HTML_TEMPLATE = '''
             
             return table;
         }
+        
+        function formatJSON(content) {
+            try {
+                if (typeof content === 'string') {
+                    const jsonStart = content.indexOf('{');
+                    const jsonEnd = content.lastIndexOf('}') + 1;
+                    if (jsonStart >= 0 && jsonEnd > jsonStart) {
+                        const jsonPart = content.substring(jsonStart, jsonEnd);
+                        try {
+                            const parsed = JSON.parse(jsonPart);
+                            return JSON.stringify(parsed, null, 2);
+                        } catch (e) {
+                            return content;
+                        }
+                    }
+                }
+                
+                if (typeof content === 'object' && content !== null) {
+                    return JSON.stringify(content, null, 2);
+                }
+                
+                return content;
+            } catch (e) {
+                console.error('Error formatting JSON:', e);
+                return content;
+            }
+        }
 
         // Chat Manager Class
         class ChatManager {
@@ -1337,33 +1364,6 @@ HTML_TEMPLATE = '''
 
                 messagesList.appendChild(messageDiv);
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
-            }
-
-            formatJSON(content) {
-                try {
-                    if (typeof content === 'string') {
-                        const jsonStart = content.indexOf('{');
-                        const jsonEnd = content.lastIndexOf('}') + 1;
-                        if (jsonStart >= 0 && jsonEnd > jsonStart) {
-                            const jsonPart = content.substring(jsonStart, jsonEnd);
-                            try {
-                                const parsed = JSON.parse(jsonPart);
-                                return JSON.stringify(parsed, null, 2);
-                            } catch (e) {
-                                return content;
-                            }
-                        }
-                    }
-                    
-                    if (typeof content === 'object' && content !== null) {
-                        return JSON.stringify(content, null, 2);
-                    }
-                    
-                    return content;
-                } catch (e) {
-                    console.error('Error formatting JSON:', e);
-                    return content;
-                }
             }
 
             setMessage(message) {
