@@ -1579,12 +1579,10 @@ HTML_TEMPLATE = '''
             const profileButton = document.getElementById('profileButton');
             const profileMenu = document.getElementById('profileMenu');
             const appearanceMenu = document.getElementById('appearanceMenu');
-            const settingsLink = document.getElementById('settingsLink');
 
             let isMenuOpen = false;
             let isOverSidebar = false;
             let sidebarTimeout = null;
-
 
             // Sidebar Control Functions
             function showSidebar() {
@@ -1620,6 +1618,58 @@ HTML_TEMPLATE = '''
                 }
             }
 
+            // Add click handler for profile button
+            if (profileButton) {
+                profileButton.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    isMenuOpen = !isMenuOpen;
+                    profileMenu.classList.toggle('active', isMenuOpen);
+                });
+            }
+
+            // Handle clicks on the menu items
+            if (profileMenu) {
+                // Find all menu items that are links
+                const menuLinks = profileMenu.querySelectorAll('a.menu-item');
+                menuLinks.forEach(link => {
+                    link.addEventListener('click', function(e) {
+                        e.stopPropagation(); // Prevent menu from closing
+                    });
+                });
+
+                // Handle clicks within the menu
+                profileMenu.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                });
+            }
+
+            // Close menu when clicking outside
+            document.addEventListener('click', function(e) {
+                const isClickInsideProfile = profileButton && profileButton.contains(e.target);
+                const isClickInsideMenu = profileMenu && profileMenu.contains(e.target);
+                const isClickInsideSidebar = sidebar && sidebar.contains(e.target);
+
+                if (!isClickInsideProfile && !isClickInsideMenu && !isClickInsideSidebar && isMenuOpen) {
+                    isMenuOpen = false;
+                    if (profileMenu) {
+                        profileMenu.classList.remove('active');
+                    }
+                    if (!isOverSidebar) {
+                        hideSidebar();
+                    }
+                }
+            });
+
+            // Handle sidebar trigger
+            if (sidebarTrigger) {
+                sidebarTrigger.addEventListener('mouseleave', () => {
+                    isOverSidebar = false;
+                    if (!isMenuOpen) {
+                        sidebarTimeout = setTimeout(hideSidebar, 300);
+                    }
+                });
+            }
+
             // Theme Functions
             function updateTheme(theme) {
                 body.setAttribute('data-theme', theme);
@@ -1628,7 +1678,9 @@ HTML_TEMPLATE = '''
 
             // Global Functions
             window.toggleAppearanceMenu = function() {
-                appearanceMenu.classList.toggle('active');
+                if (appearanceMenu) {
+                    appearanceMenu.classList.toggle('active');
+                }
             };
             
             window.setTheme = function(theme) {
@@ -1636,69 +1688,38 @@ HTML_TEMPLATE = '''
                 localStorage.setItem('theme', theme);
                 
                 isMenuOpen = false;
-                profileMenu.classList.remove('active');
-                appearanceMenu.classList.remove('active');
+                if (profileMenu) {
+                    profileMenu.classList.remove('active');
+                }
+                if (appearanceMenu) {
+                    appearanceMenu.classList.remove('active');
+                }
                 if (!isOverSidebar) {
                     hideSidebar();
                 }
             };
 
             window.setMessage = function(message) {
-                userInput.value = message;
-                userInput.focus();
+                if (userInput) {
+                    userInput.value = message;
+                    userInput.focus();
+                }
             };
-
-            profileButton.addEventListener('click', function(e) {
-                e.stopPropagation();
-                isMenuOpen = !isMenuOpen;
-                profileMenu.classList.toggle('active', isMenuOpen);
-            });
-
-            settingsLink.addEventListener('click', function(e) {
-                e.stopPropagation();
-                window.location.href = 'https://internproject-4fq7.onrender.com/Settings';
-            });
-
-            document.addEventListener('click', function(e) {
-                if (!profileMenu.contains(e.target) && !profileButton.contains(e.target)) {
-                    isMenuOpen = false;
-                    profileMenu.classList.remove('active');
-                }
-            });
-
-            profileMenu.addEventListener('click', function(e) {
-                e.stopPropagation();
-            });
-
-            document.addEventListener('click', (event) => {
-                const isClickInsideProfile = profileButton.contains(event.target);
-                const isClickInsideMenu = profileMenu.contains(event.target);
-                const isClickInsideSidebar = sidebar.contains(event.target);
-
-                if (!isClickInsideProfile && !isClickInsideMenu && !isClickInsideSidebar && isMenuOpen) {
-                    toggleProfileMenu();
-                }
-            });
-
-            sidebarTrigger.addEventListener('mouseleave', () => {
-                isOverSidebar = false;
-                if (!isMenuOpen) {
-                    sidebarTimeout = setTimeout(hideSidebar, 300);
-                }
-            });
 
             // Initialize theme and greeting
             let currentTheme = localStorage.getItem('theme') || 'light';
             updateTheme(currentTheme);
             
             function setGreeting() {
-                const hour = new Date().getHours();
-                if (hour >= 5 && hour < 12) {
-                    greetingText.textContent = 'Good morning';
-                } else if (hour >= 12 && hour < 18) {
-                    greetingText.textContent = 'Good afternoon';
-                } else {
-                    greetingText.textContent = 'Having a late night?';
+                if (greetingText) {
+                    const hour = new Date().getHours();
+                    if (hour >= 5 && hour < 12) {
+                        greetingText.textContent = 'Good morning';
+                    } else if (hour >= 12 && hour < 18) {
+                        greetingText.textContent = 'Good afternoon';
+                    } else {
+                        greetingText.textContent = 'Having a late night?';
+                    }
                 }
             }
             
@@ -1708,9 +1729,12 @@ HTML_TEMPLATE = '''
             // Initialize chat manager
             window.chatManager = new ChatManager();
 
-            document.getElementById('newChatButton').addEventListener('click', () => {
-                window.chatManager.handleNewChat();
-            });
+            const newChatButton = document.getElementById('newChatButton');
+            if (newChatButton) {
+                newChatButton.addEventListener('click', () => {
+                    window.chatManager.handleNewChat();
+                });
+            }
         });
     </script>
 </body>
