@@ -216,7 +216,11 @@
             if (failedAttempts >= maxAttempts) {
                 errorMessage.textContent = sanitizeHTML('Please complete the CAPTCHA before attempting again.');
                 errorMessage.style.display = 'block';
-                return;
+                // Disable the login button
+                const loginButton = loginForm.querySelector('button[type="submit"]');
+                loginButton.disabled = true;
+                loginButton.style.opacity = '0.5'; // Optional: make the button appear visually disabled
+                return; // Stops further processing
             }
 
             try {
@@ -295,6 +299,11 @@
                 document.getElementById('captchaContainer').remove();
                 document.getElementById('email').value = ''; // Clear email field
                 document.getElementById('password').value = ''; // Clear password field
+
+                // Enable the login button again
+                const loginButton = loginForm.querySelector('button[type="submit"]');
+                loginButton.disabled = false;
+                loginButton.style.opacity = '1'; // Restore button's appearance
                 errorMessage.textContent = sanitizeHTML('CAPTCHA verified! Please try logging in again.');
                 errorMessage.style.color = '#10B981'; // Green for success
                 errorMessage.style.display = 'block';
