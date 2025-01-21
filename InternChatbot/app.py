@@ -557,14 +557,14 @@ def generate_chat_title(message):
             model="claude-3-5-sonnet-20241022",
             max_tokens=50,
             temperature=0,
-            system="Generate a very concise chat title (2-4 words) based on the first message.",
+            system="Generate a very concise chat title (2-4 words) based on the first message. Do not use quotes or punctuation.",
             messages=[{"role": "user", "content": f"Create a brief title for: {message}"}]
         )
-        title = response.content[0].text.strip()
-        return title
+        title = response.content[0].text.strip().strip('"').strip()
+        return title if title else message[:50]  # Fallback to truncated message if empty title
     except Exception as e:
         logger.error(f"Error generating title: {str(e)}")
-        return "New Chat"
+        return message[:50] if message else "New Chat"  # Use truncated message or default
     
 def update_chat_title(chat_id, title):
     """Update chat title"""

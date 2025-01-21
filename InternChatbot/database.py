@@ -227,20 +227,25 @@ def add_message(chat_id, content, is_user=True):
             connection.close()
 
 def get_recent_chats(user_id, limit=5):
-    """Get recent chats with last message"""
+    """Get recent chats with title and last message"""
     query = """
-    SELECT c.chat_id, 
-           c.title,
-           c.created_at,
-           c.updated_at,
-           m.content as last_message
+    SELECT 
+        c.chat_id,
+        COALESCE(c.title, 
+            (SELECT content 
+             FROM messages 
+             WHERE chat_id = c.chat_id AND is_user = 1 
+             ORDER BY created_at ASC 
+             LIMIT 1)
+        ) as title,
+        c.created_at,
+        c.updated_at,
+        (SELECT content 
+         FROM messages 
+         WHERE chat_id = c.chat_id
+         ORDER BY created_at DESC 
+         LIMIT 1) as last_message
     FROM chats c
-    LEFT JOIN messages m ON c.chat_id = m.chat_id 
-    AND m.created_at = (
-        SELECT MAX(created_at) 
-        FROM messages 
-        WHERE chat_id = c.chat_id
-    )
     WHERE c.user_id = %s
     ORDER BY c.updated_at DESC
     LIMIT %s

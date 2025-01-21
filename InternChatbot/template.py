@@ -334,10 +334,9 @@ HTML_TEMPLATE = '''
         }
 
         .chat-actions {
-            display: flex;
-            gap: 0.5rem;
-            opacity: 1;
+            opacity: 0;
             transition: opacity 0.2s ease;
+            padding-right: 0.5rem;
         }
 
         /* Input Container Styles */
