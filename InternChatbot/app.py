@@ -738,3 +738,5 @@ def json_to_table():
     except Exception as e:
         app.logger.error(f"Error converting JSON to table: {str(e)}")
         return jsonify({"error": str(e)}), 500
+    
+app = Flask(__name__, static_url_path='/static', static_folder='static')

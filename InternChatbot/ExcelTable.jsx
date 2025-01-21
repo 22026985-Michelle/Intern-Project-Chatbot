@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { FileText, Copy, Download } from 'lucide-react';
 
-const JsonTable = () => {
+const ExcelTable = () => {
   const [data, setData] = useState(null);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState('');
@@ -11,7 +11,7 @@ const JsonTable = () => {
       // Get pasted content
       const pastedText = e.clipboardData.getData('text');
       
-      // Try to parse as JSON
+      // Try to parse as JSON first
       try {
         const parsedJson = JSON.parse(pastedText);
         setData(parsedJson);
@@ -45,13 +45,9 @@ const JsonTable = () => {
   const copyToClipboard = () => {
     if (!data) return;
     
-    // Create header row
     const headers = Object.keys(data);
-    // Create data row
     const values = Object.values(data);
-    
-    // Combine with tab separation for Excel compatibility
-    const tableContent = headers.join('\t') + '\n' + values.join('\t');
+    const tableContent = `${headers.join('\t')}\n${values.join('\t')}`;
     
     navigator.clipboard.writeText(tableContent).then(() => {
       setCopied(true);
@@ -64,7 +60,6 @@ const JsonTable = () => {
     
     const headers = Object.keys(data);
     const values = Object.values(data);
-    
     const csvContent = 
       headers.join(',') + '\n' + 
       values.map(value => `"${value}"`).join(',');
@@ -143,4 +138,4 @@ const JsonTable = () => {
   );
 };
 
-export default JsonTable;
+export default ExcelTable;
