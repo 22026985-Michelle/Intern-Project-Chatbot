@@ -663,6 +663,7 @@ HTML_TEMPLATE = '''
 </head>
 <body data-theme="light">
     <div class="sidebar-trigger"></div>
+    <div class="sidebar-trigger"></div>
     <div class="sidebar">
         <div class="sidebar-header">
             <button class="new-chat-button" id="newChatButton">
@@ -895,33 +896,6 @@ HTML_TEMPLATE = '''
 
         // Chat Manager Class
         class ChatManager {
-            formatJSON(content) {
-                try {
-                    // If content is a string that looks like JSON
-                    if (typeof content === 'string') {
-                        const trimmed = content.trim();
-                        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-                            try {
-                                const parsed = JSON.parse(trimmed);
-                                return JSON.stringify(parsed, null, 2); // Use 2 spaces for indentation
-                            } catch (e) {
-                                // If parsing fails, return original content
-                                return content;
-                            }
-                        }
-                    }
-                    
-                    // If content is already an object
-                    if (typeof content === 'object' && content !== null) {
-                        return JSON.stringify(content, null, 2);
-                    }
-                    
-                    return content;
-                } catch (e) {
-                    console.error('Error formatting JSON:', e);
-                    return content;
-                }
-            }
             constructor() {
                 this.currentChatId = null;
                 this.BASE_URL = 'https://internproject-4fq7.onrender.com';
@@ -1353,19 +1327,34 @@ HTML_TEMPLATE = '''
                 const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
 
                 try {
+                    const parsedContent = typeof content === 'string' ? JSON.parse(content) : content;
+                    
+                    if (parsedContent && parsedContent.type === 'json_table') {
+                        const tableElement = renderJsonTable(parsedContent.data);
+                        messageDiv.innerHTML = `
+                            <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
+                                ${isUser ? userAvatar : botAvatarSvg}
+                            </div>
+                            <div class="message-content"></div>
+                        `;
+                        messageDiv.querySelector('.message-content').appendChild(tableElement);
+                    } else {
+                        throw new Error('Not a JSON table');
+                    }
+                } catch (e) {
                     let formattedContent = this.escapeHtml(content);
                     
-                    // Check if the content looks like JSON
                     if (typeof formattedContent === 'string' && 
                         (formattedContent.trim().startsWith('{') || formattedContent.trim().startsWith('['))) {
                         try {
                             const jsonContent = JSON.parse(formattedContent);
-                            formattedContent = '<pre><code>' + this.formatJSON(jsonContent) + '</code></pre>';
+                            formattedContent = '<pre><code>' + JSON.stringify(jsonContent, null, 2) + '</code></pre>';
                         } catch (e) {
                             console.error('Error formatting JSON in message:', e);
                         }
                     }
 
+                    // Keep this all on one line to prevent the console from splitting it
                     formattedContent = formattedContent.replace(String.raw`\n`, '<br>');
                     
                     messageDiv.innerHTML = `
@@ -1374,8 +1363,6 @@ HTML_TEMPLATE = '''
                         </div>
                         <div class="message-content">${formattedContent}</div>
                     `;
-                } catch (e) {
-                    console.error('Error processing message:', e);
                 }
 
                 messagesList.appendChild(messageDiv);
@@ -1693,26 +1680,12 @@ HTML_TEMPLATE = '''
                 }
             });
 
-            // Add event listeners to each trigger if they exist
-            if (sidebarTriggers.length > 0) {
-                sidebarTriggers.forEach(trigger => {
-                    trigger.addEventListener('mouseleave', () => {
-                        isOverSidebar = false;
-                        if (!isMenuOpen) {
-                            sidebarTimeout = setTimeout(hideSidebar, 300);
-                        }
-                    });
-                    
-                    // Optionally, add mouseenter event for better control
-                    trigger.addEventListener('mouseenter', () => {
-                        isOverSidebar = true;
-                        if (sidebarTimeout) {
-                            clearTimeout(sidebarTimeout);
-                            sidebarTimeout = null;
-                        }
-                    });
-                });
-            }
+            sidebarTrigger.addEventListener('mouseleave', () => {
+                isOverSidebar = false;
+                if (!isMenuOpen) {
+                    sidebarTimeout = setTimeout(hideSidebar, 300);
+                }
+            });
 
             // Initialize theme and greeting
             let currentTheme = localStorage.getItem('theme') || 'light';
