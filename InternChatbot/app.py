@@ -178,94 +178,51 @@ def chat():
         message = data.get('message', '')
         chat_id = data.get('chat_id')
 
-        # Handle NRIC generation request
-        if "Please generate" in message and "NRICs issued in" in message:
-            response = handle_nric_request(message)
+        # Create new chat if no chat_id provided
+        if not chat_id:
+            user_email = session.get('user_email')
+            user_query = "SELECT user_id FROM users WHERE email = %s"
+            user_result = execute_query(user_query, (user_email,))
+            if not user_result:
+                return jsonify({"error": "User not found"}), 404
             
-            # Create new chat if no chat_id provided
+            user_id = user_result[0]['user_id']
+            title = generate_chat_title(message)
+            chat_id = create_new_chat(user_id, title)
             if not chat_id:
-                user_email = session.get('user_email')
-                user_query = "SELECT user_id FROM users WHERE email = %s"
-                user_result = execute_query(user_query, (user_email,))
-                if not user_result:
-                    return jsonify({"error": "User not found"}), 404
-                
-                user_id = user_result[0]['user_id']
-                title = generate_chat_title(message)
-                chat_id = create_new_chat(user_id, title)
-                if not chat_id:
-                    return jsonify({"error": "Failed to create chat"}), 500
+                return jsonify({"error": "Failed to create chat"}), 500
 
-                # Set chat title
-                title = generate_chat_title(message)
-                chat_id = create_new_chat(user_id, title)
+        # Store user message
+        add_message(chat_id, message, is_user=True)
 
-            # Store messages
-            add_message(chat_id, message, is_user=True)
-            
-            return jsonify({
-                "response": response,
-                "chat_id": chat_id,
-                "title": title
-            })
+        # Regular chat processing
+        message_history = []
+        messages_query = "SELECT content, is_user FROM messages WHERE chat_id = %s ORDER BY created_at ASC"
+        previous_messages = execute_query(messages_query, (chat_id,))
+        
+        for msg in previous_messages:
+            role = "user" if msg['is_user'] else "assistant"
+            message_history.append({"role": role, "content": msg['content']})
 
-        # Handle regular chat messages
-        else:
-            # Create new chat if no chat_id provided
-            if not chat_id:
-                user_email = session.get('user_email')
-                user_query = "SELECT user_id FROM users WHERE email = %s"
-                user_result = execute_query(user_query, (user_email,))
-                if not user_result:
-                    return jsonify({"error": "User not found"}), 404
-                
-                user_id = user_result[0]['user_id']
-                chat_id = create_new_chat(user_id)
-                if not chat_id:
-                    return jsonify({"error": "Failed to create chat"}), 500
+        message_history.append({"role": "user", "content": message})
+        
+        response = client.messages.create(
+            model="claude-3-5-sonnet-20241022",
+            max_tokens=1000,
+            temperature=0,
+            messages=message_history
+        )
+        
+        bot_response = response.content[0].text
 
-                title = message[:50]
-                update_chat_title(chat_id, title)
-
-            # Regular chat processing
-            message_history = []
-            messages_query = "SELECT content, is_user FROM messages WHERE chat_id = %s ORDER BY created_at ASC"
-            previous_messages = execute_query(messages_query, (chat_id,))
-            
-            for msg in previous_messages:
-                role = "user" if msg['is_user'] else "assistant"
-                message_history.append({"role": role, "content": msg['content']})
-
-            message_history.append({"role": "user", "content": message})
-            
-            response = client.messages.create(
-                model="claude-3-5-sonnet-20241022",
-                max_tokens=1000,
-                temperature=0,
-                messages=message_history
-            )
-            
-            bot_response = response.content[0].text
-
-            add_message(chat_id, bot_response, is_user=False)
-
-            # Format JSON response if needed
-            if bot_response.startswith('{') or bot_response.startswith('['):
-                try:
-                    parsed_json = json.loads(bot_response)
-                    formatted_json = json.dumps(parsed_json, indent=2)
-                    bot_response = formatted_json
-                except json.JSONDecodeError:
-                    logger.error("Failed to decode JSON from bot response.")
-
-            # Store bot response
-            add_message(chat_id, bot_response, is_user=False)
-            
-            return jsonify({
-                "response": bot_response,
-                "chat_id": chat_id,
-                "title": title
-            })
+        # Store bot response
+        add_message(chat_id, bot_response, is_user=False)
+        
+        return jsonify({
+            "response": bot_response,
+            "chat_id": chat_id,
+            "title": title  # Return the generated title
+        })
 
     except Exception as e:
         logger.error(f"Error in chat endpoint: {str(e)}")

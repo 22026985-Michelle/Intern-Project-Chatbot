@@ -245,11 +245,13 @@ HTML_TEMPLATE = '''
         }
 
         .user-profile {
-            position: relative;
-            padding: 1rem;
-            border-top: 1px solid var(--border-color);
-            background-color: var(--bg-color);
+            position: sticky; 
+            bottom: 0;
             width: 100%;
+            padding: 1rem;
+            background-color: var(--bg-color);
+            border-top: 1px solid var(--border-color);
+            margin-top: auto; 
             z-index: 1011;
         }
 
@@ -299,6 +301,7 @@ HTML_TEMPLATE = '''
             display: flex;
             flex-direction: column;
             gap: 1rem;
+            margin-bottom: 0;
         }
 
         .sidebar:hover,
