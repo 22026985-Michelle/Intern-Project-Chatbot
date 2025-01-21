@@ -192,7 +192,7 @@ def chat():
                 
                 user_id = user_result[0]['user_id']
                 title = generate_chat_title(message)
-                chat_id = create_new_chat(user_id)
+                chat_id = create_new_chat(user_id, title)
                 if not chat_id:
                     return jsonify({"error": "Failed to create chat"}), 500
 
@@ -202,7 +202,6 @@ def chat():
 
             # Store messages
             add_message(chat_id, message, is_user=True)
-            add_message(chat_id, response, is_user=False)
             
             return jsonify({
                 "response": response,
@@ -228,9 +227,6 @@ def chat():
                 title = message[:50]
                 update_chat_title(chat_id, title)
 
-            # Store user message
-            add_message(chat_id, message, is_user=True)
-
             # Regular chat processing
             message_history = []
             messages_query = "SELECT content, is_user FROM messages WHERE chat_id = %s ORDER BY created_at ASC"
@@ -251,6 +247,8 @@ def chat():
             
             bot_response = response.content[0].text
 
+            add_message(chat_id, bot_response, is_user=False)
+
             # Format JSON response if needed
             if bot_response.startswith('{') or bot_response.startswith('['):
                 try:
@@ -265,7 +263,8 @@ def chat():
             
             return jsonify({
                 "response": bot_response,
-                "chat_id": chat_id
+                "chat_id": chat_id,
+                "title": title
             })
 
     except Exception as e:

@@ -653,7 +653,7 @@ HTML_TEMPLATE = '''
 </head>
 <body data-theme="light">
     <div class="sidebar-trigger"></div>
-    <div class="sidebar">
+        <div class="sidebar">
             <div class="sidebar-header">
                 <button class="new-chat-button" id="newChatButton">
                     <span>⊕</span>
