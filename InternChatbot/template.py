@@ -1344,33 +1344,29 @@ HTML_TEMPLATE = '''
                         throw new Error('Not a JSON table');
                     }
                 } catch (e) {
-                    let formattedContent = this.escapeHtml(content); // Added this line to define formattedContent
+                    let formattedContent = this.escapeHtml(content);
                     
-                    if (typeof formattedContent === 'string') {
-                        const trimmed = formattedContent.trim();
-                        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-                            try {
-                                const jsonContent = JSON.parse(trimmed);
-                                formattedContent = '<pre><code>' + 
-                                    JSON.stringify(jsonContent, null, 2)
-                                        .replace(/&/g, '&amp;')
-                                        .replace(/</g, '&lt;')
-                                        .replace(/>/g, '&gt;') + 
-                                    '</code></pre>';
-                            } catch (e) {
-                                console.error('Error formatting JSON in message:', e);
-                            }
+                    if (typeof formattedContent === 'string' && 
+                        (formattedContent.trim().startsWith('{') || formattedContent.trim().startsWith('['))) {
+                        try {
+                            const jsonContent = JSON.parse(formattedContent);
+                            formattedContent = '<pre><code>' + JSON.stringify(jsonContent, null, 2) + '</code></pre>';
+                        } catch (e) {
+                            console.error('Error formatting JSON in message:', e);
                         }
-
-                        formattedContent = formattedContent.replace(/\r?\n|\r/g, '<br>');
-                        
-                        messageDiv.innerHTML = `
-                            <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
-                                ${isUser ? userAvatar : botAvatarSvg}
-                            </div>
-                            <div class="message-content">${formattedContent}</div>
-                        `;
                     }
+
+                    // Create a temporary div to handle HTML encoding
+                    const tempDiv = document.createElement('div');
+                    tempDiv.textContent = formattedContent;
+                    formattedContent = tempDiv.innerHTML.replace(/\n/g, '<br>');
+                    
+                    messageDiv.innerHTML = `
+                        <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
+                            ${isUser ? userAvatar : botAvatarSvg}
+                        </div>
+                        <div class="message-content">${formattedContent}</div>
+                    `;
                 }
 
                 messagesList.appendChild(messageDiv);
