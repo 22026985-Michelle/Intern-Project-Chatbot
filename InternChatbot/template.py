@@ -1344,27 +1344,33 @@ HTML_TEMPLATE = '''
                         throw new Error('Not a JSON table');
                     }
                 } catch (e) {
-                    let formattedContent = this.escapeHtml(content);
+                    let formattedContent = this.escapeHtml(content); // Added this line to define formattedContent
                     
-                    if (typeof formattedContent === 'string' && 
-                        (formattedContent.trim().startsWith('{') || formattedContent.trim().startsWith('['))) {
-                        try {
-                            const jsonContent = JSON.parse(formattedContent);
-                            formattedContent = '<pre><code>' + JSON.stringify(jsonContent, null, 2) + '</code></pre>';
-                        } catch (e) {
-                            console.error('Error formatting JSON in message:', e);
+                    if (typeof formattedContent === 'string') {
+                        const trimmed = formattedContent.trim();
+                        if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+                            try {
+                                const jsonContent = JSON.parse(trimmed);
+                                formattedContent = '<pre><code>' + 
+                                    JSON.stringify(jsonContent, null, 2)
+                                        .replace(/&/g, '&amp;')
+                                        .replace(/</g, '&lt;')
+                                        .replace(/>/g, '&gt;') + 
+                                    '</code></pre>';
+                            } catch (e) {
+                                console.error('Error formatting JSON in message:', e);
+                            }
                         }
-                    }
 
-                    // Keep this all on one line to prevent the console from splitting it
-                    formattedContent = formattedContent.replace(String.raw`\n`, '<br>');
-                    
-                    messageDiv.innerHTML = `
-                        <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
-                            ${isUser ? userAvatar : botAvatarSvg}
-                        </div>
-                        <div class="message-content">${formattedContent}</div>
-                    `;
+                        formattedContent = formattedContent.replace(/\r?\n|\r/g, '<br>');
+                        
+                        messageDiv.innerHTML = `
+                            <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
+                                ${isUser ? userAvatar : botAvatarSvg}
+                            </div>
+                            <div class="message-content">${formattedContent}</div>
+                        `;
+                    }
                 }
 
                 messagesList.appendChild(messageDiv);
