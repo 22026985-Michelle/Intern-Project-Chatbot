@@ -1332,44 +1332,49 @@ HTML_TEMPLATE = '''
                 try {
                     let formattedContent = this.escapeHtml(content);
                     
-                    // Check if content is JSON
+                    // Check if content might be JSON
                     if (typeof formattedContent === 'string') {
                         // Remove markdown code block markers if present
                         formattedContent = formattedContent.replace(/```json\s*/g, '').replace(/```\s*/g, '');
                         
-                        // Try to parse and format JSON
-                        try {
-                            const jsonObj = JSON.parse(formattedContent);
-                            formattedContent = '<pre><code>' + JSON.stringify(jsonObj, null, 2) + '</code></pre>';
-                        } catch (e) {
-                            // If JSON parsing fails, check if it's already formatted
-                            if (formattedContent.includes('\n  ')) {
-                                formattedContent = '<pre><code>' + formattedContent + '</code></pre>';
+                        // Check if content starts with { or [
+                        if (formattedContent.trim().startsWith('{') || formattedContent.trim().startsWith('[')) {
+                            try {
+                                // Parse and re-stringify with indentation
+                                const jsonObj = JSON.parse(formattedContent);
+                                formattedContent = JSON.stringify(jsonObj, null, 2);
+                                // Wrap in pre and code tags
+                                formattedContent = `<pre><code>${formattedContent}</code></pre>`;
+                            } catch (jsonError) {
+                                console.error('Failed to parse JSON:', jsonError);
                             }
                         }
                     }
-                    
+
                     // Replace newlines with <br> only for non-JSON content
                     if (!formattedContent.includes('<pre><code>')) {
                         formattedContent = formattedContent.replace(/\n/g, '<br>');
                     }
-                    
-                    messageDiv.innerHTML = `
+
+                    const messageContent = `
                         <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
                             ${isUser ? userAvatar : botAvatarSvg}
                         </div>
                         <div class="message-content">${formattedContent}</div>
                     `;
 
-                } catch (e) {
-                    console.error('Error formatting message:', e);
-                    // Fallback to plain text if formatting fails
-                    messageDiv.innerHTML = `
+                    messageDiv.innerHTML = messageContent;
+
+                } catch (error) {
+                    console.error('Error in message formatting:', error);
+                    // Fallback to plain text
+                    const fallbackContent = `
                         <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
                             ${isUser ? userAvatar : botAvatarSvg}
                         </div>
                         <div class="message-content">${this.escapeHtml(content)}</div>
                     `;
+                    messageDiv.innerHTML = fallbackContent;
                 }
 
                 messagesList.appendChild(messageDiv);
