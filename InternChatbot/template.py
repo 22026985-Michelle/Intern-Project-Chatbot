@@ -1357,7 +1357,7 @@ HTML_TEMPLATE = '''
                     }
 
                     // Keep this all on one line to prevent the console from splitting it
-                    formattedContent = formattedContent.replace(/\n/g, '<br>');
+                    formattedContent = formattedContent.replace(String.raw`\n`, '<br>');
                     
                     messageDiv.innerHTML = `
                         <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
@@ -1370,6 +1370,7 @@ HTML_TEMPLATE = '''
                 messagesList.appendChild(messageDiv);
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
+
 
             setMessage(message) {
                 const userInput = document.getElementById('userInput');
