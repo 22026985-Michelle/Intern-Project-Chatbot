@@ -1329,49 +1329,42 @@ HTML_TEMPLATE = '''
                 const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
 
                 try {
+                    const parsedContent = typeof content === 'string' ? JSON.parse(content) : content;
+                    
+                    if (parsedContent && parsedContent.type === 'json_table') {
+                        const tableElement = renderJsonTable(parsedContent.data);
+                        messageDiv.innerHTML = `
+                            <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
+                                ${isUser ? userAvatar : botAvatarSvg}
+                            </div>
+                            <div class="message-content"></div>
+                        `;
+                        messageDiv.querySelector('.message-content').appendChild(tableElement);
+                    } else {
+                        throw new Error('Not a JSON table');
+                    }
+                } catch (e) {
                     let formattedContent = this.escapeHtml(content);
                     
-                    // Check if content is JSON
-                    if (typeof formattedContent === 'string') {
-                        // Remove any markdown code block indicators
-                        formattedContent = formattedContent.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
-                        
-                        // Check if content looks like JSON
-                        if (formattedContent.trim().startsWith('{') || formattedContent.trim().startsWith('[')) {
-                            try {
-                                // Parse and reformat JSON
-                                const jsonObj = JSON.parse(formattedContent);
-                                formattedContent = JSON.stringify(jsonObj, null, 2);
-                                formattedContent = `<pre><code>${formattedContent}</code></pre>`;
-                            } catch (jsonError) {
-                                console.error('Failed to parse JSON:', jsonError);
-                            }
+                    if (typeof formattedContent === 'string' && 
+                        (formattedContent.trim().startsWith('{') || formattedContent.trim().startsWith('['))) {
+                        try {
+                            const jsonContent = JSON.parse(formattedContent);
+                            formattedContent = '<pre><code>' + JSON.stringify(jsonContent, null, 2) + '</code></pre>';
+                        } catch (e) {
+                            console.error('Error formatting JSON in message:', e);
                         }
                     }
 
-                    // Handle line breaks for non-JSON content
-                    if (!formattedContent.includes('<pre><code>')) {
-                        formattedContent = formattedContent.replace(/\n/g, '<br>');
-                    }
-
-                    const messageContent = `
+                    // Keep this all on one line to prevent the console from splitting it
+                    formattedContent = formattedContent.replace(String.raw`\n`, '<br>');
+                    
+                    messageDiv.innerHTML = `
                         <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
                             ${isUser ? userAvatar : botAvatarSvg}
                         </div>
                         <div class="message-content">${formattedContent}</div>
                     `;
-
-                    messageDiv.innerHTML = messageContent;
-                } catch (error) {
-                    console.error('Error in message formatting:', error);
-                    // Fallback to plain text
-                    const fallbackContent = `
-                        <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
-                            ${isUser ? userAvatar : botAvatarSvg}
-                        </div>
-                        <div class="message-content">${this.escapeHtml(content)}</div>
-                    `;
-                    messageDiv.innerHTML = fallbackContent;
                 }
 
                 messagesList.appendChild(messageDiv);
