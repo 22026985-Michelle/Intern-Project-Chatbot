@@ -20,7 +20,8 @@ from database import (
     cleanup_old_chats,
     FileHandler,
     handle_conversion_request,
-    process_json_to_table
+    process_json_to_table,
+    handle_steps_request
 )
 from nric_generator import handle_nric_request
 
@@ -178,6 +179,30 @@ def chat():
         message = data.get('message', '')
         chat_id = data.get('chat_id')
         is_first_message = data.get('is_first_message', False)
+
+        # Check if this is a steps request first
+        if message:
+            steps_response = handle_steps_request(message)
+            if steps_response:
+                # Create new chat if no chat_id provided
+                if not chat_id:
+                    user_email = session.get('user_email')
+                    user_query = "SELECT user_id FROM users WHERE email = %s"
+                    user_result = execute_query(user_query, (user_email,))
+                    if not user_result:
+                        return jsonify({"error": "User not found"}), 404
+                    
+                    user_id = user_result[0]['user_id']
+                    chat_id = create_new_chat(user_id)
+                    if not chat_id:
+                        return jsonify({"error": "Failed to create chat"}), 500
+
+                add_message(chat_id, message, is_user=True)
+                add_message(chat_id, steps_response, is_user=False)
+                return jsonify({
+                    "response": steps_response,
+                    "chat_id": chat_id
+                })
 
         # Create new chat if no chat_id provided
         if not chat_id:

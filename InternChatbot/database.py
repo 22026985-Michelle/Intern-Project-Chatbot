@@ -620,6 +620,88 @@ def parse_text_data(text):
     except Exception as e:
         logger.error(f"Error parsing text data: {str(e)}")
         return None
+    
+def handle_steps_request(message):
+    """Handle requests for process steps"""
+    steps_data = {
+        1: ["1.1 Go to CMS UAT link",
+            "1.2. Log in via centre user",
+            "1.3 Under 'Enrolment Management' in the sidebar, click on 'Enrol Child'",
+            "1.4 Click on link to old CMS enrolment page to access BAU form",
+            "1.5 Fill in the form according to the excel data",
+            "1.6 After filling in the form, press \"Review\" at the bottom",
+            "1.7 Tick of consent of data collected from other centres and dates",
+            "1.8 Copy Enrolment ID",
+            "1.9 Log off of centre user at the top right of the form interface"],
+            
+        2: ["2.1 Go to CMS UAT link",
+            "2.2 Log in as your account user",
+            "2.3 Click to App in the sidebar of Dev Studio, and 'Enrolment'",
+            "2.4 Click on the arrow beside 'Work ID' to filter and paste Enrolment ID inside filter container"],
+            
+        3: ["3.1.1 Refer to the excel spreadsheet of data and fill the template",
+            "3.1.2 Generate the NRICs for every time you test",
+            "3.2 Go to CMS UAT link",
+            "3.2.1 Click on 'Bulk Upload for Onboarding', and add the bulk enrolment template file after pressing 'Upload enrolments for onboarding'",
+            "3.2.2 On the bottom right of your web browser screen, toggle the settings icon and click on the third icon from the left (Tracer)",
+            "3.2.3 Upload the file"],
+            
+        4: ["4.1.1 Follow BAU enrolment form steps (Step 2)",
+            "4.2.1 Refer to excel data and fill in the JSON fields in JSON txt file",
+            "4.2.2 Go to CMS UAT link",
+            "4.2.3 Log in as your account user",
+            "4.2.4 Click on 'Records' on the left sidebar, and click 'Service Rest' under Integration-Services",
+            "4.2.5 Click on 'SubmitEnrolment' under URl template column",
+            "4.2.6 Click on Actions arrow on the top right",
+            "4.2.7 Select POST for HTTP Method",
+            "4.2.8 Paste JSON data from JSON txt file from Step 4.2.1",
+            "4.2.9 Press Execute"],
+            
+        5: ["5.1.1 Go to CMS DEV link",
+            "5.1.2 Log in with centre user",
+            "5.1.3 Under 'Enrolment Management' in the sidebar, click on 'Enrol Child'",
+            "5.1.4 Fill in digital form",
+            "5.2.1 Fill in JSON Document file based on excel data provided",
+            "5.2.2 Log in to Dev with your personal account",
+            "5.2.3 Records>Integration-Services>Service File>Customer Method Name>SJRAttachmentFile>Actions arrow on top right>Run>Select 'Upload a local file'>Upload file>Execute",
+            "5.3.1 Same steps as 4.2.3",
+            "5.4.1 In DEV with personal account, search QueryPGMTResponseSimulation in the search bar",
+            "5.4.2 Fill in details of family members for Param.UIN, .LivingStatus, .ResidentialStatus, and .DOB",
+            "5.4.2 Once done, click on Actions arrow at the top right and Run",
+            "5.5.1 In DEV with personal account, click Records>Decision>Decision Table. Under Purpose, click on MemberDetails",
+            "5.5.2 Click on 'Check out', press Load table in Ruleform",
+            "5.5.3 Note: Only use the first two action buttons on the very left above the table",
+            "5.5.4 Add in family member NRICs, Return as true, and income",
+            "5.5.5 Click on Save. and 'Check in'"],
+            
+        6: ["6.1.1. Go to CMS DEV link",
+            "6.1.2. Click on Application on the top sidebar, Switch Applicant to SJR + HOMES",
+            "6.1.3. Click to App in the sidebar of Dev Studio, and 'Enrolment'",
+            "6.1.4 Click on the arrow beside 'Work ID' to filter and paste Enrolment ID inside filter container"]
+    }
+
+    if message.lower() == "please provide me the steps":
+        return """Please state the number you need steps for:
+1. HOMES BAU enrolment
+2. Find/Check HOMES BAU enrolment/Bulk Enrolment(s)
+3. Bulk Enrolment template
+4. SJR Smart Solution
+5. SJR Full Launch
+6. Check/Find SJR"""
+
+    if message.lower() == "all":
+        all_steps = ""
+        for process_num, steps in steps_data.items():
+            all_steps += f"\nProcess {process_num}:\n" + "\n".join(steps) + "\n"
+        return all_steps
+
+    try:
+        step_number = int(message)
+        if step_number in steps_data:
+            return "\n".join(steps_data[step_number])
+        return "Please provide a valid step number between 1 and 6."
+    except ValueError:
+        return None  # Return None to indicate this isn't a steps request
 
 class FileHandler:
     def __init__(self):
