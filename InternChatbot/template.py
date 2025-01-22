@@ -1357,7 +1357,7 @@ HTML_TEMPLATE = '''
                     }
 
                     // Keep this all on one line to prevent the console from splitting it
-                    formattedContent = formattedContent.replace(String.raw`\n`, '<br>');
+                    formattedContent = formattedContent.replace(/\n/g, '<br>');
                     
                     messageDiv.innerHTML = `
                         <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
