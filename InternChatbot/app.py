@@ -182,8 +182,8 @@ def chat():
 
         # Check if this is a steps request first
         if message:
-            steps_response = handle_steps_request(message)
-            if steps_response:
+            steps_result = handle_steps_request(message)
+            if steps_result:
                 # Create new chat if no chat_id provided
                 if not chat_id:
                     user_email = session.get('user_email')
@@ -197,11 +197,17 @@ def chat():
                     if not chat_id:
                         return jsonify({"error": "Failed to create chat"}), 500
 
+                # Update chat title if it's the first message
+                if is_first_message:
+                    update_query = "UPDATE chats SET title = %s WHERE chat_id = %s"
+                    execute_query(update_query, (steps_result["title"], chat_id))
+
                 add_message(chat_id, message, is_user=True)
-                add_message(chat_id, steps_response, is_user=False)
+                add_message(chat_id, steps_result["response"], is_user=False)
                 return jsonify({
-                    "response": steps_response,
-                    "chat_id": chat_id
+                    "response": steps_result["response"],
+                    "chat_id": chat_id,
+                    "title": steps_result["title"] if is_first_message else None
                 })
 
         # Create new chat if no chat_id provided
