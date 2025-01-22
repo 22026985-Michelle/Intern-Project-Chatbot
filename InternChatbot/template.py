@@ -1356,10 +1356,8 @@ HTML_TEMPLATE = '''
                         }
                     }
 
-                    // Create a temporary div to handle HTML encoding
-                    const tempDiv = document.createElement('div');
-                    tempDiv.textContent = formattedContent;
-                    formattedContent = tempDiv.innerHTML.replace(/\n/g, '<br>');
+                    // Keep this all on one line to prevent the console from splitting it
+                    formattedContent = formattedContent.replace(String.raw`\n`, '<br>');
                     
                     messageDiv.innerHTML = `
                         <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
