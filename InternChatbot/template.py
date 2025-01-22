@@ -644,20 +644,21 @@ HTML_TEMPLATE = '''
         pre code {
             display: block;
             padding: 1rem;
-            background-color: rgba(0, 0, 0, 0.05);
+            background-color: var(--message-bg);
             border-radius: 4px;
             white-space: pre-wrap;
             word-wrap: break-word;
             font-family: monospace;
+            color: var(--text-color);
         }
 
         pre {
-            white-space: pre-wrap; 
-            word-wrap: break-word; 
-            background-color: #f8f8f8; 
-            padding: 10px; 
-            border-radius: 5px; 
-            overflow: auto; 
+            margin: 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            background-color: transparent;
+            border-radius: 5px;
+            overflow: auto;
         }
     </style>
 </head>
@@ -1314,6 +1315,7 @@ HTML_TEMPLATE = '''
                     .replace(/'/g, "&#039;");
             }
 
+            // In the ChatManager class, update the addMessageToUI method:
             addMessageToUI(content, isUser) {
                 const messagesList = document.getElementById('messagesList');
                 if (!messagesList) return;
@@ -1328,41 +1330,45 @@ HTML_TEMPLATE = '''
                 const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
 
                 try {
-                    const parsedContent = typeof content === 'string' ? JSON.parse(content) : content;
-                    
-                    if (parsedContent && parsedContent.type === 'json_table') {
-                        const tableElement = renderJsonTable(parsedContent.data);
-                        messageDiv.innerHTML = `
-                            <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
-                                ${isUser ? userAvatar : botAvatarSvg}
-                            </div>
-                            <div class="message-content"></div>
-                        `;
-                        messageDiv.querySelector('.message-content').appendChild(tableElement);
-                    } else {
-                        throw new Error('Not a JSON table');
-                    }
-                } catch (e) {
                     let formattedContent = this.escapeHtml(content);
                     
-                    if (typeof formattedContent === 'string' && 
-                        (formattedContent.trim().startsWith('{') || formattedContent.trim().startsWith('['))) {
+                    // Check if content is JSON
+                    if (typeof formattedContent === 'string') {
+                        // Remove markdown code block markers if present
+                        formattedContent = formattedContent.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+                        
+                        // Try to parse and format JSON
                         try {
-                            const jsonContent = JSON.parse(formattedContent);
-                            formattedContent = '<pre><code>' + JSON.stringify(jsonContent, null, 2) + '</code></pre>';
+                            const jsonObj = JSON.parse(formattedContent);
+                            formattedContent = '<pre><code>' + JSON.stringify(jsonObj, null, 2) + '</code></pre>';
                         } catch (e) {
-                            console.error('Error formatting JSON in message:', e);
+                            // If JSON parsing fails, check if it's already formatted
+                            if (formattedContent.includes('\n  ')) {
+                                formattedContent = '<pre><code>' + formattedContent + '</code></pre>';
+                            }
                         }
                     }
-
-                    // Keep this all on one line to prevent the console from splitting it
-                    formattedContent = formattedContent.replace(String.raw`\n`, '<br>');
+                    
+                    // Replace newlines with <br> only for non-JSON content
+                    if (!formattedContent.includes('<pre><code>')) {
+                        formattedContent = formattedContent.replace(/\n/g, '<br>');
+                    }
                     
                     messageDiv.innerHTML = `
                         <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
                             ${isUser ? userAvatar : botAvatarSvg}
                         </div>
                         <div class="message-content">${formattedContent}</div>
+                    `;
+
+                } catch (e) {
+                    console.error('Error formatting message:', e);
+                    // Fallback to plain text if formatting fails
+                    messageDiv.innerHTML = `
+                        <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
+                            ${isUser ? userAvatar : botAvatarSvg}
+                        </div>
+                        <div class="message-content">${this.escapeHtml(content)}</div>
                     `;
                 }
 
