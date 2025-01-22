@@ -834,20 +834,43 @@ def process_json_to_table(json_data):
 def format_json_response(response_text):
     """Format JSON response with proper indentation"""
     try:
-        # Check if response is already a JSON object
-        if isinstance(response_text, (dict, list)):
-            # Use json.dumps with indent=2 for consistent indentation
-            return json.dumps(response_text, indent=2, ensure_ascii=False)
-            
-        # Check if the text starts with a JSON structure
-        if response_text.strip().startswith('{') or response_text.strip().startswith('['):
-            # Parse and reformat with proper indentation
-            json_obj = json.loads(response_text)
-            return json.dumps(json_obj, indent=2, ensure_ascii=False)
+        # Remove any ``` json wrapper if present
+        clean_text = response_text
+        if clean_text.startswith('```json'):
+            clean_text = clean_text[7:]
+        if clean_text.endswith('```'):
+            clean_text = clean_text[:-3]
         
+        # Handle when input is already a dict/list
+        if isinstance(clean_text, (dict, list)):
+            formatted = json.dumps(clean_text, indent=2, ensure_ascii=False)
+            return formatted
+
+        # Try to parse the string as JSON first
+        try:
+            # Clean up any escaped quotes and newlines
+            clean_text = clean_text.replace('\\"', '"').replace('\\n', '\n')
+            if clean_text.startswith('"') and clean_text.endswith('"'):
+                clean_text = clean_text[1:-1]
+                
+            json_obj = json.loads(clean_text)
+            formatted = json.dumps(json_obj, indent=2, ensure_ascii=False)
+            return formatted
+            
+        except json.JSONDecodeError:
+            # If that fails, try to clean up the string more aggressively
+            if clean_text.startswith("json {"):
+                clean_text = clean_text[5:]  # Remove "json {"
+            
+            try:
+                json_obj = json.loads(clean_text)
+                formatted = json.dumps(json_obj, indent=2, ensure_ascii=False)
+                return formatted
+            except:
+                return response_text
+
         return response_text
-    except json.JSONDecodeError:
-        return response_text  # Return original text if not valid JSON
+        
     except Exception as e:
         logger.error(f"Error formatting JSON response: {str(e)}")
         return response_text
