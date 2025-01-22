@@ -1315,7 +1315,6 @@ HTML_TEMPLATE = '''
                     .replace(/'/g, "&#039;");
             }
 
-            // In the ChatManager class, update the addMessageToUI method:
             addMessageToUI(content, isUser) {
                 const messagesList = document.getElementById('messagesList');
                 if (!messagesList) return;
@@ -1332,18 +1331,17 @@ HTML_TEMPLATE = '''
                 try {
                     let formattedContent = this.escapeHtml(content);
                     
-                    // Check if content might be JSON
+                    // Check if content is JSON
                     if (typeof formattedContent === 'string') {
-                        // Remove markdown code block markers if present
-                        formattedContent = formattedContent.replace(/```json\s*/g, '').replace(/```\s*/g, '');
+                        // Remove any markdown code block indicators
+                        formattedContent = formattedContent.replace(/```json\s*/g, '').replace(/```\s*$/g, '');
                         
-                        // Check if content starts with { or [
+                        // Check if content looks like JSON
                         if (formattedContent.trim().startsWith('{') || formattedContent.trim().startsWith('[')) {
                             try {
-                                // Parse and re-stringify with indentation
+                                // Parse and reformat JSON
                                 const jsonObj = JSON.parse(formattedContent);
                                 formattedContent = JSON.stringify(jsonObj, null, 2);
-                                // Wrap in pre and code tags
                                 formattedContent = `<pre><code>${formattedContent}</code></pre>`;
                             } catch (jsonError) {
                                 console.error('Failed to parse JSON:', jsonError);
@@ -1351,7 +1349,7 @@ HTML_TEMPLATE = '''
                         }
                     }
 
-                    // Replace newlines with <br> only for non-JSON content
+                    // Handle line breaks for non-JSON content
                     if (!formattedContent.includes('<pre><code>')) {
                         formattedContent = formattedContent.replace(/\n/g, '<br>');
                     }
@@ -1364,7 +1362,6 @@ HTML_TEMPLATE = '''
                     `;
 
                     messageDiv.innerHTML = messageContent;
-
                 } catch (error) {
                     console.error('Error in message formatting:', error);
                     // Fallback to plain text
