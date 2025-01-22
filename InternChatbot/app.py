@@ -21,7 +21,8 @@ from database import (
     FileHandler,
     handle_conversion_request,
     process_json_to_table,
-    handle_steps_request
+    handle_steps_request,
+    format_json_response  
 )
 from nric_generator import handle_nric_request
 
@@ -202,10 +203,11 @@ def chat():
                     update_query = "UPDATE chats SET title = %s WHERE chat_id = %s"
                     execute_query(update_query, (steps_result["title"], chat_id))
 
+                formatted_response = format_json_response(steps_result["response"])
                 add_message(chat_id, message, is_user=True)
-                add_message(chat_id, steps_result["response"], is_user=False)
+                add_message(chat_id, formatted_response, is_user=False)
                 return jsonify({
-                    "response": steps_result["response"],
+                    "response": formatted_response,
                     "chat_id": chat_id,
                     "title": steps_result["title"] if is_first_message else None
                 })
@@ -247,15 +249,16 @@ def chat():
             temperature=0,
             messages=message_history
         )
-        
+        # When returning Claude's response, format it if it's JSON
         bot_response = response.content[0].text
+        formatted_response = format_json_response(bot_response)
 
         # Store messages
         add_message(chat_id, message, is_user=True)
-        add_message(chat_id, bot_response, is_user=False)
+        add_message(chat_id, formatted_response, is_user=False)
 
         return jsonify({
-            "response": bot_response,
+            "response": formatted_response,  
             "chat_id": chat_id,
             "title": title if is_first_message else None
         })

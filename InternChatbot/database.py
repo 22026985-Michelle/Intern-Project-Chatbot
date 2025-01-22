@@ -24,7 +24,10 @@ __all__ = [
     'get_recent_chats',
     'add_message',
     'cleanup_old_chats',
-    'handle_conversion_request'
+    'handle_conversion_request',
+    'format_json_response',
+    'process_json_to_table',
+    'handle_steps_request'
 ]
 
 logging.basicConfig(level=logging.DEBUG)
@@ -827,3 +830,23 @@ def process_json_to_table(json_data):
     except Exception as e:
         logging.error(f"Error converting JSON to table: {str(e)}")
         return None
+    
+def format_json_response(response_text):
+    """Format JSON response with proper indentation"""
+    try:
+        # Check if response is already a JSON object
+        if isinstance(response_text, (dict, list)):
+            return json.dumps(response_text, indent=2)
+            
+        # Check if the text starts with a JSON structure
+        if response_text.strip().startswith('{') or response_text.strip().startswith('['):
+            # Try to parse and reformat the JSON string
+            json_obj = json.loads(response_text)
+            return json.dumps(json_obj, indent=2)
+        
+        return response_text
+    except json.JSONDecodeError:
+        return response_text  # Return original text if not valid JSON
+    except Exception as e:
+        logger.error(f"Error formatting JSON response: {str(e)}")
+        return response_text
