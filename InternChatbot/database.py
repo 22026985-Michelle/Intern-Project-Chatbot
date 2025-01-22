@@ -836,13 +836,14 @@ def format_json_response(response_text):
     try:
         # Check if response is already a JSON object
         if isinstance(response_text, (dict, list)):
-            return json.dumps(response_text, indent=2)
+            # Use json.dumps with indent=2 for consistent indentation
+            return json.dumps(response_text, indent=2, ensure_ascii=False)
             
         # Check if the text starts with a JSON structure
         if response_text.strip().startswith('{') or response_text.strip().startswith('['):
-            # Try to parse and reformat the JSON string
+            # Parse and reformat with proper indentation
             json_obj = json.loads(response_text)
-            return json.dumps(json_obj, indent=2)
+            return json.dumps(json_obj, indent=2, ensure_ascii=False)
         
         return response_text
     except json.JSONDecodeError:
