@@ -876,25 +876,20 @@ HTML_TEMPLATE = '''
                     const jsonEnd = content.lastIndexOf('}') + 1;
                     if (jsonStart >= 0 && jsonEnd > jsonStart) {
                         const jsonPart = content.substring(jsonStart, jsonEnd);
-                        try {
-                            const parsed = JSON.parse(jsonPart);
-                            return JSON.stringify(parsed, null, 2);
-                        } catch (e) {
-                            return content;
-                        }
+                        const parsed = JSON.parse(jsonPart);
+                        return JSON.stringify(parsed, null, 4); // Properly indented with 4 spaces
                     }
                 }
-                
                 if (typeof content === 'object' && content !== null) {
-                    return JSON.stringify(content, null, 2);
+                    return JSON.stringify(content, null, 4); // Properly indented with 4 spaces
                 }
-                
                 return content;
             } catch (e) {
                 console.error('Error formatting JSON:', e);
-                return content;
+                return content; // Return original content if formatting fails
             }
         }
+
 
         // Chat Manager Class
         class ChatManager {
@@ -1319,57 +1314,33 @@ HTML_TEMPLATE = '''
                 const messagesList = document.getElementById('messagesList');
                 if (!messagesList) return;
 
-                messagesList.style.display = 'block';
                 const messageDiv = document.createElement('div');
                 messageDiv.className = 'message';
-                
-                const userEmail = document.querySelector('.user-email').textContent;
-                const userAvatar = userEmail[0].toUpperCase();
-                
-                const botAvatarSvg = '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M6 4L14 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/><path d="M14 4L22 20" stroke="#0099FF" stroke-width="3" stroke-linecap="round"/></svg>';
 
-                try {
-                    const parsedContent = typeof content === 'string' ? JSON.parse(content) : content;
-                    
-                    if (parsedContent && parsedContent.type === 'json_table') {
-                        const tableElement = renderJsonTable(parsedContent.data);
-                        messageDiv.innerHTML = `
-                            <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
-                                ${isUser ? userAvatar : botAvatarSvg}
-                            </div>
-                            <div class="message-content"></div>
-                        `;
-                        messageDiv.querySelector('.message-content').appendChild(tableElement);
-                    } else {
-                        throw new Error('Not a JSON table');
-                    }
-                } catch (e) {
-                    let formattedContent = this.escapeHtml(content);
-                    
-                    if (typeof formattedContent === 'string' && 
-                        (formattedContent.trim().startsWith('{') || formattedContent.trim().startsWith('['))) {
-                        try {
-                            const jsonContent = JSON.parse(formattedContent);
-                            formattedContent = '<pre><code>' + JSON.stringify(jsonContent, null, 2) + '</code></pre>';
-                        } catch (e) {
-                            console.error('Error formatting JSON in message:', e);
+                const formattedContent = (() => {
+                    try {
+                        if (typeof content === 'string' && (content.trim().startsWith('{') || content.trim().startsWith('['))) {
+                            const parsedContent = JSON.parse(content);
+                            return '<pre><code>' + JSON.stringify(parsedContent, null, 4) + '</code></pre>'; // Indented JSON
                         }
+                        return this.escapeHtml(content); // Non-JSON fallback
+                    } catch (e) {
+                        console.error('Error parsing JSON in addMessageToUI:', e);
+                        return this.escapeHtml(content); // Non-JSON fallback
                     }
+                })();
 
-                    // Keep this all on one line to prevent the console from splitting it
-                    formattedContent = formattedContent.replace(String.raw`\n`, '<br>');
-                    
-                    messageDiv.innerHTML = `
-                        <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
-                            ${isUser ? userAvatar : botAvatarSvg}
-                        </div>
-                        <div class="message-content">${formattedContent}</div>
-                    `;
-                }
+                messageDiv.innerHTML = `
+                    <div class="avatar ${isUser ? 'user-avatar' : 'bot-avatar'}">
+                        ${isUser ? '👤' : '🤖'}
+                    </div>
+                    <div class="message-content">${formattedContent}</div>
+                `;
 
                 messagesList.appendChild(messageDiv);
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
+
 
 
             setMessage(message) {
