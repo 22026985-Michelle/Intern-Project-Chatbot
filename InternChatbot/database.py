@@ -843,7 +843,7 @@ def format_json_response(response_text):
         
         # Handle when input is already a dict/list
         if isinstance(clean_text, (dict, list)):
-            formatted = json.dumps(clean_text, indent=4, ensure_ascii=False)  # Use indent=4 for pretty printing
+            formatted = json.dumps(clean_text, indent=2, ensure_ascii=False)
             return formatted
 
         # Try to parse the string as JSON first
@@ -854,7 +854,7 @@ def format_json_response(response_text):
                 clean_text = clean_text[1:-1]
                 
             json_obj = json.loads(clean_text)
-            formatted = json.dumps(json_obj, indent=4, ensure_ascii=False)  # Use indent=4 for pretty printing
+            formatted = json.dumps(json_obj, indent=2, ensure_ascii=False)
             return formatted
             
         except json.JSONDecodeError:
@@ -864,7 +864,7 @@ def format_json_response(response_text):
             
             try:
                 json_obj = json.loads(clean_text)
-                formatted = json.dumps(json_obj, indent=4, ensure_ascii=False)  # Use indent=4 for pretty printing
+                formatted = json.dumps(json_obj, indent=2, ensure_ascii=False)
                 return formatted
             except:
                 return response_text

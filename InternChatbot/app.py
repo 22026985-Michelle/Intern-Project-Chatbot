@@ -120,7 +120,7 @@ def api_login():
     except Exception as e:
         app.logger.error(f"Error in login endpoint: {str(e)}")
         return jsonify({"error": f"Internal server error: {str(e)}"}), 500
-
+    
 @app.route('/api/signup', methods=['POST'])
 def api_signup():
     try:
