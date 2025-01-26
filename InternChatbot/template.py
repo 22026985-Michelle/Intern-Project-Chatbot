@@ -7,18 +7,6 @@ HTML_TEMPLATE = '''
     <title>NCS Internship AI Chatbot</title>
     <style>
         /* Theme Variables */
-        code.formatted-json {
-            display: block;
-            background-color: var(--message-bg); /* Matches the theme */
-            padding: 1rem;
-            border-radius: 8px;
-            white-space: pre-wrap;
-            word-wrap: break-word;
-            font-family: monospace;
-            color: var(--text-color);
-            overflow-x: auto;
-        }
-
         :root[data-theme="light"] {
             --bg-color: #FFFFFF;
             --text-color: #1C1C1C;
@@ -1331,15 +1319,14 @@ HTML_TEMPLATE = '''
 
                 const formattedContent = (() => {
                     try {
-                        // Check if content is valid JSON
                         if (typeof content === 'string' && (content.trim().startsWith('{') || content.trim().startsWith('['))) {
                             const parsedContent = JSON.parse(content);
-                            return `<pre><code class="formatted-json">${JSON.stringify(parsedContent, null, 4)}</code></pre>`;
+                            return '<pre><code>' + JSON.stringify(parsedContent, null, 4) + '</code></pre>'; // Indented JSON
                         }
-                        return this.escapeHtml(content); // Escape non-JSON content
-                    } catch (error) {
-                        console.error('Error formatting JSON:', error);
-                        return this.escapeHtml(content); // Fallback for invalid JSON
+                        return this.escapeHtml(content); // Non-JSON fallback
+                    } catch (e) {
+                        console.error('Error parsing JSON in addMessageToUI:', e);
+                        return this.escapeHtml(content); // Non-JSON fallback
                     }
                 })();
 
@@ -1353,7 +1340,6 @@ HTML_TEMPLATE = '''
                 messagesList.appendChild(messageDiv);
                 messageDiv.scrollIntoView({ behavior: 'smooth', block: 'end' });
             }
-
 
 
 
